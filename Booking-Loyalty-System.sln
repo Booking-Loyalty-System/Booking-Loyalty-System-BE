@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Booking-Loyalty-System", "Booking-Loyalty-System.csproj", "{422FC143-FB80-4CD3-BCFD-BA80E69D3874}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{422FC143-FB80-4CD3-BCFD-BA80E69D3874}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{422FC143-FB80-4CD3-BCFD-BA80E69D3874}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{422FC143-FB80-4CD3-BCFD-BA80E69D3874}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{422FC143-FB80-4CD3-BCFD-BA80E69D3874}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
