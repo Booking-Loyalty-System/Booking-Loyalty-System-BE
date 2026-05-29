@@ -92,7 +92,7 @@ public class AuthService : IAuthService
             throw new AppException("Invalid email or password.", 401);
 
         if (!user.IsActive)
-            throw new AppException("Account is deactivated.", 403);
+            throw new AppException("Account is deactivated.", 401);
 
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
@@ -181,7 +181,8 @@ public class AuthService : IAuthService
             Email = user.Email,
             Role = user.Role.ToString(),
             Tier = user.Customer?.Tier.ToString(),
-            TotalPoints = user.Customer?.TotalPoints
+            TotalPoints = user.Customer?.TotalPoints,
+            TotalWashes = user.Customer?.TotalWashes
         };
 
         return ApiResponse<MeResponse>.SuccessResponse(response);
