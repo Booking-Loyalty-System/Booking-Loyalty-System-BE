@@ -18,4 +18,5 @@ public class Customer
 
     public User User { get; set; } = null!;
     public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+    public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }

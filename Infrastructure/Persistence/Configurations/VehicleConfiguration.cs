@@ -23,5 +23,11 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
         builder.Property(v => v.Type)
             .HasConversion<string>()
             .HasMaxLength(20);
+
+        builder.Property(v => v.VehicleName)
+            .HasMaxLength(100);
+
+        builder.Property(v => v.Color)
+            .HasMaxLength(30);
     }
 }
