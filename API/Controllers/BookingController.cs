@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers;
 
 [ApiController]
-[Route("api/booking")]
+[Route("api/bookings")]
 public class BookingController : ControllerBase
 {
     private readonly IBookingService _bookingService;
@@ -19,9 +19,6 @@ public class BookingController : ControllerBase
         _bookingService = bookingService;
     }
 
-    /// <summary>
-    /// Create a new booking
-    /// </summary>
     [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create(
@@ -38,9 +35,6 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result, "Booking created successfully."));
     }
 
-    /// <summary>
-    /// Get booking by ID
-    /// </summary>
     [Authorize]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
@@ -50,9 +44,6 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    /// <summary>
-    /// Get current customer's bookings
-    /// </summary>
     [Authorize]
     [HttpGet("my-bookings")]
     public async Task<IActionResult> GetMyBookings()
@@ -62,9 +53,6 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    /// <summary>
-    /// Cancel a booking
-    /// </summary>
     [Authorize]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelBookingRequest? request)
@@ -72,29 +60,6 @@ public class BookingController : ControllerBase
         var userId = GetUserId();
         var result = await _bookingService.CancelBookingAsync(userId, id, request?.Reason);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Booking cancelled successfully."));
-    }
-
-    /// <summary>
-    /// Get available time slots for a store on a specific date
-    /// </summary>
-    [HttpGet("available-slots")]
-    public async Task<IActionResult> GetAvailableSlots([FromQuery] Guid storeId, [FromQuery] DateOnly date)
-    {
-        var result = await _bookingService.GetAvailableSlotsAsync(storeId, date);
-        return Ok(ApiResponse<object>.SuccessResponse(result));
-    }
-
-    /// <summary>
-    /// Get booking calendar for a store within a date range
-    /// </summary>
-    [HttpGet("calendar")]
-    public async Task<IActionResult> GetCalendar(
-        [FromQuery] Guid storeId,
-        [FromQuery] DateOnly startDate,
-        [FromQuery] DateOnly endDate)
-    {
-        var result = await _bookingService.GetCalendarAsync(storeId, startDate, endDate);
-        return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
     private Guid GetUserId()

@@ -11,9 +11,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
-    public DbSet<Service> Services => Set<Service>();
-    public DbSet<ServiceFeature> ServiceFeatures => Set<ServiceFeature>();
-    public DbSet<Store> Stores => Set<Store>();
+    public DbSet<WashPackage> WashPackages => Set<WashPackage>();
+    public DbSet<WashBay> WashBays => Set<WashBay>();
+    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
     public DbSet<Booking> Bookings => Set<Booking>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

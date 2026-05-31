@@ -10,11 +10,8 @@ public class CreateBookingRequestValidator : AbstractValidator<CreateBookingRequ
         RuleFor(x => x.VehicleId)
             .NotEmpty().WithMessage("Vehicle is required.");
 
-        RuleFor(x => x.ServiceId)
-            .NotEmpty().WithMessage("Service is required.");
-
-        RuleFor(x => x.StoreId)
-            .NotEmpty().WithMessage("Store is required.");
+        RuleFor(x => x.WashPackageId)
+            .NotEmpty().WithMessage("Wash package is required.");
 
         RuleFor(x => x.BookingDate)
             .NotEmpty().WithMessage("Booking date is required.");

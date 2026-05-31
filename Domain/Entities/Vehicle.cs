@@ -10,6 +10,8 @@ public class Vehicle
     public VehicleType Type { get; set; }
     public bool IsPrimary { get; set; }
     public string? VehicleName { get; set; }
+    public string? Brand { get; set; }
+    public string? Model { get; set; }
     public string? Color { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

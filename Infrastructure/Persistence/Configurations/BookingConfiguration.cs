@@ -13,7 +13,7 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.Property(b => b.BookingCode)
             .IsRequired()
-            .HasMaxLength(20);
+            .HasMaxLength(10);
 
         builder.HasIndex(b => b.BookingCode)
             .IsUnique();
@@ -28,10 +28,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.CancellationReason)
             .HasMaxLength(500);
 
-        // Composite index for slot availability queries
-        builder.HasIndex(b => new { b.StoreId, b.BookingDate, b.StartTime });
+        builder.Property(b => b.QrData)
+            .HasMaxLength(1000);
 
-        // Foreign keys with Restrict delete
+        // Foreign keys
         builder.HasOne(b => b.Customer)
             .WithMany(c => c.Bookings)
             .HasForeignKey(b => b.CustomerId)
@@ -42,9 +42,9 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasForeignKey(b => b.VehicleId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(b => b.Service)
-            .WithMany(s => s.Bookings)
-            .HasForeignKey(b => b.ServiceId)
+        builder.HasOne(b => b.WashPackage)
+            .WithMany(wp => wp.Bookings)
+            .HasForeignKey(b => b.WashPackageId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
