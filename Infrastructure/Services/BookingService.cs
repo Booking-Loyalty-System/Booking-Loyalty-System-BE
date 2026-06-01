@@ -35,11 +35,28 @@ public class BookingService : IBookingService
         if (request.BookingDate < today)
             throw new AppException("Booking date cannot be in the past.", 400);
 
+        // For same-day bookings, the start time must still be in the future
+        if (request.BookingDate == today && request.StartTime <= TimeOnly.FromDateTime(DateTime.UtcNow))
+            throw new AppException("Start time cannot be in the past.", 400);
+
         // Tier-based booking window
         var maxDays = GetMaxBookingDays(customer.Tier);
         var maxDate = today.AddDays(maxDays);
         if (request.BookingDate > maxDate)
             throw new AppException($"Your {customer.Tier} tier allows booking up to {maxDays} days in advance.", 400);
+
+        // The booking occupies the bay for [StartTime, StartTime + package duration)
+        var endTime = request.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes));
+        if (endTime <= request.StartTime)
+            throw new AppException("The selected start time and wash duration are invalid (the wash would run past midnight).", 400);
+
+        // Reserve a wash bay + time slot atomically so the same bay can never be
+        // double-booked for an overlapping window (Serializable transaction).
+        await using var transaction = await _context.BeginTransactionAsync();
+
+        var bay = await FindAvailableBayAsync(vehicle.Type, request.BookingDate, request.StartTime, endTime)
+            ?? throw new AppException(
+                "No wash bay is available for the selected date and time. Please choose another slot.", 409);
 
         // Generate booking code (6 chars A-Z0-9)
         var bookingCode = await GenerateUniqueBookingCodeAsync();
@@ -58,10 +75,61 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.Bookings.Add(booking);
-        await _context.SaveChangesAsync();
+        var slot = new TimeSlot
+        {
+            Id = Guid.NewGuid(),
+            WashBayId = bay.Id,
+            Date = request.BookingDate,
+            StartTime = request.StartTime,
+            EndTime = endTime,
+            Status = TimeSlotStatus.Booked,
+            BookingId = booking.Id
+        };
+        booking.TimeSlotId = slot.Id;
 
-        return MapToResponse(booking, washPackage, vehicle);
+        _context.Bookings.Add(booking);
+        _context.TimeSlots.Add(slot);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return MapToResponse(booking, washPackage, vehicle, slot, bay);
+    }
+
+    /// <summary>
+    /// Finds the first wash bay that is operational, supports the vehicle type, and
+    /// has no active time slot overlapping the requested [start, end) window.
+    /// Returns null when every bay is busy or none supports the vehicle type.
+    /// </summary>
+    private async Task<WashBay?> FindAvailableBayAsync(
+        VehicleType vehicleType, DateOnly date, TimeOnly start, TimeOnly end)
+    {
+        var typeName = vehicleType.ToString();
+
+        var bays = await _context.WashBays
+            .Where(b => b.Status == WashBayStatus.Available)
+            .OrderBy(b => b.Name)
+            .ToListAsync();
+
+        foreach (var bay in bays)
+        {
+            // A bay with no declared SupportedTypes is treated as supporting all types.
+            var supported = bay.SupportedTypes
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (supported.Length > 0 &&
+                !supported.Any(s => string.Equals(s, typeName, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var hasConflict = await _context.TimeSlots.AnyAsync(ts =>
+                ts.WashBayId == bay.Id &&
+                ts.Date == date &&
+                (ts.Status == TimeSlotStatus.Booked || ts.Status == TimeSlotStatus.InProgress) &&
+                ts.StartTime < end && ts.EndTime > start);
+
+            if (!hasConflict)
+                return bay;
+        }
+
+        return null;
     }
 
     public async Task<BookingResponse> GetBookingByIdAsync(Guid userId, Guid bookingId)
@@ -73,10 +141,12 @@ public class BookingService : IBookingService
         var booking = await _context.Bookings
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
+            .Include(b => b.TimeSlot)
+                .ThenInclude(ts => ts!.WashBay)
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot);
     }
 
     public async Task<List<BookingResponse>> GetMyBookingsAsync(Guid userId)
@@ -89,10 +159,12 @@ public class BookingService : IBookingService
             .Where(b => b.CustomerId == customer.Id)
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
+            .Include(b => b.TimeSlot)
+                .ThenInclude(ts => ts!.WashBay)
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
 
-        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle)).ToList();
+        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.TimeSlot)).ToList();
     }
 
     public async Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason)
@@ -104,6 +176,8 @@ public class BookingService : IBookingService
         var booking = await _context.Bookings
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
+            .Include(b => b.TimeSlot)
+                .ThenInclude(ts => ts!.WashBay)
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
@@ -114,9 +188,17 @@ public class BookingService : IBookingService
         booking.CancellationReason = reason;
         booking.UpdatedAt = DateTime.UtcNow;
 
+        // Release the reserved bay/time slot so the window becomes bookable again.
+        var slot = booking.TimeSlot;
+        if (slot != null)
+        {
+            _context.TimeSlots.Remove(slot);
+            booking.TimeSlotId = null;
+        }
+
         await _context.SaveChangesAsync();
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, slot);
     }
 
     private static int GetMaxBookingDays(CustomerTier tier) => tier switch
@@ -142,7 +224,8 @@ public class BookingService : IBookingService
         return code;
     }
 
-    private static BookingResponse MapToResponse(Booking booking, WashPackage washPackage, Vehicle vehicle)
+    private static BookingResponse MapToResponse(
+        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot? slot, WashBay? bay = null)
     {
         return new BookingResponse
         {
@@ -152,6 +235,8 @@ public class BookingService : IBookingService
             DurationMinutes = washPackage.DurationMinutes,
             BookingDate = booking.BookingDate,
             StartTime = booking.StartTime,
+            EndTime = slot?.EndTime,
+            WashBayName = bay?.Name ?? slot?.WashBay?.Name,
             VehiclePlate = vehicle.LicensePlate,
             VehicleName = vehicle.VehicleName,
             TotalPrice = booking.TotalPrice,
