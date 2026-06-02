@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add layers
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // Controllers
 builder.Services.AddControllers();

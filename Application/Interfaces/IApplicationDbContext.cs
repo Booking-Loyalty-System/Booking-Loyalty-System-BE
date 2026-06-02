@@ -8,5 +8,9 @@ public interface IApplicationDbContext
     DbSet<User> Users { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Vehicle> Vehicles { get; }
+    DbSet<WashPackage> WashPackages { get; }
+    DbSet<WashBay> WashBays { get; }
+    DbSet<TimeSlot> TimeSlots { get; }
+    DbSet<Booking> Bookings { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -16,7 +16,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasMaxLength(100);
 
         builder.Property(c => c.PhoneNumber)
-            .IsRequired()
             .HasMaxLength(15);
 
         builder.HasIndex(c => c.PhoneNumber).IsUnique();
