@@ -21,11 +21,8 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 
         RuleFor(x => x.PhoneNumber)
             .NotEmpty().WithMessage("Phone number is required.")
+            .Length(10, 12).WithMessage("Phone number length must be between 10 and 12 characters.")
             .Matches(@"^(0|\+84)[0-9]{9}$").WithMessage("Phone number must match format: 0xxxxxxxxx or +84xxxxxxxxx.");
-
-        RuleFor(x => x.LicensePlate)
-            .NotEmpty().WithMessage("License plate is required.")
-            .MaximumLength(20).WithMessage("License plate must not exceed 20 characters.");
 
         RuleFor(x => x.VehicleType)
             .IsInEnum().WithMessage("Invalid vehicle type.");

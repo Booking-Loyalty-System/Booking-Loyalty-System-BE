@@ -5,3 +5,7 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# Chặn file cấu hình local chứa key bảo mật
+**/appsettings.Development.json
+**/appsettings.Local.json

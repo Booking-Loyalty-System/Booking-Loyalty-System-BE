@@ -11,10 +11,6 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
     {
         builder.HasKey(v => v.Id);
 
-        builder.Property(v => v.LicensePlate)
-            .IsRequired()
-            .HasMaxLength(20);
-
         // Filtered unique index: license plate unique among non-deleted vehicles
         builder.HasIndex(v => v.LicensePlate)
             .IsUnique()
