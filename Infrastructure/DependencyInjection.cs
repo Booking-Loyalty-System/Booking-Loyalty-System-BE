@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces;
 using Infrastructure.Persistence;
 using Infrastructure.Services;
@@ -16,6 +17,8 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
+
+        services.Configure<BookingOptions>(configuration.GetSection("Booking"));
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ITokenService, TokenService>();

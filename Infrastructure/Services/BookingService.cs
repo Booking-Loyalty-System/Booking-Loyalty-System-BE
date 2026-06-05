@@ -1,19 +1,25 @@
+using Application.Common;
 using Application.DTOs.Booking;
 using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
 public class BookingService : IBookingService
 {
     private readonly IApplicationDbContext _context;
+    private readonly BookingOptions _options;
+    private readonly TimeZoneInfo _shopTimeZone;
 
-    public BookingService(IApplicationDbContext context)
+    public BookingService(IApplicationDbContext context, IOptions<BookingOptions> options)
     {
         _context = context;
+        _options = options.Value;
+        _shopTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
     }
 
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
@@ -30,13 +36,16 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
             ?? throw new AppException("Wash package not found or inactive.", 404);
 
-        // Validate booking date not in the past
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        // Shop-local "now" — bookings are expressed in the shop's local clock, not UTC.
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone);
+        var today = DateOnly.FromDateTime(nowLocal);
+        var nowTime = TimeOnly.FromDateTime(nowLocal);
+
         if (request.BookingDate < today)
             throw new AppException("Booking date cannot be in the past.", 400);
 
         // For same-day bookings, the start time must still be in the future
-        if (request.BookingDate == today && request.StartTime <= TimeOnly.FromDateTime(DateTime.UtcNow))
+        if (request.BookingDate == today && request.StartTime <= nowTime)
             throw new AppException("Start time cannot be in the past.", 400);
 
         // Tier-based booking window
@@ -49,6 +58,26 @@ public class BookingService : IBookingService
         var endTime = request.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes));
         if (endTime <= request.StartTime)
             throw new AppException("The selected start time and wash duration are invalid (the wash would run past midnight).", 400);
+
+        // The whole wash must fit inside the shop's operating hours.
+        if (request.StartTime < _options.OpenTime || endTime > _options.CloseTime)
+            throw new AppException(
+                $"Booking time must be within business hours " +
+                $"({_options.OpenTime:HH\\:mm}–{_options.CloseTime:HH\\:mm}).", 400);
+
+        // A single vehicle cannot be in two places at once — block overlapping active bookings.
+        var vehicleConflict = await _context.Bookings.AnyAsync(b =>
+            b.VehicleId == vehicle.Id &&
+            b.TimeSlot != null &&
+            b.TimeSlot.Date == request.BookingDate &&
+            (b.Status == BookingStatus.Pending ||
+             b.Status == BookingStatus.Confirmed ||
+             b.Status == BookingStatus.InProgress) &&
+            b.TimeSlot.StartTime < endTime && b.TimeSlot.EndTime > request.StartTime);
+
+        if (vehicleConflict)
+            throw new AppException(
+                "This vehicle already has a booking that overlaps the selected time.", 409);
 
         // Reserve a wash bay + time slot atomically so the same bay can never be
         // double-booked for an overlapping window (Serializable transaction).
