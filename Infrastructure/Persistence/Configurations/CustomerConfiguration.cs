@@ -20,10 +20,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.HasIndex(c => c.PhoneNumber).IsUnique();
 
-        builder.Property(c => c.Tier)
-            .HasConversion<string>()
-            .HasMaxLength(20);
-
         builder.Property(c => c.TotalSpent)
             .HasColumnType("decimal(18,2)");
 
@@ -31,5 +27,10 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .WithOne(v => v.Customer)
             .HasForeignKey(v => v.CustomerId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasOne(c => c.Tier)
+            .WithMany(t => t.Customers)
+            .HasForeignKey(c => c.TierId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

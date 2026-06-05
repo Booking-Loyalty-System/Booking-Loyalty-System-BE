@@ -12,5 +12,6 @@ public interface IApplicationDbContext
     DbSet<WashBay> WashBays { get; }
     DbSet<TimeSlot> TimeSlots { get; }
     DbSet<Booking> Bookings { get; }
+    DbSet<Tier> Tiers { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

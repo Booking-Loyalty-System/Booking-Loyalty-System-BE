@@ -29,5 +29,27 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne(c => c.User)
             .HasForeignKey<Customer>(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasData(
+            new User
+            {
+                Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                Email = "admin@system.com",
+                // Mật khẩu là "Admin@123" đã hash bằng BCrypt
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                Role = UserRole.Admin,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new User
+            {
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                Email = "staff@system.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff@123"),
+                Role = UserRole.Staff,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            }
+        );
     }
 }

@@ -9,7 +9,10 @@ public class WashBay
     public WashBayStatus Status { get; set; } = WashBayStatus.Available;
     public string SupportedTypes { get; set; } = null!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid BranchId { get; set; }
 
+    public Branch Branch { get; set; } = null!;
     // Navigation
     public ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
+    
 }
