@@ -32,5 +32,22 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .WithMany(t => t.Customers)
             .HasForeignKey(c => c.TierId)
             .OnDelete(DeleteBehavior.Restrict);
+        
+        builder.HasData(
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                FullName = "Customer User",
+                PhoneNumber = "0901234567",
+                TierId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                TotalSpent = 0m,
+                TotalWashes = 0,
+                TotalPoints = 0,
+                LifetimePoints = 0,
+                IsPhoneNumberVerified = false,
+                CreatedAt = DateTime.UtcNow
+            }
+        );
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -20,5 +21,14 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
             .WithOne(wb => wb.Branch)
             .HasForeignKey(wb => wb.BranchId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        builder.HasData(new Branch { 
+            Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 
+            BranchName = "Main Branch", 
+            Address = "123 Street", 
+            Hotline = "0123456789", 
+            OperatingHours = "8am-9pm", 
+            Status = BranchStatus.Active 
+        });
     }
 }
