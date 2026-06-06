@@ -8,11 +8,42 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialPostgres : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Branches",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    BranchName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Address = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Hotline = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    OperatingHours = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Branches", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Tiers",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TierName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    PointRate = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    BookingWindow = table.Column<int>(type: "integer", nullable: false),
+                    Level = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tiers", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
@@ -31,21 +62,6 @@ namespace Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "WashBays",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    SupportedTypes = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_WashBays", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -68,6 +84,28 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "WashBays",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    SupportedTypes = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WashBays", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WashBays_Branches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "Branches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Customers",
                 columns: table => new
                 {
@@ -77,7 +115,7 @@ namespace Infrastructure.Migrations
                     PhoneNumber = table.Column<string>(type: "character varying(15)", maxLength: 15, nullable: true),
                     IsPhoneNumberVerified = table.Column<bool>(type: "boolean", nullable: false),
                     DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    Tier = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    TierId = table.Column<Guid>(type: "uuid", nullable: false),
                     TotalPoints = table.Column<int>(type: "integer", nullable: false),
                     LifetimePoints = table.Column<int>(type: "integer", nullable: false),
                     TotalWashes = table.Column<int>(type: "integer", nullable: false),
@@ -87,6 +125,12 @@ namespace Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Customers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Customers_Tiers_TierId",
+                        column: x => x.TierId,
+                        principalTable: "Tiers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Customers_Users_UserId",
                         column: x => x.UserId,
@@ -132,6 +176,8 @@ namespace Infrastructure.Migrations
                     VehicleId = table.Column<Guid>(type: "uuid", nullable: false),
                     WashPackageId = table.Column<Guid>(type: "uuid", nullable: false),
                     TimeSlotId = table.Column<Guid>(type: "uuid", nullable: true),
+                    BayId = table.Column<Guid>(type: "uuid", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uuid", nullable: false),
                     BookingDate = table.Column<DateOnly>(type: "date", nullable: false),
                     StartTime = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
                     TotalPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
@@ -139,11 +185,18 @@ namespace Infrastructure.Migrations
                     QrData = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     CancellationReason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    WashBayId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Bookings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Bookings_Branches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "Branches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Bookings_Customers_CustomerId",
                         column: x => x.CustomerId,
@@ -156,6 +209,12 @@ namespace Infrastructure.Migrations
                         principalTable: "Vehicles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Bookings_WashBays_WashBayId",
+                        column: x => x.WashBayId,
+                        principalTable: "WashBays",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Bookings_WashPackages_WashPackageId",
                         column: x => x.WashPackageId,
@@ -194,13 +253,29 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.InsertData(
-                table: "WashBays",
-                columns: new[] { "Id", "CreatedAt", "Name", "Status", "SupportedTypes" },
+                table: "Branches",
+                columns: new[] { "Id", "Address", "BranchName", "Hotline", "OperatingHours", "Status" },
+                values: new object[] { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), "123 Street", "Main Branch", "0123456789", "8am-9pm", 0 });
+
+            migrationBuilder.InsertData(
+                table: "Tiers",
+                columns: new[] { "Id", "BookingWindow", "Level", "PointRate", "TierName" },
                 values: new object[,]
                 {
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay A1", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay A2", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay B1", "Available", "Small,Medium,Large" }
+                    { new Guid("11111111-1111-1111-1111-111111111111"), 7, 4, 1.00m, "Bronze" },
+                    { new Guid("22222222-2222-2222-2222-222222222222"), 10, 3, 1.20m, "Silver" },
+                    { new Guid("33333333-3333-3333-3333-333333333333"), 12, 2, 1.50m, "Gold" },
+                    { new Guid("44444444-4444-4444-4444-444444444444"), 14, 1, 2.00m, "Diamond" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
+                values: new object[,]
+                {
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 6, 17, 15, 0, 246, DateTimeKind.Utc).AddTicks(3355), "admin@system.com", null, true, "$2a$11$3lnBZY5MzN.Zcij2G7hPSO5A4zt9TenRWZi9mL90/ubMz8YWWBaOm", null, null, "Admin", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 6, 17, 15, 0, 428, DateTimeKind.Utc).AddTicks(1068), "staff@system.com", null, true, "$2a$11$yjUU3pxWXk8n0Kfu3teSKe3Y2kble578QL58uEF/GAYpVXh3yg0Eu", null, null, "Staff", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 6, 17, 15, 0, 608, DateTimeKind.Utc).AddTicks(5517), "customer@system.com", null, true, "$2a$11$uckH484liwHQMfTqN4LuVOZ6T5t/vzkgJJJBt0CvKWqg9oQkNEEbe", null, null, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -213,11 +288,31 @@ namespace Infrastructure.Migrations
                     { new Guid("a1b2c3d4-0001-0001-0001-000000000003"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Complete detailing with wax coating and leather care", 45, "[\"Full exterior wash\",\"Interior deep clean\",\"Wax coating\",\"Leather conditioning\",\"Engine bay cleaning\",\"Ceramic spray\"]", true, "VIP Detailing", 200000m, null }
                 });
 
+            migrationBuilder.InsertData(
+                table: "Customers",
+                columns: new[] { "Id", "CreatedAt", "DateOfBirth", "FullName", "IsPhoneNumberVerified", "LifetimePoints", "PhoneNumber", "TierId", "TotalPoints", "TotalSpent", "TotalWashes", "UserId" },
+                values: new object[] { new Guid("c601249d-6385-4bb7-98b8-85ad1a205500"), new DateTime(2026, 6, 6, 17, 15, 0, 61, DateTimeKind.Utc).AddTicks(905), null, "Customer User", false, 0, "0901234567", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
+
+            migrationBuilder.InsertData(
+                table: "WashBays",
+                columns: new[] { "Id", "BranchId", "CreatedAt", "Name", "Status", "SupportedTypes" },
+                values: new object[,]
+                {
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay A1", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay A2", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay B1", "Available", "Small,Medium,Large" }
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Bookings_BookingCode",
                 table: "Bookings",
                 column: "BookingCode",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Bookings_BranchId",
+                table: "Bookings",
+                column: "BranchId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Bookings_CustomerId",
@@ -230,6 +325,11 @@ namespace Infrastructure.Migrations
                 column: "VehicleId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Bookings_WashBayId",
+                table: "Bookings",
+                column: "WashBayId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Bookings_WashPackageId",
                 table: "Bookings",
                 column: "WashPackageId");
@@ -239,6 +339,11 @@ namespace Infrastructure.Migrations
                 table: "Customers",
                 column: "PhoneNumber",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Customers_TierId",
+                table: "Customers",
+                column: "TierId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customers_UserId",
@@ -274,6 +379,11 @@ namespace Infrastructure.Migrations
                 column: "LicensePlate",
                 unique: true,
                 filter: "\"IsDeleted\" = false");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WashBays_BranchId",
+                table: "WashBays",
+                column: "BranchId");
         }
 
         /// <inheritdoc />
@@ -286,16 +396,22 @@ namespace Infrastructure.Migrations
                 name: "Bookings");
 
             migrationBuilder.DropTable(
-                name: "WashBays");
+                name: "Vehicles");
 
             migrationBuilder.DropTable(
-                name: "Vehicles");
+                name: "WashBays");
 
             migrationBuilder.DropTable(
                 name: "WashPackages");
 
             migrationBuilder.DropTable(
                 name: "Customers");
+
+            migrationBuilder.DropTable(
+                name: "Branches");
+
+            migrationBuilder.DropTable(
+                name: "Tiers");
 
             migrationBuilder.DropTable(
                 name: "Users");

@@ -131,6 +131,17 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Branches", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            Address = "123 Street",
+                            BranchName = "Main Branch",
+                            Hotline = "0123456789",
+                            OperatingHours = "8am-9pm",
+                            Status = 0
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Customer", b =>
@@ -186,6 +197,22 @@ namespace Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Customers");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c601249d-6385-4bb7-98b8-85ad1a205500"),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 61, DateTimeKind.Utc).AddTicks(905),
+                            FullName = "Customer User",
+                            IsPhoneNumberVerified = false,
+                            LifetimePoints = 0,
+                            PhoneNumber = "0901234567",
+                            TierId = new Guid("11111111-1111-1111-1111-111111111111"),
+                            TotalPoints = 0,
+                            TotalSpent = 0m,
+                            TotalWashes = 0,
+                            UserId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc")
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Tier", b =>
@@ -331,20 +358,29 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            CreatedAt = new DateTime(2026, 6, 5, 14, 46, 58, 481, DateTimeKind.Utc).AddTicks(5544),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 246, DateTimeKind.Utc).AddTicks(3355),
                             Email = "admin@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$nuWCTOFz8ExOZYYqB0/9pOMAFonpfZ7jtGi/ThJrgXLy1miCQFkN2",
+                            PasswordHash = "$2a$11$3lnBZY5MzN.Zcij2G7hPSO5A4zt9TenRWZi9mL90/ubMz8YWWBaOm",
                             Role = "Admin"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 5, 14, 46, 58, 663, DateTimeKind.Utc).AddTicks(1083),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 428, DateTimeKind.Utc).AddTicks(1068),
                             Email = "staff@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$YwK0/23qxuVFfL6EJwmse.wtUkgLvG92yxH9PCD4Bv9zJz7kf6HU2",
+                            PasswordHash = "$2a$11$yjUU3pxWXk8n0Kfu3teSKe3Y2kble578QL58uEF/GAYpVXh3yg0Eu",
                             Role = "Staff"
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 608, DateTimeKind.Utc).AddTicks(5517),
+                            Email = "customer@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$uckH484liwHQMfTqN4LuVOZ6T5t/vzkgJJJBt0CvKWqg9oQkNEEbe",
+                            Role = "Customer"
                         });
                 });
 
@@ -438,7 +474,7 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000001"),
-                            BranchId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Bay A1",
                             Status = "Available",
@@ -447,7 +483,7 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000002"),
-                            BranchId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Bay A2",
                             Status = "Available",
@@ -456,7 +492,7 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000003"),
-                            BranchId = new Guid("00000000-0000-0000-0000-000000000000"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Bay B1",
                             Status = "Available",
