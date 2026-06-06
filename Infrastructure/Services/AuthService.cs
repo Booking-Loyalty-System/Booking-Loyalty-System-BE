@@ -34,9 +34,8 @@ public class AuthService : IAuthService
         if (!string.IsNullOrEmpty(request.PhoneNumber) && await _context.Customers.AnyAsync(c => c.PhoneNumber == request.PhoneNumber))
             throw new AppException("Phone number already exists.", 409);
 
-        // Check duplicate license plate (non-deleted)
-        if (!string.IsNullOrEmpty(request.LicensePlate) && await _context.Vehicles.AnyAsync(v => v.LicensePlate == request.LicensePlate && !v.IsDeleted))
-            throw new AppException("License plate already exists.", 409);
+        var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Bronze")
+                   ?? throw new AppException("System configuration error: Default tier not found.", 500);
 
         var user = new User
         {
@@ -55,17 +54,7 @@ public class AuthService : IAuthService
             FullName = request.FullName,
             PhoneNumber = request.PhoneNumber,
             DateOfBirth = request.DateOfBirth,
-            Tier = CustomerTier.Member,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var vehicle = new Vehicle
-        {
-            Id = Guid.NewGuid(),
-            CustomerId = customer.Id,
-            LicensePlate = request.LicensePlate,
-            Type = request.VehicleType,
-            IsPrimary = true,
+            TierId = tier.Id,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -78,7 +67,6 @@ public class AuthService : IAuthService
 
         _context.Users.Add(user);
         _context.Customers.Add(customer);
-        _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
         return ApiResponse<TokenResponse>.SuccessResponse(new TokenResponse
@@ -226,6 +214,9 @@ public class AuthService : IAuthService
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
             string message = "Login successful.";
 
+            var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Bronze")
+                       ?? throw new AppException("System configuration error: Default tier not found.", 500);
+            
             if (user == null)
             {
                 // ---- TRƯỜNG HỢP 1: USER CHƯA TỒN TẠI (ĐĂNG KÝ MỚI) ----
@@ -249,15 +240,10 @@ public class AuthService : IAuthService
                     FullName = userInfo.Name ?? "Google User",
                     PhoneNumber = null, // Chấp nhận NULL lúc này, User cập nhật sau
                     DateOfBirth = null,
-                    Tier = CustomerTier.Member,
+                    TierId = tier.Id,
                     CreatedAt = DateTime.UtcNow,
                     User = user
                 };
-
-                // Vì xe (Vehicle) liên quan chặt chẽ tới nghiệp vụ hệ thống của bạn, 
-                // Nếu DB bắt buộc (Not Null) thì đoạn này bạn có thể tạm thời CHƯA thêm Vehicle,
-                // Hoặc tạo một thực thể xe "Chờ cập nhật". Ở đây tôi tạm thời không add Vehicle 
-                // để tránh rác DB, buộc user phải khai báo xe ở màn hình tiếp theo.
 
                 _context.Users.Add(user);
                 _context.Customers.Add(customer);

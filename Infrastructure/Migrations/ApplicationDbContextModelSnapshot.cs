@@ -28,6 +28,9 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("BayId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("BookingCode")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -35,6 +38,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
@@ -70,6 +76,9 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("VehicleId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("WashBayId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("WashPackageId")
                         .HasColumnType("uuid");
 
@@ -78,13 +87,61 @@ namespace Infrastructure.Migrations
                     b.HasIndex("BookingCode")
                         .IsUnique();
 
+                    b.HasIndex("BranchId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("VehicleId");
 
+                    b.HasIndex("WashBayId");
+
                     b.HasIndex("WashPackageId");
 
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Branch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("BranchName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Hotline")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("OperatingHours")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Branches", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            Address = "123 Street",
+                            BranchName = "Main Branch",
+                            Hotline = "0123456789",
+                            OperatingHours = "8am-9pm",
+                            Status = 0
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Customer", b =>
@@ -114,10 +171,8 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
 
-                    b.Property<string>("Tier")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<Guid>("TierId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("TotalPoints")
                         .HasColumnType("integer");
@@ -136,10 +191,87 @@ namespace Infrastructure.Migrations
                     b.HasIndex("PhoneNumber")
                         .IsUnique();
 
+                    b.HasIndex("TierId");
+
                     b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("Customers");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c601249d-6385-4bb7-98b8-85ad1a205500"),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 61, DateTimeKind.Utc).AddTicks(905),
+                            FullName = "Customer User",
+                            IsPhoneNumberVerified = false,
+                            LifetimePoints = 0,
+                            PhoneNumber = "0901234567",
+                            TierId = new Guid("11111111-1111-1111-1111-111111111111"),
+                            TotalPoints = 0,
+                            TotalSpent = 0m,
+                            TotalWashes = 0,
+                            UserId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc")
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Entities.Tier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BookingWindow")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PointRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("TierName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tiers");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            BookingWindow = 7,
+                            Level = 4,
+                            PointRate = 1.00m,
+                            TierName = "Bronze"
+                        },
+                        new
+                        {
+                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
+                            BookingWindow = 10,
+                            Level = 3,
+                            PointRate = 1.20m,
+                            TierName = "Silver"
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
+                            BookingWindow = 12,
+                            Level = 2,
+                            PointRate = 1.50m,
+                            TierName = "Gold"
+                        },
+                        new
+                        {
+                            Id = new Guid("44444444-4444-4444-4444-444444444444"),
+                            BookingWindow = 14,
+                            Level = 1,
+                            PointRate = 2.00m,
+                            TierName = "Diamond"
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.TimeSlot", b =>
@@ -221,6 +353,35 @@ namespace Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 246, DateTimeKind.Utc).AddTicks(3355),
+                            Email = "admin@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$3lnBZY5MzN.Zcij2G7hPSO5A4zt9TenRWZi9mL90/ubMz8YWWBaOm",
+                            Role = "Admin"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 428, DateTimeKind.Utc).AddTicks(1068),
+                            Email = "staff@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$yjUU3pxWXk8n0Kfu3teSKe3Y2kble578QL58uEF/GAYpVXh3yg0Eu",
+                            Role = "Staff"
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            CreatedAt = new DateTime(2026, 6, 6, 17, 15, 0, 608, DateTimeKind.Utc).AddTicks(5517),
+                            Email = "customer@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$uckH484liwHQMfTqN4LuVOZ6T5t/vzkgJJJBt0CvKWqg9oQkNEEbe",
+                            Role = "Customer"
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Vehicle", b =>
@@ -282,6 +443,9 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -302,12 +466,15 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BranchId");
+
                     b.ToTable("WashBays");
 
                     b.HasData(
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000001"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Bay A1",
                             Status = "Available",
@@ -316,6 +483,7 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000002"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Bay A2",
                             Status = "Available",
@@ -324,6 +492,7 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000003"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Bay B1",
                             Status = "Available",
@@ -408,6 +577,12 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.Booking", b =>
                 {
+                    b.HasOne("Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.Customer", "Customer")
                         .WithMany("Bookings")
                         .HasForeignKey("CustomerId")
@@ -420,26 +595,44 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.WashBay", "WashBay")
+                        .WithMany()
+                        .HasForeignKey("WashBayId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.WashPackage", "WashPackage")
                         .WithMany("Bookings")
                         .HasForeignKey("WashPackageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Branch");
+
                     b.Navigation("Customer");
 
                     b.Navigation("Vehicle");
+
+                    b.Navigation("WashBay");
 
                     b.Navigation("WashPackage");
                 });
 
             modelBuilder.Entity("Domain.Entities.Customer", b =>
                 {
+                    b.HasOne("Domain.Entities.Tier", "Tier")
+                        .WithMany("Customers")
+                        .HasForeignKey("TierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.User", "User")
                         .WithOne("Customer")
                         .HasForeignKey("Domain.Entities.Customer", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Tier");
 
                     b.Navigation("User");
                 });
@@ -473,9 +666,25 @@ namespace Infrastructure.Migrations
                     b.Navigation("Customer");
                 });
 
+            modelBuilder.Entity("Domain.Entities.WashBay", b =>
+                {
+                    b.HasOne("Domain.Entities.Branch", "Branch")
+                        .WithMany("WashBays")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+                });
+
             modelBuilder.Entity("Domain.Entities.Booking", b =>
                 {
                     b.Navigation("TimeSlot");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Branch", b =>
+                {
+                    b.Navigation("WashBays");
                 });
 
             modelBuilder.Entity("Domain.Entities.Customer", b =>
@@ -483,6 +692,11 @@ namespace Infrastructure.Migrations
                     b.Navigation("Bookings");
 
                     b.Navigation("Vehicles");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Tier", b =>
+                {
+                    b.Navigation("Customers");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>

@@ -19,6 +19,7 @@ public class BookingService : IBookingService
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
     {
         var customer = await _context.Customers
+                           .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
@@ -36,7 +37,7 @@ public class BookingService : IBookingService
             throw new AppException("Booking date cannot be in the past.", 400);
 
         // Tier-based booking window
-        var maxDays = GetMaxBookingDays(customer.Tier);
+        var maxDays = customer.Tier.BookingWindow;
         var maxDate = today.AddDays(maxDays);
         if (request.BookingDate > maxDate)
             throw new AppException($"Your {customer.Tier} tier allows booking up to {maxDays} days in advance.", 400);
@@ -118,15 +119,6 @@ public class BookingService : IBookingService
 
         return MapToResponse(booking, booking.WashPackage, booking.Vehicle);
     }
-
-    private static int GetMaxBookingDays(CustomerTier tier) => tier switch
-    {
-        CustomerTier.Member => 7,
-        CustomerTier.Silver => 10,
-        CustomerTier.Gold => 12,
-        CustomerTier.Platinum => 14,
-        _ => 7
-    };
 
     private async Task<string> GenerateUniqueBookingCodeAsync()
     {
