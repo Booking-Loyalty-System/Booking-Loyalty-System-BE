@@ -19,8 +19,10 @@ public static class DependencyInjection
             provider.GetRequiredService<ApplicationDbContext>());
 
         services.Configure<BookingOptions>(configuration.GetSection("Booking"));
+        services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ILoyaltyService, LoyaltyService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IWashPackageService, WashPackageService>();

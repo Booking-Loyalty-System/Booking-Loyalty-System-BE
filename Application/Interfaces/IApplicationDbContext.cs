@@ -14,6 +14,7 @@ public interface IApplicationDbContext
     DbSet<WashBay> WashBays { get; }
     DbSet<TimeSlot> TimeSlots { get; }
     DbSet<Booking> Bookings { get; }
+    DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

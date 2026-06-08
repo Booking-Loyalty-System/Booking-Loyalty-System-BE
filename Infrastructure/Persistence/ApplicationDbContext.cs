@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<WashBay> WashBays => Set<WashBay>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<LoyaltyTransaction> LoyaltyTransactions => Set<LoyaltyTransaction>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,

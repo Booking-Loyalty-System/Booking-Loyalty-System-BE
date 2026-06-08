@@ -12,12 +12,17 @@ namespace Infrastructure.Services;
 public class BookingService : IBookingService
 {
     private readonly IApplicationDbContext _context;
+    private readonly ILoyaltyService _loyaltyService;
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
 
-    public BookingService(IApplicationDbContext context, IOptions<BookingOptions> options)
+    public BookingService(
+        IApplicationDbContext context,
+        ILoyaltyService loyaltyService,
+        IOptions<BookingOptions> options)
     {
         _context = context;
+        _loyaltyService = loyaltyService;
         _options = options.Value;
         _shopTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
     }
@@ -228,6 +233,36 @@ public class BookingService : IBookingService
         await _context.SaveChangesAsync();
 
         return MapToResponse(booking, booking.WashPackage, booking.Vehicle, slot);
+    }
+
+    public async Task<BookingResponse> CompleteBookingAsync(Guid bookingId)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.WashPackage)
+            .Include(b => b.Vehicle)
+            .Include(b => b.TimeSlot)
+                .ThenInclude(ts => ts!.WashBay)
+            .FirstOrDefaultAsync(b => b.Id == bookingId)
+            ?? throw new AppException("Booking not found.", 404);
+
+        if (booking.Status is BookingStatus.Pending or BookingStatus.Cancelled)
+            throw new AppException("Only confirmed or in-progress bookings can be completed.", 400);
+
+        // Confirmed/InProgress -> Completed. An already-Completed booking falls through
+        // so a prior partial award (status saved but points failed) can be retried.
+        if (booking.Status != BookingStatus.Completed)
+        {
+            booking.Status = BookingStatus.Completed;
+            booking.UpdatedAt = DateTime.UtcNow;
+            if (booking.TimeSlot != null)
+                booking.TimeSlot.Status = TimeSlotStatus.Completed;
+            await _context.SaveChangesAsync();
+        }
+
+        // Award loyalty points — idempotent, so a repeated call for the same booking is a no-op.
+        await _loyaltyService.AwardPointsForBookingAsync(bookingId);
+
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot);
     }
 
     private static int GetMaxBookingDays(CustomerTier tier) => tier switch
