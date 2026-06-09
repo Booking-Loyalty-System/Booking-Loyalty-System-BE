@@ -12,8 +12,12 @@ public class Booking
     public Guid? TimeSlotId { get; set; }
     public Guid BayId { get; set; }
     public Guid BranchId { get; set; }
+    public Guid? RewardId { get; set; }
+    public Guid? PromotionId { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
+    public TimeOnly? EndTime { get; set; }
+    public string? CustomerNote { get; set; }
     public decimal TotalPrice { get; set; }
     public BookingStatus Status { get; set; }
     public string? QrData { get; set; }
@@ -28,4 +32,7 @@ public class Booking
     public TimeSlot? TimeSlot { get; set; }
     public Branch Branch { get; set; } = null!;
     public WashBay WashBay { get; set; } = null!;
+    public Reward? Reward { get; set; }
+    public Promotion? Promotion { get; set; }
+    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }
