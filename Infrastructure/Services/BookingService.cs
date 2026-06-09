@@ -42,6 +42,12 @@ public class BookingService : IBookingService
         if (request.BookingDate > maxDate)
             throw new AppException($"Your {customer.Tier} tier allows booking up to {maxDays} days in advance.", 400);
 
+        // Auto-assign an available wash bay
+        var washBay = await _context.WashBays
+            .Include(wb => wb.Branch)
+            .FirstOrDefaultAsync(wb => wb.Status == WashBayStatus.Available)
+            ?? throw new AppException("No available wash bay at the moment.", 400);
+
         // Generate booking code (6 chars A-Z0-9)
         var bookingCode = await GenerateUniqueBookingCodeAsync();
 
@@ -52,6 +58,8 @@ public class BookingService : IBookingService
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
             WashPackageId = washPackage.Id,
+            BayId = washBay.Id,
+            BranchId = washBay.BranchId,
             BookingDate = request.BookingDate,
             StartTime = request.StartTime,
             TotalPrice = washPackage.Price,

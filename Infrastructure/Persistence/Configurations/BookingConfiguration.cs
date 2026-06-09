@@ -46,5 +46,15 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany(wp => wp.Bookings)
             .HasForeignKey(b => b.WashPackageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(b => b.WashBay)
+            .WithMany(wb => wb.Bookings)
+            .HasForeignKey(b => b.BayId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(b => b.Branch)
+            .WithMany(br => br.Bookings)
+            .HasForeignKey(b => b.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

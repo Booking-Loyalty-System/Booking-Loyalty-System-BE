@@ -18,6 +18,7 @@ public class CustomerService : ICustomerService
     {
         var customer = await _context.Customers
             .Include(c => c.User)
+            .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
@@ -49,7 +50,7 @@ public class CustomerService : ICustomerService
             FullName = customer.FullName,
             PhoneNumber = customer.PhoneNumber,
             DateOfBirth = customer.DateOfBirth,
-            Tier = customer.Tier.ToString(),
+            Tier = customer.Tier?.TierName ?? "Unknown",
             TotalPoints = customer.TotalPoints,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,

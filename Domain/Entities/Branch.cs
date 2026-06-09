@@ -11,4 +11,5 @@ public class Branch
     public string OperatingHours { get; set; } = null!;
     public BranchStatus Status { get; set; }
     public ICollection<WashBay> WashBays { get; set; } = new List<WashBay>();
+    public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }
