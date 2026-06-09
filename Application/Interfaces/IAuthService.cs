@@ -11,4 +11,5 @@ public interface IAuthService
     Task<ApiResponse<object>> ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
     Task<ApiResponse<object>> LogoutAsync(Guid userId);
     Task<ApiResponse<MeResponse>> GetMeAsync(Guid userId);
+    Task<ApiResponse<TokenResponse>> GoogleLoginAsync(string code);
 }

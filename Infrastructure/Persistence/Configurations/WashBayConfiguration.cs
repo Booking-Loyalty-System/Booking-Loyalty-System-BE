@@ -31,7 +31,8 @@ public class WashBayConfiguration : IEntityTypeConfiguration<WashBay>
                 Name = "Bay A1",
                 Status = WashBayStatus.Available,
                 SupportedTypes = "Small,Medium,Large",
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                BranchId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 
             },
             new WashBay
             {
@@ -39,7 +40,8 @@ public class WashBayConfiguration : IEntityTypeConfiguration<WashBay>
                 Name = "Bay A2",
                 Status = WashBayStatus.Available,
                 SupportedTypes = "Small,Medium",
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                BranchId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 
             },
             new WashBay
             {
@@ -47,7 +49,8 @@ public class WashBayConfiguration : IEntityTypeConfiguration<WashBay>
                 Name = "Bay B1",
                 Status = WashBayStatus.Available,
                 SupportedTypes = "Small,Medium,Large",
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                BranchId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 
             }
         );
     }

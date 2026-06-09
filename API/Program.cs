@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add layers
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // Controllers
 builder.Services.AddControllers();
@@ -81,11 +81,8 @@ var app = builder.Build();
 // Middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");

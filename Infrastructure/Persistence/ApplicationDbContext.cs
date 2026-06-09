@@ -18,6 +18,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<LoyaltyTransaction> LoyaltyTransactions => Set<LoyaltyTransaction>();
+    public DbSet<Tier> Tiers => Set<Tier>();
+    public DbSet<Branch> Branches => Set<Branch>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,

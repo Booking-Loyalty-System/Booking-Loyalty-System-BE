@@ -6,7 +6,7 @@ public class Vehicle
 {
     public Guid Id { get; set; }
     public Guid CustomerId { get; set; }
-    public string LicensePlate { get; set; } = null!;
+    public string? LicensePlate { get; set; } = null!;
     public VehicleType Type { get; set; }
     public bool IsPrimary { get; set; }
     public string? VehicleName { get; set; }

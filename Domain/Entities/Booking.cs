@@ -10,6 +10,8 @@ public class Booking
     public Guid VehicleId { get; set; }
     public Guid WashPackageId { get; set; }
     public Guid? TimeSlotId { get; set; }
+    public Guid BayId { get; set; }
+    public Guid BranchId { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
     public decimal TotalPrice { get; set; }
@@ -24,4 +26,6 @@ public class Booking
     public Vehicle Vehicle { get; set; } = null!;
     public WashPackage WashPackage { get; set; } = null!;
     public TimeSlot? TimeSlot { get; set; }
+    public Branch Branch { get; set; } = null!;
+    public WashBay WashBay { get; set; } = null!;
 }

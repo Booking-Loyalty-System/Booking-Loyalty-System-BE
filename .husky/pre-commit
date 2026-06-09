@@ -1,4 +1,8 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-dotnet husky run -v --group "pre-commit"echo 'Husky.Net is awesome!'
+# 1. Chạy Husky để check code (có dấu cách sau group name)
+dotnet husky run -v --group pre-commit
+
+# 2. Xuống dòng rồi mới echo
+echo 'Husky.Net is awesome!'

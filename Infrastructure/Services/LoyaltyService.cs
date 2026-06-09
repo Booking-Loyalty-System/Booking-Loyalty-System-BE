@@ -74,6 +74,7 @@ public class LoyaltyService : ILoyaltyService
     public async Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId)
     {
         var customer = await _context.Customers
+            .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
@@ -83,7 +84,7 @@ public class LoyaltyService : ILoyaltyService
             LifetimePoints = customer.LifetimePoints,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,
-            Tier = customer.Tier.ToString()
+            Tier = customer.Tier?.TierName ?? string.Empty
         };
     }
 

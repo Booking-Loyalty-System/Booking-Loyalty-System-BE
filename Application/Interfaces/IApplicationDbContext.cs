@@ -15,6 +15,7 @@ public interface IApplicationDbContext
     DbSet<TimeSlot> TimeSlots { get; }
     DbSet<Booking> Bookings { get; }
     DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
+    DbSet<Tier> Tiers { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

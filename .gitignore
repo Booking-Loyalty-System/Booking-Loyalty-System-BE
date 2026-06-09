@@ -1,7 +1,16 @@
+## Thư mục build và rác của VS/Rider
 bin/
 obj/
 .vs/
-.claude/
-/packages/
-riderModule.iml
-/_ReSharper.Caches/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+
+## Chặn file cấu hình chứa thông tin bảo mật
+appsettings.json
+appsettings.Development.json
+
+## File rác hệ thống
+.DS_Store
+Thumbs.db
