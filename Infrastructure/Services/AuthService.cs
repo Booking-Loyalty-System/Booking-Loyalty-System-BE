@@ -34,7 +34,7 @@ public class AuthService : IAuthService
         if (!string.IsNullOrEmpty(request.PhoneNumber) && await _context.Customers.AnyAsync(c => c.PhoneNumber == request.PhoneNumber))
             throw new AppException("Phone number already exists.", 409);
 
-        var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Bronze")
+        var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Member")
                    ?? throw new AppException("System configuration error: Default tier not found.", 500);
 
         var user = new User
@@ -214,7 +214,7 @@ public class AuthService : IAuthService
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userInfo.Email);
             string message = "Login successful.";
 
-            var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Bronze")
+            var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Member")
                        ?? throw new AppException("System configuration error: Default tier not found.", 500);
             
             if (user == null)

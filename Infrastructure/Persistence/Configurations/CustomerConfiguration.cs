@@ -36,7 +36,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.HasData(
             new Customer
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
                 UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
                 FullName = "Customer User",
                 PhoneNumber = "0901234567",
@@ -46,7 +46,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 TotalPoints = 0,
                 LifetimePoints = 0,
                 IsPhoneNumberVerified = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
         );
     }

@@ -30,34 +30,34 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey<Customer>(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);
         
+        // Use pre-hashed passwords and fixed dates to avoid generating new migrations every time
         builder.HasData(
             new User
             {
                 Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                 Email = "admin@system.com",
-                // Mật khẩu là "Admin@123" đã hash bằng BCrypt
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                PasswordHash = "$2a$11$HnjuO0ucpQhF3sNjkTBLxeWhtSN0LKUCMlMRCR4LbKsOnU9wBu06O", // Admin@123
                 Role = UserRole.Admin,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
             new User
             {
                 Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
                 Email = "staff@system.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Staff@123"),
+                PasswordHash = "$2a$11$5NGg5Rn3.ZrMWlsdr8sZEe4.dYWfCEU6hrZn2DYSctG/JJq4RhAJK", // Staff@123
                 Role = UserRole.Staff,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
             new User
             {
                 Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
                 Email = "customer@system.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"),
+                PasswordHash = "$2a$11$Cg0ilLXKkJHOGi/bezG1V.UAIBDHwBGVsE/k9qNiNMIkYUgVkX6ty", // customer
                 Role = UserRole.Customer,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
         );
     }

@@ -1,4 +1,4 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -11,7 +11,7 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
 
         builder.Property(b => b.TierName)
             .IsRequired()
-            .HasMaxLength(50); 
+            .HasMaxLength(50);
 
         builder.Property(b => b.PointRate)
             .HasColumnType("decimal(18,2)");
@@ -25,10 +25,12 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
             new Tier
             {
                 Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                TierName = "Bronze",
+                TierName = "Member",
                 PointRate = 1.00m,
                 BookingWindow = 7,
-                Level = PriorityLevel.Bronze 
+                MinPointsRequired = 0,
+                MaintenancePoints = 0,
+                Level = PriorityLevel.Member
             },
             new Tier
             {
@@ -36,6 +38,8 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 TierName = "Silver",
                 PointRate = 1.20m,
                 BookingWindow = 10,
+                MinPointsRequired = 500,
+                MaintenancePoints = 300,
                 Level = PriorityLevel.Silver
             },
             new Tier
@@ -44,15 +48,19 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 TierName = "Gold",
                 PointRate = 1.50m,
                 BookingWindow = 12,
+                MinPointsRequired = 1500,
+                MaintenancePoints = 1000,
                 Level = PriorityLevel.Gold
             },
             new Tier
             {
                 Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
-                TierName = "Diamond",
+                TierName = "Platinum",
                 PointRate = 2.00m,
                 BookingWindow = 14,
-                Level = PriorityLevel.Diamond
+                MinPointsRequired = 5000,
+                MaintenancePoints = 3000,
+                Level = PriorityLevel.Platinum
             }
         );
     }

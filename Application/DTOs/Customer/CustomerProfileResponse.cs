@@ -9,6 +9,7 @@ public class CustomerProfileResponse
     public DateTime? DateOfBirth { get; set; }
     public string Tier { get; set; } = null!;
     public int TotalPoints { get; set; }
+    public int LifetimePoints { get; set; }
     public int TotalWashes { get; set; }
     public decimal TotalSpent { get; set; }
     public DateTime CreatedAt { get; set; }

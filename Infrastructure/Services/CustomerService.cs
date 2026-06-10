@@ -52,6 +52,7 @@ public class CustomerService : ICustomerService
             DateOfBirth = customer.DateOfBirth,
             Tier = customer.Tier?.TierName ?? "Unknown",
             TotalPoints = customer.TotalPoints,
+            LifetimePoints = customer.LifetimePoints,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,
             CreatedAt = customer.CreatedAt

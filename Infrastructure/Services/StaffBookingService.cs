@@ -112,6 +112,9 @@ public class StaffBookingService : IStaffBookingService
         customer.TotalPoints += pointsEarned;
         customer.LifetimePoints += pointsEarned;
 
+        // Auto-evaluate tier upgrade/downgrade
+        await EvaluateTierAsync(customer);
+
         await _context.SaveChangesAsync();
 
         return MapToResponse(booking);
@@ -131,6 +134,47 @@ public class StaffBookingService : IStaffBookingService
         await _context.SaveChangesAsync();
 
         return MapToResponse(booking);
+    }
+
+    private async Task EvaluateTierAsync(Domain.Entities.Customer customer)
+    {
+        var tiers = await _context.Tiers
+            .OrderByDescending(t => t.MinPointsRequired)
+            .ToListAsync();
+
+        // UPGRADE: find highest tier where customer qualifies by lifetime points
+        var upgradeTier = tiers.FirstOrDefault(t => customer.LifetimePoints >= t.MinPointsRequired);
+
+        // DOWNGRADE: check maintenance points (sum of points earned in last 90 days)
+        var currentTier = customer.Tier;
+        if (currentTier.MaintenancePoints > 0)
+        {
+            var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-90));
+            var recentPoints = await _context.Bookings
+                .Where(b => b.CustomerId == customer.Id
+                            && b.Status == BookingStatus.Completed
+                            && b.BookingDate >= cutoffDate)
+                .SumAsync(b => (int)Math.Floor(b.TotalPrice * currentTier.PointRate));
+
+            if (recentPoints < currentTier.MaintenancePoints)
+            {
+                // Find the highest tier the customer can maintain
+                var downgradeTier = tiers.FirstOrDefault(t => recentPoints >= t.MaintenancePoints)
+                                    ?? tiers.Last(); // fallback to Member
+
+                // Only downgrade, never upgrade via maintenance check
+                if (downgradeTier.MinPointsRequired < currentTier.MinPointsRequired)
+                {
+                    upgradeTier = downgradeTier;
+                }
+            }
+        }
+
+        if (upgradeTier != null && upgradeTier.Id != customer.TierId)
+        {
+            customer.TierId = upgradeTier.Id;
+            customer.Tier = upgradeTier;
+        }
     }
 
     private async Task<Domain.Entities.Booking> GetBookingWithIncludes(Guid bookingId)
