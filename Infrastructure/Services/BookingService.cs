@@ -42,6 +42,14 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
             ?? throw new AppException("Wash package not found or inactive.", 404);
 
+        // The customer must pick a branch first; only an open branch can take bookings.
+        var branch = await _context.Branches
+            .FirstOrDefaultAsync(b => b.Id == request.BranchId)
+            ?? throw new AppException("Branch not found.", 404);
+
+        if (branch.Status != BranchStatus.Active)
+            throw new AppException("The selected branch is not currently open for booking.", 400);
+
         // Shop-local "now" — bookings are expressed in the shop's local clock, not UTC.
         var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone);
         var today = DateOnly.FromDateTime(nowLocal);
@@ -89,9 +97,9 @@ public class BookingService : IBookingService
         // double-booked for an overlapping window (Serializable transaction).
         await using var transaction = await _context.BeginTransactionAsync();
 
-        var bay = await FindAvailableBayAsync(vehicle.Type, request.BookingDate, request.StartTime, endTime)
+        var bay = await FindAvailableBayAsync(branch.Id, vehicle.Type, request.BookingDate, request.StartTime, endTime)
             ?? throw new AppException(
-                "No wash bay is available for the selected date and time. Please choose another slot.", 409);
+                "No wash bay is available at this branch for the selected date and time. Please choose another slot.", 409);
 
         // Generate booking code (6 chars A-Z0-9)
         var bookingCode = await GenerateUniqueBookingCodeAsync();
@@ -103,6 +111,8 @@ public class BookingService : IBookingService
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
             WashPackageId = washPackage.Id,
+            BranchId = branch.Id,
+            BayId = bay.Id,
             BookingDate = request.BookingDate,
             StartTime = request.StartTime,
             TotalPrice = washPackage.Price,
@@ -136,12 +146,12 @@ public class BookingService : IBookingService
     /// Returns null when every bay is busy or none supports the vehicle type.
     /// </summary>
     private async Task<WashBay?> FindAvailableBayAsync(
-        VehicleType vehicleType, DateOnly date, TimeOnly start, TimeOnly end)
+        Guid branchId, VehicleType vehicleType, DateOnly date, TimeOnly start, TimeOnly end)
     {
         var typeName = vehicleType.ToString();
 
         var bays = await _context.WashBays
-            .Where(b => b.Status == WashBayStatus.Available)
+            .Where(b => b.BranchId == branchId && b.Status == WashBayStatus.Available)
             .OrderBy(b => b.Name)
             .ToListAsync();
 
