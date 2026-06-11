@@ -9,7 +9,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/wash-packages")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Staff")]
 public class AdminWashPackageController : ControllerBase
 {
     private readonly IWashPackageService _washPackageService;
