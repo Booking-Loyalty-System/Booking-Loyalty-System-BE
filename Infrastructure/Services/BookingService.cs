@@ -40,7 +40,7 @@ public class BookingService : IBookingService
         var maxDays = customer.Tier.BookingWindow;
         var maxDate = today.AddDays(maxDays);
         if (request.BookingDate > maxDate)
-            throw new AppException($"Your {customer.Tier} tier allows booking up to {maxDays} days in advance.", 400);
+            throw new AppException($"Your {customer.Tier.TierName} tier allows booking up to {maxDays} days in advance.", 400);
 
         // Auto-assign an available wash bay
         var washBay = await _context.WashBays

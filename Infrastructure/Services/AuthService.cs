@@ -165,6 +165,7 @@ public class AuthService : IAuthService
     {
         var user = await _context.Users
             .Include(u => u.Customer)
+                .ThenInclude(c => c.Tier)
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new AppException("User not found.", 404);
 
@@ -173,7 +174,7 @@ public class AuthService : IAuthService
             UserId = user.Id,
             Email = user.Email,
             Role = user.Role.ToString(),
-            Tier = user.Customer?.Tier.ToString(),
+            Tier = user.Customer?.Tier?.TierName,
             TotalPoints = user.Customer?.TotalPoints,
             TotalWashes = user.Customer?.TotalWashes
         };
