@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
@@ -43,12 +44,17 @@ public static class DependencyInjection
             Console.WriteLine("⚠️ WARNING: Không tìm thấy file firebase-admin-key.json tại tầng API!");
         }
 
+        services.Configure<BookingOptions>(configuration.GetSection("Booking"));
+        services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
+
         services.AddMemoryCache();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ILoyaltyService, LoyaltyService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IWashPackageService, WashPackageService>();
         services.AddScoped<IWashBayService, WashBayService>();
+        services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();

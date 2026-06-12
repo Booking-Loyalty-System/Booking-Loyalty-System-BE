@@ -1,5 +1,7 @@
+using System.Data;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Application.Interfaces;
 
@@ -12,6 +14,18 @@ public interface IApplicationDbContext
     DbSet<WashBay> WashBays { get; }
     DbSet<TimeSlot> TimeSlots { get; }
     DbSet<Booking> Bookings { get; }
+    DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
     DbSet<Tier> Tiers { get; }
+    DbSet<Branch> Branches { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Begins a database transaction. Used to make read-validate-write sequences
+    /// (e.g. reserving a wash-bay time slot) atomic and free of race conditions.
+    /// Defaults to Serializable so concurrent reservations cannot both observe a
+    /// slot as free and then both book it.
+    /// </summary>
+    Task<IDbContextTransaction> BeginTransactionAsync(
+        IsolationLevel isolationLevel = IsolationLevel.Serializable,
+        CancellationToken cancellationToken = default);
 }
