@@ -17,6 +17,8 @@ public interface IApplicationDbContext
     DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
     DbSet<Tier> Tiers { get; }
     DbSet<Branch> Branches { get; }
+    DbSet<Reward> Rewards { get; }
+    DbSet<RewardRedemption> RewardRedemptions { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -20,6 +20,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<LoyaltyTransaction> LoyaltyTransactions => Set<LoyaltyTransaction>();
     public DbSet<Tier> Tiers => Set<Tier>();
     public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<Reward> Rewards => Set<Reward>();
+    public DbSet<RewardRedemption> RewardRedemptions => Set<RewardRedemption>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,
