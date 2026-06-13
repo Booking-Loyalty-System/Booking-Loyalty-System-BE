@@ -12,6 +12,7 @@ public class Booking
     public Guid? TimeSlotId { get; set; }
     public Guid BayId { get; set; }
     public Guid BranchId { get; set; }
+    public Guid? AssignedStaffId { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
     public decimal TotalPrice { get; set; }
