@@ -46,5 +46,18 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany(wp => wp.Bookings)
             .HasForeignKey(b => b.WashPackageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Map the WashBay relationship onto the existing BayId column instead of
+        // letting EF create a separate shadow "WashBayId" FK.
+        builder.HasOne(b => b.WashBay)
+            .WithMany()
+            .HasForeignKey(b => b.BayId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Likewise pin the Branch relationship to the existing BranchId column.
+        builder.HasOne(b => b.Branch)
+            .WithMany()
+            .HasForeignKey(b => b.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
