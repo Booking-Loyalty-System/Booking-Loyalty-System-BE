@@ -34,9 +34,9 @@ public class FirebaseService : IOtpService
             
             return null;
         }
-        catch
+        catch (Exception ex)
         {
-            // Token bị sai, hết hạn hoặc fake
+            Console.WriteLine($"Lỗi Verify Firebase Token: {ex.Message}");
             return null;
         }
     }

@@ -117,90 +117,46 @@ public class AuthController : ControllerBase
         var result = await _authService.GoogleLoginAsync(code);
         return Ok(result);
     }
-
-    [HttpPost("send-otp")]
-    public async Task<IActionResult> SendOtp(
-        [FromBody] OtpRequest request,
-        [FromServices] IValidator<OtpRequest> validator)
-    {
-        var validation = await validator.ValidateAsync(request);
-        if (!validation.IsValid)
-            return BadRequest(ApiResponse<object>.FailResponse(
-                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
-        
-        string phoneNumber = request.PhoneNumber;
-        string cooldownKey = $"cooldown:{phoneNumber}";
-        string limitKey = $"limit:{phoneNumber}";
-        
-        // Tầng 1: Tránh spam click liên tục
-        if (_cache.TryGetValue(cooldownKey, out _))
-        {
-            return BadRequest(ApiResponse<object>.FailResponse("Vui lòng đợi 60 giây trước khi yêu cầu mã mới."));
-        }
-
-        // Tầng 2: 3 lần trong 1 giờ
-        _cache.TryGetValue(limitKey, out int sentCount);
-        if (sentCount >= 3)
-        {
-            return BadRequest(ApiResponse<object>.FailResponse("Số điện thoại này đã vượt quá giới hạn 3 lần gửi OTP trong 1 giờ. Vui lòng thử lại sau."));
-        }
-        
-        // 2. Nếu không bị cooldown, tiến hành gọi eSMS gửi OTP như bình thường
-        bool isSent = await _otpService.SendOtpAsync(phoneNumber);
-    
-        if (isSent)
-        {
-            var cooldownOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromSeconds(60));
-            _cache.Set(cooldownKey, true, cooldownOptions);
-            
-            sentCount++;
-            var limitOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromHours(1));
-            _cache.Set(limitKey, sentCount, limitOptions);
-            
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Mã OTP đã được gửi." }));
-        }
-
-        return BadRequest(ApiResponse<object>.FailResponse("Gửi SMS thất bại từ hệ thống."));
-    }
     
     [HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp(
         [FromBody] VerifyOtpRequest request,
-        [FromServices] IValidator<VerifyOtpRequest> validator)
+        [FromServices] IValidator<VerifyOtpRequest> validator,
+            [FromServices] ILogger<AuthController> logger)
     {
-        // 1. Validate dữ liệu đầu vào của ông (giữ nguyên)
+        logger.LogInformation("==> [OTP VERIFY] Nhận yêu cầu xác thực cho SĐT: {PhoneNumber}", request.PhoneNumber);
         var validation = await validator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(ApiResponse<object>.FailResponse(
-                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
-    
-        // 2. 🔥 SỬA TẠI ĐÂY: Gọi hàm Verify của Firebase thông qua Interface
-        // request.OtpCode lúc này chính là cái chuỗi IdToken dài ngoằng từ React gửi lên nha ông
+        {
+            var errorMessages = string.Join("; ", validation.Errors.Select(e => e.ErrorMessage));
+            
+            logger.LogWarning("--> [OTP VALIDATION FAILED] SĐT: {PhoneNumber}. Lý do: {Errors}", request.PhoneNumber, errorMessages);
+            return BadRequest(ApiResponse<object>.FailResponse(errorMessages));
+        }
+
+        logger.LogInformation("--> [OTP FIREBASE] Đang gửi Token lên Firebase để xác thực...");
         string? verifiedPhoneNumber = await _otpService.VerifyFirebaseTokenAsync(request.OtpCode);
 
         if (string.IsNullOrEmpty(verifiedPhoneNumber))
         {
-            return BadRequest(ApiResponse<object>.FailResponse("Mã xác thực OTP không hợp lệ hoặc đã hết hạn."));
+            logger.LogError("--> [OTP FIREBASE FAILED] Token không hợp lệ hoặc đã hết hạn. SĐT gửi lên: {PhoneNumber}", request.PhoneNumber);
+            
+            return BadRequest(ApiResponse<object>.FailResponse("Mã xác thực Firebase (Token) không hợp lệ hoặc đã hết hạn."));
         }
-
-        // 3. Chuẩn hóa số điện thoại client truyền lên để so sánh chéo bảo mật
+        
         string formattedClientPhone = request.PhoneNumber.StartsWith("0") 
             ? $"+84{request.PhoneNumber.Substring(1)}" 
             : request.PhoneNumber;
 
         if (verifiedPhoneNumber != formattedClientPhone)
         {
-            return BadRequest(ApiResponse<object>.FailResponse("Số điện thoại xác thực không trùng khớp."));
+            logger.LogWarning("--> [OTP MISMATCH] SĐT từ Token ({VerifiedPhone}) KHÔNG KHỚP với SĐT từ Request ({ClientPhone})", 
+                verifiedPhoneNumber, formattedClientPhone);
+            return BadRequest(ApiResponse<object>.FailResponse("Số điện thoại trong token không trùng khớp với dữ liệu gửi lên."));
         }
-
-        // 4. Chèn logic EF Core lưu xuống DB (Email = Null) giống như mình bàn hôm trước ở đây...
-        // var user = await _context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == verifiedPhoneNumber);
-        // ...
-
+        logger.LogInformation("==> [OTP SUCCESS] Xác thực Firebase thành công cho SĐT: {PhoneNumber}", verifiedPhoneNumber);
         return Ok(ApiResponse<object>.SuccessResponse(new { 
-            message = "Xác thực OTP và đăng ký tài khoản thành công!",
+            message = "Xác thực Firebase và đăng ký tài khoản thành công!",
             phoneNumber = verifiedPhoneNumber
         }));
     }

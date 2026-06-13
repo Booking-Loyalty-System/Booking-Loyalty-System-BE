@@ -1,5 +1,4 @@
 using Domain.Entities;
-using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,8 +8,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 {
     public void Configure(EntityTypeBuilder<Booking> builder)
     {
+        // Khóa chính
         builder.HasKey(b => b.Id);
 
+        // Cấu hình các thuộc tính cơ bản
         builder.Property(b => b.BookingCode)
             .IsRequired()
             .HasMaxLength(10);
@@ -31,7 +32,18 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.QrData)
             .HasMaxLength(1000);
 
-        // Foreign keys
+        builder.Property(b => b.CustomerNote)
+            .HasMaxLength(500);
+
+        // --- CẤU HÌNH QUAN HỆ KHÓA NGOẠI ---
+
+        // 1. Quan hệ 1-1 với bảng trung gian WashBayTimeSlot (Khống chế cứng 1 thời điểm chỉ 1 xe)
+        builder.HasOne(b => b.WashBayTimeSlot)
+            .WithOne(wbts => wbts.Booking)
+            .HasForeignKey<Booking>(b => b.WashBayTimeSlotId) // Khóa ngoại nằm ở bảng Booking
+            .OnDelete(DeleteBehavior.Restrict); // Giữ lại lịch sử booking, tránh cascade xóa mất data
+
+        // 2. Các quan hệ 1-Nhiều khác giữ nguyên
         builder.HasOne(b => b.Customer)
             .WithMany(c => c.Bookings)
             .HasForeignKey(b => b.CustomerId)
@@ -45,6 +57,11 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.HasOne(b => b.WashPackage)
             .WithMany(wp => wp.Bookings)
             .HasForeignKey(b => b.WashPackageId)
+            .OnDelete(DeleteBehavior.Restrict);
+        
+        builder.HasOne(b => b.Branch)
+            .WithMany(br => br.Bookings)
+            .HasForeignKey(b => b.BranchId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

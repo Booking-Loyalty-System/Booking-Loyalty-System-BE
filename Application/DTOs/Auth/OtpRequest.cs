@@ -2,5 +2,5 @@
 
 public class OtpRequest
 {
-    public string PhoneNumber;
+    public string PhoneNumber { get; set; } = string.Empty;
 }
