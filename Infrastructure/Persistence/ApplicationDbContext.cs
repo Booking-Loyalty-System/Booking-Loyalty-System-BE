@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<Reward> Rewards => Set<Reward>();
     public DbSet<RewardRedemption> RewardRedemptions => Set<RewardRedemption>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,

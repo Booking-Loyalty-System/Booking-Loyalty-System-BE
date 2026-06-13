@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ILoyaltyService, LoyaltyService>();
         services.AddScoped<IRewardService, RewardService>();
+        services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IStaffBookingService, StaffBookingService>();

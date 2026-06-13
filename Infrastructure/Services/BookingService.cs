@@ -13,16 +13,19 @@ public class BookingService : IBookingService
 {
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
+    private readonly IPromotionService _promotionService;
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
 
     public BookingService(
         IApplicationDbContext context,
         ILoyaltyService loyaltyService,
+        IPromotionService promotionService,
         IOptions<BookingOptions> options)
     {
         _context = context;
         _loyaltyService = loyaltyService;
+        _promotionService = promotionService;
         _options = options.Value;
         _shopTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
     }
@@ -104,6 +107,19 @@ public class BookingService : IBookingService
         // Generate booking code (6 chars A-Z0-9)
         var bookingCode = await GenerateUniqueBookingCodeAsync();
 
+        // Apply an optional promotion. ApplyAsync validates and reserves a use on the tracked
+        // promotion; the SaveChanges/commit below persists the increment atomically with the booking.
+        var totalPrice = washPackage.Price;
+        var discountAmount = 0m;
+        Guid? promotionId = null;
+        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+        {
+            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
+            promotionId = pid;
+            discountAmount = discount;
+            totalPrice = washPackage.Price - discount;
+        }
+
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
@@ -113,9 +129,11 @@ public class BookingService : IBookingService
             WashPackageId = washPackage.Id,
             BranchId = branch.Id,
             BayId = bay.Id,
+            PromotionId = promotionId,
             BookingDate = request.BookingDate,
             StartTime = request.StartTime,
-            TotalPrice = washPackage.Price,
+            TotalPrice = totalPrice,
+            DiscountAmount = discountAmount,
             Status = BookingStatus.Confirmed,
             CreatedAt = DateTime.UtcNow
         };
