@@ -14,13 +14,13 @@ namespace API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
-    private readonly IOtpService _otpService;
+    private readonly ISmsService _smsService;
     private readonly IMemoryCache _cache;
 
-    public AuthController(IAuthService authService, IOtpService otpService, IMemoryCache cache)
+    public AuthController(IAuthService authService, ISmsService smsService, IMemoryCache cache)
     {
         _authService = authService;
-        _otpService = otpService;
+        _smsService = smsService;
         _cache = cache;
     }
 
@@ -118,7 +118,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
     
-    [HttpPost("verify-otp")]
+    /*[HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp(
         [FromBody] VerifyOtpRequest request,
         [FromServices] IValidator<VerifyOtpRequest> validator,
@@ -135,7 +135,7 @@ public class AuthController : ControllerBase
         }
 
         logger.LogInformation("--> [OTP FIREBASE] Đang gửi Token lên Firebase để xác thực...");
-        string? verifiedPhoneNumber = await _otpService.VerifyFirebaseTokenAsync(request.OtpCode);
+        string? verifiedPhoneNumber = await _smsService.VerifyFirebaseTokenAsync(request.OtpCode);
 
         if (string.IsNullOrEmpty(verifiedPhoneNumber))
         {
@@ -159,11 +159,50 @@ public class AuthController : ControllerBase
             message = "Xác thực Firebase và đăng ký tài khoản thành công!",
             phoneNumber = verifiedPhoneNumber
         }));
-    }
+    }*/
     
+    [HttpPost("send-otp")]
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PhoneNumber))
+            return BadRequest(new { success = false, message = "Vui lòng nhập số điện thoại." });
+
+        bool isSuccess = await _smsService.SendOtpAsync(request.PhoneNumber);
+
+        if (isSuccess)
+            return Ok(new { success = true, message = "Mã OTP đã được gửi!" });
+            
+        return StatusCode(500, new { success = false, message = "Lỗi khi gửi OTP." });
+    }
+
+    // 2. API Xác thực OTP
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PhoneNumber) || string.IsNullOrWhiteSpace(request.OtpCode))
+            return BadRequest(new { success = false, message = "Thiếu thông tin xác thực." });
+
+        bool isValid = await _smsService.VerifyOtpAsync(request.PhoneNumber, request.OtpCode);
+
+        if (isValid)
+            return Ok(new { success = true, message = "Xác thực thành công!" });
+            
+        return BadRequest(new { success = false, message = "Mã OTP không chính xác hoặc đã hết hạn." });
+    }
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Guid.Parse(claim!);
+    }
+    
+    public class SendOtpDto
+    {
+        public string PhoneNumber { get; set; } = string.Empty;
+    }
+
+    public class VerifyOtpDto
+    {
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string OtpCode { get; set; } = string.Empty;
     }
 }

@@ -30,7 +30,7 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasMaxLength(500);
 
         builder.Property(b => b.QrData)
-            .HasMaxLength(1000);
+            .HasColumnType("text");
 
         builder.Property(b => b.CustomerNote)
             .HasMaxLength(500);

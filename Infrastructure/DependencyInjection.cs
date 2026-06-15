@@ -81,7 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
-        services.AddScoped<IOtpService, FirebaseService>();
+        services.AddScoped<ISmsService, SmsService>();
         services.AddScoped<ITierService, TierService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
         services.AddHostedService<NotificationWorker>();

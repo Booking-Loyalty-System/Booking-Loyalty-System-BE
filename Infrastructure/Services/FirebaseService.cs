@@ -1,9 +1,9 @@
-﻿using Application.Interfaces;
+﻿/*using Application.Interfaces;
 using FirebaseAdmin.Auth;
 
 namespace Infrastructure.Services;
 
-public class FirebaseService : IOtpService
+public class FirebaseService : ISmsService
 {
     // Interface IOtpService của ông ban đầu có thể cần sửa lại tham số truyền vào một chút 
     // để phù hợp với việc verify IdToken.
@@ -46,4 +46,4 @@ public class FirebaseService : IOtpService
     {
         throw new NotImplementedException("Dùng hàm VerifyFirebaseTokenAsync thay thế.");
     }
-}
+}*/
