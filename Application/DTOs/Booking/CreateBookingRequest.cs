@@ -2,6 +2,7 @@ namespace Application.DTOs.Booking;
 
 public class CreateBookingRequest
 {
+    public Guid BranchId { get; set; }
     public Guid VehicleId { get; set; }
     public Guid WashPackageId { get; set; }
     public DateOnly BookingDate { get; set; }

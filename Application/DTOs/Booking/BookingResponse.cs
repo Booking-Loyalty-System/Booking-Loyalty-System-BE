@@ -8,9 +8,13 @@ public class BookingResponse
     public int DurationMinutes { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
+    public TimeOnly? EndTime { get; set; }
+    public string? WashBayName { get; set; }
     public string VehiclePlate { get; set; } = null!;
     public string? VehicleName { get; set; }
     public decimal TotalPrice { get; set; }
+    public Guid BranchId { get; set; }
+    public string BranchName { get; set; }
     public string Status { get; set; } = null!;
     public string? QrData { get; set; }
     public DateTime CreatedAt { get; set; }
