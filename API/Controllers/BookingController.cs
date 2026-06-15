@@ -62,6 +62,17 @@ public class BookingController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result, "Booking cancelled successfully."));
     }
 
+    [Authorize]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(
+        Guid id, 
+        [FromBody] UpdateBookingRequest request)
+    {
+        var userId = GetUserId();
+        var result = await _bookingService.UpdateBookingAsync(userId, id, request);
+        return Ok(ApiResponse<object>.SuccessResponse(result, "Booking updated successfully."));
+    }
+    
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

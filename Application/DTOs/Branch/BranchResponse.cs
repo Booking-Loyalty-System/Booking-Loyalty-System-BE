@@ -8,4 +8,6 @@ public class BranchResponse
     public string Hotline { get; set; } = null!;
     public string OperatingHours { get; set; } = null!;
     public string Status { get; set; } = null!;
+    public double Longitude { get; set; } 
+    public double Latitude { get; set; }
 }

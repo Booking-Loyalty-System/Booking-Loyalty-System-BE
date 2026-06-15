@@ -2,7 +2,9 @@ using System.Text;
 using Application;
 using Infrastructure;
 using API.Middleware;
+using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -89,5 +91,28 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+
+        logger.LogInformation("🛠️ Đang kiểm tra và thực thi Migration cấu trúc bảng...");
+        await context.Database.MigrateAsync();
+
+        logger.LogInformation("🌱 Đang tự động khởi tạo dữ liệu hệ thống (Seed Data)...");
+        await DbInitializer.SeedDataAsync(services);
+        
+        logger.LogInformation("✅ Hệ thống khởi tạo dữ liệu ban đầu hoàn tất và sạch sẽ!");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "❌ Lỗi xảy ra trong quá trình tự động khởi tạo dữ liệu hoặc chạy Migration.");
+    }
+}
 
 app.Run();

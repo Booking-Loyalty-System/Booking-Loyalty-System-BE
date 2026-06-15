@@ -8,7 +8,6 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/branches")]
-[Authorize(Roles = "Staff")]
 public class AdminBranchController : ControllerBase
 {
     private readonly IBranchService _branchService;
@@ -18,7 +17,6 @@ public class AdminBranchController : ControllerBase
         _branchService = branchService;
     }
 
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -26,7 +24,6 @@ public class AdminBranchController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    [AllowAnonymous]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {

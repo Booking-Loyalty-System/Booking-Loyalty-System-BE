@@ -2,6 +2,6 @@
 
 public class VerifyOtpRequest
 {
-    public string PhoneNumber;
-    public string OtpCode;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string OtpCode { get; set; } = string.Empty;
 }
