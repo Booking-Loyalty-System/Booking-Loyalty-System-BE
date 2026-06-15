@@ -19,6 +19,7 @@ public class Booking
     public string? QrData { get; set; }
     public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public int PointsEarned { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
     // Navigation

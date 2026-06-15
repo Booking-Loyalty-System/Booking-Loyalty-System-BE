@@ -10,9 +10,9 @@ public class FirebaseService : IOtpService
     
     public Task<bool> SendOtpAsync(string phoneNumber)
     {
-        // BỎ TRỐNG hoặc ném ngoại lệ vì .NET không chịu trách nhiệm gửi mã nữa.
-        // Mọi việc gửi mã do Frontend React gọi trực tiếp Firebase SDK.
-        throw new NotImplementedException("Firebase Phone Auth gửi OTP trực tiếp từ Client Frontend.");
+        // OTP is sent directly from Frontend via Firebase SDK.
+        // Backend only handles rate limiting (done in controller).
+        return Task.FromResult(true);
     }
 
     /// <summary>

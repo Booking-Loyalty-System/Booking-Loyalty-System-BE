@@ -106,6 +106,7 @@ public class StaffBookingService : IStaffBookingService
         // Calculate and award loyalty points
         var customer = booking.Customer;
         var pointsEarned = (int)Math.Floor(booking.TotalPrice / 1000m * customer.Tier.PointRate);
+        booking.PointsEarned = pointsEarned;
 
         customer.TotalWashes += 1;
         customer.TotalSpent += booking.TotalPrice;
@@ -154,9 +155,7 @@ public class StaffBookingService : IStaffBookingService
                 .Where(b => b.CustomerId == customer.Id
                             && b.Status == BookingStatus.Completed
                             && b.BookingDate >= cutoffDate)
-                // TODO: Uses current tier's PointRate for all past bookings. Ideally each Booking
-                // should store PointsEarned at completion time for accurate historical calculation.
-                .SumAsync(b => (int)Math.Floor(b.TotalPrice / 1000m * currentTier.PointRate));
+                .SumAsync(b => b.PointsEarned);
 
             if (recentPoints < currentTier.MaintenancePoints)
             {

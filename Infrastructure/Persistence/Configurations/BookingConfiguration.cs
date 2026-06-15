@@ -25,6 +25,9 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.TotalPrice)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(b => b.PointsEarned)
+            .HasDefaultValue(0);
+
         builder.Property(b => b.CancellationReason)
             .HasMaxLength(500);
 

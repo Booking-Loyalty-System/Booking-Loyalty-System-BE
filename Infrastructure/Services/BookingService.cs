@@ -63,7 +63,7 @@ public class BookingService : IBookingService
             BookingDate = request.BookingDate,
             StartTime = request.StartTime,
             TotalPrice = washPackage.Price,
-            Status = BookingStatus.Confirmed,
+            Status = BookingStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
 
