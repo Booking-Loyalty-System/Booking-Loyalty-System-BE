@@ -95,8 +95,8 @@ public class StaffBookingService : IStaffBookingService
 
         booking.Status = BookingStatus.Completed;
         booking.UpdatedAt = DateTime.UtcNow;
-        if (booking.TimeSlot != null)
-            booking.TimeSlot.Status = TimeSlotStatus.Completed;
+        if (booking.WashBayTimeSlot?.TimeSlot != null)
+            booking.WashBayTimeSlot.Status = TimeSlotStatus.Completed;
         await _context.SaveChangesAsync();
 
         return await BuildResponseAsync(booking);
@@ -150,20 +150,20 @@ public class StaffBookingService : IStaffBookingService
     private async Task<Booking> LoadAsync(Guid bookingId)
     {
         return await _context.Bookings
-            .Include(b => b.Vehicle)
-            .Include(b => b.WashPackage)
-            .Include(b => b.TimeSlot)
-            .FirstOrDefaultAsync(b => b.Id == bookingId)
-            ?? throw new AppException("Booking not found.", 404);
+                   .Include(b => b.Vehicle)
+                   .Include(b => b.WashPackage)
+                   .Include(b => b.WashBayTimeSlot)
+                   .ThenInclude(wbts => wbts.TimeSlot)
+                   .FirstOrDefaultAsync(b => b.Id == bookingId)
+               ?? throw new AppException("Booking not found.", 404);
     }
 
     /// <summary>Releases the reserved bay/time slot so the window becomes bookable again.</summary>
     private void ReleaseTimeSlot(Booking booking)
     {
-        if (booking.TimeSlot != null)
+        if (booking.WashBayTimeSlot != null)
         {
-            _context.TimeSlots.Remove(booking.TimeSlot);
-            booking.TimeSlotId = null;
+            _context.WashBayTimeSlots.Remove(booking.WashBayTimeSlot);
         }
     }
 
