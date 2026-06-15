@@ -14,6 +14,9 @@ public class Booking
     public Guid WashBayTimeSlotId { get; set; } 
     
     public Guid BranchId { get; set; }
+    public Guid? AssignedStaffId { get; set; }
+    public DateOnly BookingDate { get; set; }
+    public TimeOnly StartTime { get; set; }
     public Guid? RewardId { get; set; }
     public Guid? PromotionId { get; set; }
     
