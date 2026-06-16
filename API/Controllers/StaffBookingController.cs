@@ -9,7 +9,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/staff/bookings")]
-[Authorize(Roles = "Staff")]
+[Authorize(Roles = "Staff,Admin")]
 public class StaffBookingController : ControllerBase
 {
     private readonly IStaffBookingService _staffBookingService;
