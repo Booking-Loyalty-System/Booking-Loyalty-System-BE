@@ -28,7 +28,9 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 TierName = "Bronze",
                 PointRate = 1.00m,
                 BookingWindow = 7,
-                Level = PriorityLevel.Bronze 
+                Level = PriorityLevel.Bronze,
+                MinPointsRequired = 0,
+                MaintenancePoints = 0
             },
             new Tier
             {
@@ -36,7 +38,9 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 TierName = "Silver",
                 PointRate = 1.20m,
                 BookingWindow = 10,
-                Level = PriorityLevel.Silver
+                Level = PriorityLevel.Silver,
+                MinPointsRequired = 500,
+                MaintenancePoints = 300
             },
             new Tier
             {
@@ -44,7 +48,9 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 TierName = "Gold",
                 PointRate = 1.50m,
                 BookingWindow = 12,
-                Level = PriorityLevel.Gold
+                Level = PriorityLevel.Gold,
+                MinPointsRequired = 1500,
+                MaintenancePoints = 1000
             },
             new Tier
             {
@@ -52,7 +58,9 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 TierName = "Diamond",
                 PointRate = 2.00m,
                 BookingWindow = 14,
-                Level = PriorityLevel.Diamond
+                Level = PriorityLevel.Diamond,
+                MinPointsRequired = 5000,
+                MaintenancePoints = 3000
             }
         );
     }
