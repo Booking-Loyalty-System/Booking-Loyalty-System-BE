@@ -63,4 +63,25 @@ public class AdminUserService : IAdminUserService
 
         await _context.SaveChangesAsync();
     }
+
+    public async Task UpdateUserRoleAsync(Guid userId, UpdateUserRoleRequest request)
+    {
+        var user = await _context.Users.FindAsync(userId)
+            ?? throw new AppException("User not found.", 404);
+
+        if (user.Role == UserRole.Admin)
+            throw new AppException("Cannot change role of admin users.", 400);
+
+        if (!Enum.TryParse<UserRole>(request.Role, true, out var newRole))
+            throw new AppException("Invalid role.", 400);
+
+        // Only Customer <-> Staff promotion/demotion is allowed; admins are provisioned out-of-band.
+        if (newRole == UserRole.Admin)
+            throw new AppException("Cannot assign the Admin role.", 400);
+
+        user.Role = newRole;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
 }

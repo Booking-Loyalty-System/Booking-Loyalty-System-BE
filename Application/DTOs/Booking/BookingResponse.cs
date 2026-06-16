@@ -8,6 +8,8 @@ public class BookingResponse
     public int DurationMinutes { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
+    public TimeOnly? EndTime { get; set; }
+    public string? WashBayName { get; set; }
     public string VehiclePlate { get; set; } = null!;
     public string? VehicleName { get; set; }
     public decimal TotalPrice { get; set; }

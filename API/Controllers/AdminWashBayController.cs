@@ -8,7 +8,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/wash-bays")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Staff,Admin")]
 public class AdminWashBayController : ControllerBase
 {
     private readonly IWashBayService _washBayService;
@@ -18,6 +18,7 @@ public class AdminWashBayController : ControllerBase
         _washBayService = washBayService;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -25,6 +26,7 @@ public class AdminWashBayController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {

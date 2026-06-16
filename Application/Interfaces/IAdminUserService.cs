@@ -6,4 +6,5 @@ public interface IAdminUserService
 {
     Task<List<AdminUserResponse>> GetUsersAsync(string? roleFilter);
     Task UpdateUserStatusAsync(Guid userId, UpdateUserStatusRequest request);
+    Task UpdateUserRoleAsync(Guid userId, UpdateUserRoleRequest request);
 }
