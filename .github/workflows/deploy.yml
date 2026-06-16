@@ -1,0 +1,51 @@
+name: CI/CD Build and Deploy .NET Core to AWS EC2
+
+on:
+  push:
+    branches:
+      - main # Hoặc nhánh bạn muốn dùng để deploy tự động (ví dụ: develop, master)
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout mã nguồn từ GitHub
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    # 2. Cài đặt môi trường .NET SDK để build
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x' # Điền đúng version .NET dự án bạn đang dùng
+
+    # 3. Khôi phục các thư viện (Nuget packages)
+    - name: Restore dependencies
+      run: dotnet restore Booking-Loyalty-System.sln
+
+    # 4. Biên dịch và Publish dự án Web API
+    - name: Publish Application
+      run: dotnet publish Booking-Loyalty-System.sln -c Release -o ./publish
+
+    # 5. Đẩy toàn bộ file đã publish lên thư mục làm việc trên AWS EC2 qua SSH
+    - name: Deploy files to AWS EC2 via SCP
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "./publish/*"
+        target: "/var/www/booking-api"
+        strip_components: 1 # Loại bỏ folder 'publish' ở đầu khi paste vào EC2
+
+    # 6. SSH vào EC2 và ra lệnh restart lại Service .NET để cập nhật code mới
+    - name: Restart Systemd Service on EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          sudo systemctl restart booking-api
+          sudo systemctl status booking-api
