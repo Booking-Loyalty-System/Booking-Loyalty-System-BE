@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
         services.AddScoped<IOtpService, FirebaseService>();
+        services.AddScoped<ITierService, TierService>();
 
         return services;
     }
