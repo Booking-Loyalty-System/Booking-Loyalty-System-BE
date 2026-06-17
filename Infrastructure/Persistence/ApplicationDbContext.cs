@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Reward> Rewards => Set<Reward>();
     public DbSet<RewardRedemption> RewardRedemptions => Set<RewardRedemption>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<AddOn> AddOns => Set<AddOn>();
+    public DbSet<BookingAddOn> BookingAddOns => Set<BookingAddOn>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,

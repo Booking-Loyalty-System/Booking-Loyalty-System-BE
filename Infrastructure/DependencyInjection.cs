@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<IWashPackageService, WashPackageService>();
         services.AddScoped<IWashBayService, WashBayService>();
         services.AddScoped<IBranchService, BranchService>();
+        services.AddScoped<IAddOnService, AddOnService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();

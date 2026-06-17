@@ -15,5 +15,6 @@ public class BookingResponse
     public decimal TotalPrice { get; set; }
     public string Status { get; set; } = null!;
     public string? QrData { get; set; }
+    public List<BookingAddOnResponse> AddOns { get; set; } = new();
     public DateTime CreatedAt { get; set; }
 }

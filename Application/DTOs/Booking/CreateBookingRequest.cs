@@ -10,4 +10,7 @@ public class CreateBookingRequest
 
     /// <summary>Optional promotion code to discount the booking price.</summary>
     public string? PromotionCode { get; set; }
+
+    /// <summary>Optional add-on services to attach to the booking.</summary>
+    public List<Guid>? AddOnIds { get; set; }
 }

@@ -36,4 +36,5 @@ public class Booking
     public Branch Branch { get; set; } = null!;
     public WashBay WashBay { get; set; } = null!;
     public Promotion? Promotion { get; set; }
+    public ICollection<BookingAddOn> BookingAddOns { get; set; } = new List<BookingAddOn>();
 }

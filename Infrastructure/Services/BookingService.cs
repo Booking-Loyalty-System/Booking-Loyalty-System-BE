@@ -45,6 +45,19 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
             ?? throw new AppException("Wash package not found or inactive.", 404);
 
+        // Resolve optional add-ons. Every requested id must map to an active add-on.
+        var requestedAddOnIds = request.AddOnIds?.Distinct().ToList() ?? new List<Guid>();
+        var addOns = requestedAddOnIds.Count == 0
+            ? new List<AddOn>()
+            : await _context.AddOns
+                .Where(a => requestedAddOnIds.Contains(a.Id) && a.IsActive)
+                .ToListAsync();
+        if (addOns.Count != requestedAddOnIds.Count)
+            throw new AppException("One or more add-ons not found or inactive.", 400);
+
+        var addOnsTotal = addOns.Sum(a => a.Price);
+        var addOnsDuration = addOns.Sum(a => a.DurationMinutes);
+
         // The customer must pick a branch first; only an open branch can take bookings.
         var branch = await _context.Branches
             .FirstOrDefaultAsync(b => b.Id == request.BranchId)
@@ -71,8 +84,9 @@ public class BookingService : IBookingService
         if (request.BookingDate > maxDate)
             throw new AppException($"Your {customer.Tier} tier allows booking up to {maxDays} days in advance.", 400);
 
-        // The booking occupies the bay for [StartTime, StartTime + package duration)
-        var endTime = request.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes));
+        // The booking occupies the bay for [StartTime, StartTime + package duration + add-on duration)
+        var totalDuration = washPackage.DurationMinutes + addOnsDuration;
+        var endTime = request.StartTime.Add(TimeSpan.FromMinutes(totalDuration));
         if (endTime <= request.StartTime)
             throw new AppException("The selected start time and wash duration are invalid (the wash would run past midnight).", 400);
 
@@ -107,17 +121,20 @@ public class BookingService : IBookingService
         // Generate booking code (6 chars A-Z0-9)
         var bookingCode = await GenerateUniqueBookingCodeAsync();
 
+        // Subtotal = wash package + selected add-ons; a promotion discounts the whole subtotal.
+        var subtotal = washPackage.Price + addOnsTotal;
+
         // Apply an optional promotion. ApplyAsync validates and reserves a use on the tracked
         // promotion; the SaveChanges/commit below persists the increment atomically with the booking.
-        var totalPrice = washPackage.Price;
+        var totalPrice = subtotal;
         var discountAmount = 0m;
         Guid? promotionId = null;
         if (!string.IsNullOrWhiteSpace(request.PromotionCode))
         {
-            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
+            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, subtotal);
             promotionId = pid;
             discountAmount = discount;
-            totalPrice = washPackage.Price - discount;
+            totalPrice = subtotal - discount;
         }
 
         var booking = new Booking
@@ -150,12 +167,27 @@ public class BookingService : IBookingService
         };
         booking.TimeSlotId = slot.Id;
 
+        // Snapshot the add-ons onto the booking (price/duration frozen at booking time).
+        var bookingAddOns = addOns.Select(a => new BookingAddOn
+        {
+            Id = Guid.NewGuid(),
+            BookingId = booking.Id,
+            AddOnId = a.Id,
+            Price = a.Price,
+            DurationMinutes = a.DurationMinutes,
+            CreatedAt = DateTime.UtcNow
+        }).ToList();
+
         _context.Bookings.Add(booking);
         _context.TimeSlots.Add(slot);
+        _context.BookingAddOns.AddRange(bookingAddOns);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        return MapToResponse(booking, washPackage, vehicle, slot, bay);
+        var addOnResponses = addOns
+            .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
+            .ToList();
+        return MapToResponse(booking, washPackage, vehicle, slot, bay, addOnResponses);
     }
 
     /// <summary>
@@ -206,10 +238,12 @@ public class BookingService : IBookingService
             .Include(b => b.Vehicle)
             .Include(b => b.TimeSlot)
                 .ThenInclude(ts => ts!.WashBay)
+            .Include(b => b.BookingAddOns)
+                .ThenInclude(ba => ba.AddOn)
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot, null, MapAddOns(booking));
     }
 
     public async Task<List<BookingResponse>> GetMyBookingsAsync(Guid userId)
@@ -224,10 +258,12 @@ public class BookingService : IBookingService
             .Include(b => b.Vehicle)
             .Include(b => b.TimeSlot)
                 .ThenInclude(ts => ts!.WashBay)
+            .Include(b => b.BookingAddOns)
+                .ThenInclude(ba => ba.AddOn)
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
 
-        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.TimeSlot)).ToList();
+        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.TimeSlot, null, MapAddOns(b))).ToList();
     }
 
     public async Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason)
@@ -241,6 +277,8 @@ public class BookingService : IBookingService
             .Include(b => b.Vehicle)
             .Include(b => b.TimeSlot)
                 .ThenInclude(ts => ts!.WashBay)
+            .Include(b => b.BookingAddOns)
+                .ThenInclude(ba => ba.AddOn)
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
@@ -261,7 +299,7 @@ public class BookingService : IBookingService
 
         await _context.SaveChangesAsync();
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, slot);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, slot, null, MapAddOns(booking));
     }
 
     public async Task<BookingResponse> CompleteBookingAsync(Guid bookingId)
@@ -271,6 +309,8 @@ public class BookingService : IBookingService
             .Include(b => b.Vehicle)
             .Include(b => b.TimeSlot)
                 .ThenInclude(ts => ts!.WashBay)
+            .Include(b => b.BookingAddOns)
+                .ThenInclude(ba => ba.AddOn)
             .FirstOrDefaultAsync(b => b.Id == bookingId)
             ?? throw new AppException("Booking not found.", 404);
 
@@ -291,7 +331,7 @@ public class BookingService : IBookingService
         // Award loyalty points — idempotent, so a repeated call for the same booking is a no-op.
         await _loyaltyService.AwardPointsForBookingAsync(bookingId);
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot, null, MapAddOns(booking));
     }
 
     private async Task<string> GenerateUniqueBookingCodeAsync()
@@ -308,8 +348,22 @@ public class BookingService : IBookingService
         return code;
     }
 
+    /// <summary>Projects a booking's loaded add-ons into response DTOs (name from catalog, price snapshotted).</summary>
+    private static List<BookingAddOnResponse> MapAddOns(Booking booking)
+    {
+        return booking.BookingAddOns
+            .Select(ba => new BookingAddOnResponse
+            {
+                AddOnId = ba.AddOnId,
+                Name = ba.AddOn?.Name ?? string.Empty,
+                Price = ba.Price
+            })
+            .ToList();
+    }
+
     private static BookingResponse MapToResponse(
-        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot? slot, WashBay? bay = null)
+        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot? slot, WashBay? bay = null,
+        List<BookingAddOnResponse>? addOns = null)
     {
         return new BookingResponse
         {
@@ -326,6 +380,7 @@ public class BookingService : IBookingService
             TotalPrice = booking.TotalPrice,
             Status = booking.Status.ToString(),
             QrData = booking.QrData,
+            AddOns = addOns ?? new(),
             CreatedAt = booking.CreatedAt
         };
     }
