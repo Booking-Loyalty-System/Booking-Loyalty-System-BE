@@ -210,8 +210,8 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("6d354e08-0980-4482-ba99-c04a3ffc8d1f"),
-                            CreatedAt = new DateTime(2026, 6, 16, 6, 45, 56, 109, DateTimeKind.Utc).AddTicks(8469),
+                            Id = new Guid("4220590e-136c-4dc0-aabd-1b0c7ca78fee"),
+                            CreatedAt = new DateTime(2026, 6, 17, 14, 33, 19, 547, DateTimeKind.Utc).AddTicks(1398),
                             FullName = "Customer User",
                             IsPhoneNumberVerified = false,
                             LifetimePoints = 0,
@@ -426,31 +426,31 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("22222222-2222-2222-2222-222222222222"),
-                            BookingWindow = 10,
+                            BookingWindow = 14,
                             Level = 3,
                             MaintenancePoints = 300,
-                            MinPointsRequired = 500,
-                            PointRate = 1.20m,
+                            MinPointsRequired = 2000,
+                            PointRate = 1.50m,
                             TierName = "Silver"
                         },
                         new
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333333"),
-                            BookingWindow = 12,
+                            BookingWindow = 21,
                             Level = 2,
                             MaintenancePoints = 1000,
-                            MinPointsRequired = 1500,
-                            PointRate = 1.50m,
+                            MinPointsRequired = 6000,
+                            PointRate = 2.00m,
                             TierName = "Gold"
                         },
                         new
                         {
                             Id = new Guid("44444444-4444-4444-4444-444444444444"),
-                            BookingWindow = 14,
+                            BookingWindow = 30,
                             Level = 1,
                             MaintenancePoints = 3000,
-                            MinPointsRequired = 5000,
-                            PointRate = 2.00m,
+                            MinPointsRequired = 15000,
+                            PointRate = 3.00m,
                             TierName = "Diamond"
                         });
                 });
@@ -541,28 +541,28 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            CreatedAt = new DateTime(2026, 6, 16, 6, 45, 56, 264, DateTimeKind.Utc).AddTicks(345),
+                            CreatedAt = new DateTime(2026, 6, 17, 14, 33, 19, 724, DateTimeKind.Utc).AddTicks(1933),
                             Email = "admin@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$INGstVTba0hibHGP8eLbZ.WymQNKZ0DQyEDL6I8BDPaJ0V9ZUfu8S",
+                            PasswordHash = "$2a$11$rn6bboE7P/BuBpzCDM94tO5b6QBMCgoGgr.QmSoPLfCYc6ZiRq6rq",
                             Role = "Admin"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 16, 6, 45, 56, 403, DateTimeKind.Utc).AddTicks(422),
+                            CreatedAt = new DateTime(2026, 6, 17, 14, 33, 19, 884, DateTimeKind.Utc).AddTicks(9527),
                             Email = "staff@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$3vy.B9yTB88VIceTa.M5lujqW25Gb9TKT3ky5vm/WyWhKul2Q9YNK",
+                            PasswordHash = "$2a$11$.3.6Qs0OPHROG1c5r5Gi5uB.aB8D3rtpmC8oGKd/PXDAaHb8iapJq",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            CreatedAt = new DateTime(2026, 6, 16, 6, 45, 56, 530, DateTimeKind.Utc).AddTicks(6758),
+                            CreatedAt = new DateTime(2026, 6, 17, 14, 33, 20, 53, DateTimeKind.Utc).AddTicks(6889),
                             Email = "customer@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$36Z/.ho9Nivl6zqbDWscYOzNY.suR6IZKifkapn3P3DdBzjkmb9cG",
+                            PasswordHash = "$2a$11$vL9Q5cYpIu57M6EzuZ2XLusSDQRr.AjCdLo9WzLTh4kZn2VoeUeBm",
                             Role = "Customer"
                         });
                 });

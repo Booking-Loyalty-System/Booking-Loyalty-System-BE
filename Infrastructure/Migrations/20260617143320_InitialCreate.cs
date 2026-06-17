@@ -371,9 +371,9 @@ namespace Infrastructure.Migrations
                 values: new object[,]
                 {
                     { new Guid("11111111-1111-1111-1111-111111111111"), 7, 4, 0, 0, 1.00m, "Bronze" },
-                    { new Guid("22222222-2222-2222-2222-222222222222"), 10, 3, 300, 500, 1.20m, "Silver" },
-                    { new Guid("33333333-3333-3333-3333-333333333333"), 12, 2, 1000, 1500, 1.50m, "Gold" },
-                    { new Guid("44444444-4444-4444-4444-444444444444"), 14, 1, 3000, 5000, 2.00m, "Diamond" }
+                    { new Guid("22222222-2222-2222-2222-222222222222"), 14, 3, 300, 2000, 1.50m, "Silver" },
+                    { new Guid("33333333-3333-3333-3333-333333333333"), 21, 2, 1000, 6000, 2.00m, "Gold" },
+                    { new Guid("44444444-4444-4444-4444-444444444444"), 30, 1, 3000, 15000, 3.00m, "Diamond" }
                 });
 
             migrationBuilder.InsertData(
@@ -381,9 +381,9 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 16, 6, 45, 56, 264, DateTimeKind.Utc).AddTicks(345), "admin@system.com", null, true, "$2a$11$INGstVTba0hibHGP8eLbZ.WymQNKZ0DQyEDL6I8BDPaJ0V9ZUfu8S", null, null, "Admin", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 16, 6, 45, 56, 403, DateTimeKind.Utc).AddTicks(422), "staff@system.com", null, true, "$2a$11$3vy.B9yTB88VIceTa.M5lujqW25Gb9TKT3ky5vm/WyWhKul2Q9YNK", null, null, "Staff", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 16, 6, 45, 56, 530, DateTimeKind.Utc).AddTicks(6758), "customer@system.com", null, true, "$2a$11$36Z/.ho9Nivl6zqbDWscYOzNY.suR6IZKifkapn3P3DdBzjkmb9cG", null, null, "Customer", null }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 17, 14, 33, 19, 724, DateTimeKind.Utc).AddTicks(1933), "admin@system.com", null, true, "$2a$11$rn6bboE7P/BuBpzCDM94tO5b6QBMCgoGgr.QmSoPLfCYc6ZiRq6rq", null, null, "Admin", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 17, 14, 33, 19, 884, DateTimeKind.Utc).AddTicks(9527), "staff@system.com", null, true, "$2a$11$.3.6Qs0OPHROG1c5r5Gi5uB.aB8D3rtpmC8oGKd/PXDAaHb8iapJq", null, null, "Staff", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 17, 14, 33, 20, 53, DateTimeKind.Utc).AddTicks(6889), "customer@system.com", null, true, "$2a$11$vL9Q5cYpIu57M6EzuZ2XLusSDQRr.AjCdLo9WzLTh4kZn2VoeUeBm", null, null, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -399,7 +399,7 @@ namespace Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "Customers",
                 columns: new[] { "Id", "CreatedAt", "DateOfBirth", "FullName", "IsPhoneNumberVerified", "LifetimePoints", "PhoneNumber", "TierId", "TotalPoints", "TotalSpent", "TotalWashes", "UserId" },
-                values: new object[] { new Guid("6d354e08-0980-4482-ba99-c04a3ffc8d1f"), new DateTime(2026, 6, 16, 6, 45, 56, 109, DateTimeKind.Utc).AddTicks(8469), null, "Customer User", false, 0, "0901234567", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
+                values: new object[] { new Guid("4220590e-136c-4dc0-aabd-1b0c7ca78fee"), new DateTime(2026, 6, 17, 14, 33, 19, 547, DateTimeKind.Utc).AddTicks(1398), null, "Customer User", false, 0, "0901234567", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
 
             migrationBuilder.InsertData(
                 table: "WashBays",
