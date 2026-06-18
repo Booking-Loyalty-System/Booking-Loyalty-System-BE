@@ -151,7 +151,10 @@ public class BookingService : IBookingService
             StartTime = request.StartTime,
             TotalPrice = totalPrice,
             DiscountAmount = discountAmount,
-            Status = BookingStatus.Confirmed,
+            // Booking is held as Pending until a successful VNPay payment confirms it.
+            // The reserved bay/slot is still kept (Pending counts as an active booking);
+            // PendingBookingCleanupService releases it if payment is never completed.
+            Status = BookingStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
 

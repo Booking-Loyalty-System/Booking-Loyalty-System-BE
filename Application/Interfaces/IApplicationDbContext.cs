@@ -22,6 +22,7 @@ public interface IApplicationDbContext
     DbSet<Promotion> Promotions { get; }
     DbSet<AddOn> AddOns { get; }
     DbSet<BookingAddOn> BookingAddOns { get; }
+    DbSet<Payment> Payments { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

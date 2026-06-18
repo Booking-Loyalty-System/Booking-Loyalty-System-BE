@@ -37,4 +37,5 @@ public class Booking
     public WashBay WashBay { get; set; } = null!;
     public Promotion? Promotion { get; set; }
     public ICollection<BookingAddOn> BookingAddOns { get; set; } = new List<BookingAddOn>();
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }

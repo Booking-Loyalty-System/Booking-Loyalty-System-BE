@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Promotion> Promotions => Set<Promotion>();
     public DbSet<AddOn> AddOns => Set<AddOn>();
     public DbSet<BookingAddOn> BookingAddOns => Set<BookingAddOn>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,

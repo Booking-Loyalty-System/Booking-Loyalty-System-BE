@@ -46,6 +46,7 @@ public static class DependencyInjection
 
         services.Configure<BookingOptions>(configuration.GetSection("Booking"));
         services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
+        services.Configure<VnPayOptions>(configuration.GetSection("VnPay"));
 
         services.AddMemoryCache();
         services.AddScoped<IAuthService, AuthService>();
@@ -59,10 +60,14 @@ public static class DependencyInjection
         services.AddScoped<IWashBayService, WashBayService>();
         services.AddScoped<IBranchService, BranchService>();
         services.AddScoped<IAddOnService, AddOnService>();
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
         services.AddScoped<IOtpService, FirebaseService>();
+
+        // Cancels unpaid bookings past the VNPay payment window, releasing their slots.
+        services.AddHostedService<PendingBookingCleanupService>();
 
         return services;
     }
