@@ -85,6 +85,64 @@ public class TierService : ITierService
         };
     }
 
+    public async Task<TierResponse> GetByIdAsync(Guid id)
+    {
+        var tier = await _context.Tiers.FindAsync(id)
+            ?? throw new AppException("Tier not found.", 404);
+
+        return MapToResponse(tier);
+    }
+
+    public async Task<TierResponse> CreateAsync(CreateTierRequest request)
+    {
+        var tier = new Tier
+        {
+            Id = Guid.NewGuid(),
+            TierName = request.TierName,
+            PointRate = request.PointRate,
+            BookingWindow = request.BookingWindow,
+            Level = Enum.Parse<PriorityLevel>(request.Level, true),
+            MinPointsRequired = request.MinPointsRequired,
+            MaintenancePoints = request.MaintenancePoints
+        };
+
+        _context.Tiers.Add(tier);
+        await _context.SaveChangesAsync();
+
+        return MapToResponse(tier);
+    }
+
+    public async Task<TierResponse> UpdateAsync(Guid id, UpdateTierRequest request)
+    {
+        var tier = await _context.Tiers.FindAsync(id)
+            ?? throw new AppException("Tier not found.", 404);
+
+        if (request.TierName != null) tier.TierName = request.TierName;
+        if (request.PointRate != null) tier.PointRate = request.PointRate.Value;
+        if (request.BookingWindow != null) tier.BookingWindow = request.BookingWindow.Value;
+        if (request.Level != null) tier.Level = Enum.Parse<PriorityLevel>(request.Level, true);
+        if (request.MinPointsRequired != null) tier.MinPointsRequired = request.MinPointsRequired.Value;
+        if (request.MaintenancePoints != null) tier.MaintenancePoints = request.MaintenancePoints.Value;
+
+        await _context.SaveChangesAsync();
+
+        return MapToResponse(tier);
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var tier = await _context.Tiers
+            .Include(t => t.Customers)
+            .FirstOrDefaultAsync(t => t.Id == id)
+            ?? throw new AppException("Tier not found.", 404);
+
+        if (tier.Customers.Any())
+            throw new AppException("Cannot delete tier that still has customers.", 400);
+
+        _context.Tiers.Remove(tier);
+        await _context.SaveChangesAsync();
+    }
+
     private static TierResponse MapToResponse(Tier tier) => new()
     {
         Id = tier.Id,
