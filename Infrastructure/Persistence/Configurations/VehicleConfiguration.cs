@@ -14,7 +14,7 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
         // Filtered unique index: license plate unique among non-deleted vehicles
         builder.HasIndex(v => v.LicensePlate)
             .IsUnique()
-            .HasFilter("\"IsDeleted\" = false");
+            .HasFilter("[IsDeleted] = 0");
 
         builder.Property(v => v.Type)
             .HasConversion<string>()

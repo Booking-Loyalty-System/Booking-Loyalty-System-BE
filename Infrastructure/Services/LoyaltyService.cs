@@ -41,10 +41,11 @@ public class LoyaltyService : ILoyaltyService
         }
 
         var customer = await _context.Customers
+            .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.Id == booking.CustomerId, cancellationToken)
             ?? throw new AppException("Customer profile not found.", 404);
 
-        var points = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit);
+        var points = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
         var now = DateTime.UtcNow;
 
         // Update the customer's running CRM totals (points, lifetime, visits, spend).

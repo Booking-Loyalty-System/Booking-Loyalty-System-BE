@@ -9,6 +9,8 @@ public class Tier
     public decimal PointRate { get; set; }
     public int BookingWindow { get; set; }
     public PriorityLevel Level { get; set; }
+    public int MinPointsRequired { get; set; }
+    public int MaintenancePoints { get; set; }
 
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
 }
