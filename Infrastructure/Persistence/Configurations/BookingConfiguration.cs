@@ -63,5 +63,14 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany(br => br.Bookings)
             .HasForeignKey(b => b.BranchId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Optional promotion applied to the booking.
+        builder.Property(b => b.DiscountAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.HasOne(b => b.Promotion)
+            .WithMany()
+            .HasForeignKey(b => b.PromotionId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

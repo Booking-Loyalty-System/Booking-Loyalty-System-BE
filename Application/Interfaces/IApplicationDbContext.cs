@@ -38,6 +38,11 @@ public interface IApplicationDbContext
     DbSet<Notification> Notifications { get; }
 
     // --- Các hàm Core EF Core ---
+    DbSet<Tier> Tiers { get; }
+    DbSet<Branch> Branches { get; }
+    DbSet<Reward> Rewards { get; }
+    DbSet<RewardRedemption> RewardRedemptions { get; }
+    DbSet<Promotion> Promotions { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

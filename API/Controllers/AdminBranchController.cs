@@ -8,6 +8,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/branches")]
+[Authorize(Roles = "Staff,Admin")]
 public class AdminBranchController : ControllerBase
 {
     private readonly IBranchService _branchService;

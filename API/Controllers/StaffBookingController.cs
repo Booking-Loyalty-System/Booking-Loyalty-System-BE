@@ -9,7 +9,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/staff/bookings")]
-[Authorize] // 🌟 ĐỔI THÀNH ĐÂY: Chỉ bắt buộc Đăng nhập, không ép cứng Role ở cấp Class nữa
+[Authorize(Roles = "Staff,Admin")]
 public class StaffBookingController : ControllerBase
 {
     private readonly IStaffBookingService _staffBookingService;

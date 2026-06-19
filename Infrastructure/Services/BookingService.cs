@@ -16,6 +16,7 @@ public class BookingService : IBookingService
 {
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
+    private readonly IPromotionService _promotionService;
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
     private readonly IHubContext<BookingHub> _hubContext;
@@ -24,9 +25,11 @@ public class BookingService : IBookingService
         ILoyaltyService loyaltyService,
         IOptions<BookingOptions> options,
         IHubContext<BookingHub> hubContext) // Thêm vào constructor
+        IPromotionService promotionService,
     {
         _context = context;
         _loyaltyService = loyaltyService;
+        _promotionService = promotionService;
         _options = options.Value;
         _shopTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
         _hubContext = hubContext;
@@ -116,6 +119,19 @@ public class BookingService : IBookingService
 
         var qrDataBase64 = GenerateQrCodeBase64(bookingCode);
         
+        // Apply an optional promotion. ApplyAsync validates and reserves a use on the tracked
+        // promotion; the SaveChanges/commit below persists the increment atomically with the booking.
+        var totalPrice = washPackage.Price;
+        var discountAmount = 0m;
+        Guid? promotionId = null;
+        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+        {
+            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
+            promotionId = pid;
+            discountAmount = discount;
+            totalPrice = washPackage.Price - discount;
+        }
+
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
@@ -130,6 +146,21 @@ public class BookingService : IBookingService
             CreatedAt = DateTime.UtcNow,
             QrData = qrDataBase64,
             BookingDate = request.BookingDate, 
+            BayId = bay.Id,
+            PromotionId = promotionId,
+            BookingDate = request.BookingDate,
+            StartTime = request.StartTime,
+            TotalPrice = totalPrice,
+            DiscountAmount = discountAmount,
+            Status = BookingStatus.Confirmed,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var slot = new TimeSlot
+        {
+            Id = Guid.NewGuid(),
+            WashBayId = bay.Id,
+            Date = request.BookingDate,
             StartTime = request.StartTime,
         };
 

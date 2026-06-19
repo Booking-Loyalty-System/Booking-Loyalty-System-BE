@@ -15,6 +15,7 @@ public class Booking
     
     public Guid BranchId { get; set; }
     public Guid? AssignedStaffId { get; set; }
+    public Guid? PromotionId { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
     public Guid? RewardId { get; set; }
@@ -23,6 +24,9 @@ public class Booking
     // XÓA: BookingDate, StartTime, EndTime (Vì lấy từ WashBayTimeSlot -> TimeSlot ra là có hết)
     public string? CustomerNote { get; set; }
     public decimal TotalPrice { get; set; }
+
+    /// <summary>Amount discounted by an applied promotion (0 when none).</summary>
+    public decimal DiscountAmount { get; set; }
     public BookingStatus Status { get; set; }
     public string? QrData { get; set; }
     public string? CancellationReason { get; set; }

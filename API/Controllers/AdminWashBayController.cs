@@ -8,7 +8,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/wash-bays")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Staff,Admin")]
 public class AdminWashBayController : ControllerBase
 {
     private readonly IWashBayService _washBayService;
