@@ -9,7 +9,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/staff/bookings")]
-[Authorize(Roles = "Staff")]
+[Authorize] // 🌟 ĐỔI THÀNH ĐÂY: Chỉ bắt buộc Đăng nhập, không ép cứng Role ở cấp Class nữa
 public class StaffBookingController : ControllerBase
 {
     private readonly IStaffBookingService _staffBookingService;
@@ -21,6 +21,7 @@ public class StaffBookingController : ControllerBase
 
     /// <summary>Lists the bookings for a given day. Defaults to today when no date is supplied.</summary>
     [HttpGet]
+    [Authorize(Roles = "Staff")] // 🌟 THÊM Ở ĐÂY: Chỉ có nhân viên mới được xem danh sách lịch đặt xe
     public async Task<IActionResult> GetByDate([FromQuery] string? date)
     {
         DateOnly target;
@@ -33,52 +34,11 @@ public class StaffBookingController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    [HttpPost("{id:guid}/check-in")]
-    public async Task<IActionResult> CheckIn(Guid id)
+    [HttpPatch("{id:guid}/status")]
+    [Authorize(Roles = "Staff,Customer")] // 🌟 THÊM Ở ĐÂY: Cho phép Staff HOẶC Customer gọi API này
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateBookingStatusRequest request)
     {
-        var result = await _staffBookingService.CheckInAsync(id);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Customer checked in."));
-    }
-
-    [HttpPost("{id:guid}/queue")]
-    public async Task<IActionResult> Queue(Guid id)
-    {
-        var result = await _staffBookingService.QueueAsync(id);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Booking moved to queue."));
-    }
-
-    [HttpPost("{id:guid}/start")]
-    public async Task<IActionResult> Start(Guid id, [FromBody] StartServiceRequest request)
-    {
-        var result = await _staffBookingService.StartAsync(id, request.StaffId);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Service started."));
-    }
-
-    [HttpPost("{id:guid}/finish")]
-    public async Task<IActionResult> Finish(Guid id)
-    {
-        var result = await _staffBookingService.FinishAsync(id);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Service finished."));
-    }
-
-    [HttpPost("{id:guid}/checkout")]
-    public async Task<IActionResult> Checkout(Guid id)
-    {
-        var result = await _staffBookingService.CheckoutAsync(id);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Booking checked out and loyalty points awarded."));
-    }
-
-    [HttpPost("{id:guid}/cancel")]
-    public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelServiceRequest? request)
-    {
-        var result = await _staffBookingService.CancelAsync(id, request?.Reason);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Booking cancelled."));
-    }
-
-    [HttpPost("{id:guid}/no-show")]
-    public async Task<IActionResult> NoShow(Guid id)
-    {
-        var result = await _staffBookingService.NoShowAsync(id);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Booking marked as no-show."));
+        var result = await _staffBookingService.UpdateStatusAsync(id, request);
+        return Ok(ApiResponse<object>.SuccessResponse(result, $"Booking status updated to {request.TargetStatus}."));
     }
 }

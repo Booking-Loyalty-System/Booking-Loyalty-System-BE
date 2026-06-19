@@ -37,8 +37,24 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]!)),
         ClockSkew = TimeSpan.Zero
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && 
+                (path.StartsWithSegments("/hubs/booking")))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
+builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 
 // Swagger
@@ -75,7 +91,8 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+        policy.WithOrigins("http://localhost:5173")
+            .AllowCredentials().AllowAnyMethod().AllowAnyHeader());
 });
 
 var app = builder.Build();
@@ -115,4 +132,5 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.MapHub<Infrastructure.Hubs.BookingHub>("/hubs/booking");
 app.Run();

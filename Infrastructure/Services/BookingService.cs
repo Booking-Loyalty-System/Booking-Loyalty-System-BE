@@ -4,6 +4,8 @@ using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
+using Infrastructure.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using QRCoder;
@@ -16,16 +18,18 @@ public class BookingService : IBookingService
     private readonly ILoyaltyService _loyaltyService;
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
-
+    private readonly IHubContext<BookingHub> _hubContext;
     public BookingService(
         IApplicationDbContext context,
         ILoyaltyService loyaltyService,
-        IOptions<BookingOptions> options)
+        IOptions<BookingOptions> options,
+        IHubContext<BookingHub> hubContext) // Thêm vào constructor
     {
         _context = context;
         _loyaltyService = loyaltyService;
         _options = options.Value;
         _shopTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
+        _hubContext = hubContext;
     }
 
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
@@ -124,7 +128,9 @@ public class BookingService : IBookingService
             TotalPrice = washPackage.Price,
             Status = BookingStatus.Pending,
             CreatedAt = DateTime.UtcNow,
-            QrData = qrDataBase64
+            QrData = qrDataBase64,
+            BookingDate = request.BookingDate, 
+            StartTime = request.StartTime,
         };
 
         // Cập nhật trạng thái ô lịch của khoang thành Đã đặt
@@ -134,7 +140,10 @@ public class BookingService : IBookingService
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        return MapToResponse(booking, washPackage, vehicle, availableSlot);
+        var response = MapToResponse(booking, washPackage, vehicle, availableSlot);
+        await _hubContext.Clients.Group(booking.BranchId.ToString())
+            .SendAsync("ReceiveBookingCreated", response);
+        return response;
     }
 
     public async Task<BookingResponse> GetBookingByIdAsync(Guid userId, Guid bookingId)
@@ -205,7 +214,10 @@ public class BookingService : IBookingService
 
         await _context.SaveChangesAsync();
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.WashBayTimeSlot);
+        var response = MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.WashBayTimeSlot);
+        await _hubContext.Clients.Group(booking.BranchId.ToString())
+            .SendAsync("ReceiveBookingCancelled", new { BookingId = booking.Id, Reason = reason });
+        return response;
     }
 
     public async Task<BookingResponse> UpdateBookingAsync(Guid userId, Guid bookingId, UpdateBookingRequest request)
@@ -254,7 +266,7 @@ public class BookingService : IBookingService
                 ?? throw new AppException("New wash package not found or inactive.", 404);
             
             booking.WashPackageId = newPackage.Id;
-            booking.TotalPrice = newPackage.Price; // Cập nhật lại giá tiền
+            booking.TotalPrice = newPackage.Price; 
         }
 
         // 6. Nếu có thay đổi Chi nhánh hoặc Thời gian đặt lịch
@@ -361,6 +373,7 @@ public class BookingService : IBookingService
 
         return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.WashBayTimeSlot);
     }
+    
     public async Task<BookingResponse> CompleteBookingAsync(Guid bookingId)
     {
         var booking = await _context.Bookings
