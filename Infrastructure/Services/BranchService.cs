@@ -83,7 +83,9 @@ public class BranchService : IBranchService
             Address = branch.Address,
             Hotline = branch.Hotline,
             OperatingHours = branch.OperatingHours,
-            Status = branch.Status.ToString()
+            Status = branch.Status.ToString(),
+            Latitude = branch.Latitude.Value,
+            Longitude = branch.Longitude.Value,
         };
     }
 }

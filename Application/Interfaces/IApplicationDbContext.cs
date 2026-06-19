@@ -7,14 +7,37 @@ namespace Application.Interfaces;
 
 public interface IApplicationDbContext
 {
+    // --- Hệ thống Tài khoản & Khách hàng ---
     DbSet<User> Users { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Vehicle> Vehicles { get; }
-    DbSet<WashPackage> WashPackages { get; }
+    DbSet<Tier> Tiers { get; }
+
+    // --- Hệ thống Cửa hàng & Vận hành ---
+    DbSet<Branch> Branches { get; }
     DbSet<WashBay> WashBays { get; }
-    DbSet<TimeSlot> TimeSlots { get; }
+    DbSet<WashPackage> WashPackages { get; }
+    DbSet<TimeSlot> TimeSlots { get; } 
+    
+    // ĐÂY RỒI: Khai báo bảng trung gian vào đây để BookingService bốc lịch gối đầu
+    DbSet<WashBayTimeSlot> WashBayTimeSlots { get; } 
+
+    // --- Hệ thống Đặt lịch & Giao dịch ---
     DbSet<Booking> Bookings { get; }
+    DbSet<Transaction> Transactions { get; } 
     DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
+    DbSet<Reward> Rewards { get; } 
+
+    // --- Hệ thống Ưu đãi & Khuyến mãi (Promotions) ---
+    DbSet<Promotion> Promotions { get; }
+    DbSet<CustomerPromotion> CustomerPromotions { get; }
+    DbSet<PromotionBranch> PromotionBranches { get; }
+    DbSet<TierPromotion> TierPromotions { get; } 
+
+    // --- Tiện ích ---
+    DbSet<Notification> Notifications { get; }
+
+    // --- Các hàm Core EF Core ---
     DbSet<Tier> Tiers { get; }
     DbSet<Branch> Branches { get; }
     DbSet<Reward> Rewards { get; }

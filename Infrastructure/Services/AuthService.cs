@@ -104,30 +104,30 @@ public class AuthService : IAuthService
         }, "Login successful.");
     }
 
-    public async Task<ApiResponse<TokenResponse>> RefreshTokenAsync(RefreshTokenRequest request)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
-
-        if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
-            throw new AppException("Invalid or expired refresh token.", 401);
-
-        // Rotation: generate new pair
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var newRefreshToken = _tokenService.GenerateRefreshToken();
-
-        user.RefreshToken = newRefreshToken;
-        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        return ApiResponse<TokenResponse>.SuccessResponse(new TokenResponse
+        public async Task<ApiResponse<TokenResponse>> RefreshTokenAsync(RefreshTokenRequest request)
         {
-            AccessToken = accessToken,
-            RefreshToken = newRefreshToken,
-            AccessTokenExpiry = DateTime.UtcNow.AddMinutes(60)
-        }, "Token refreshed successfully.");
-    }
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+
+            if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
+                throw new AppException("Invalid or expired refresh token.", 401);
+
+            // Rotation: generate new pair
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return ApiResponse<TokenResponse>.SuccessResponse(new TokenResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = newRefreshToken,
+                AccessTokenExpiry = DateTime.UtcNow.AddMinutes(60)
+            }, "Token refreshed successfully.");
+        }
 
     public async Task<ApiResponse<object>> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {

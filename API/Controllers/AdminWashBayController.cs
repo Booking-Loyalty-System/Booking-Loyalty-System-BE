@@ -18,7 +18,6 @@ public class AdminWashBayController : ControllerBase
         _washBayService = washBayService;
     }
 
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -26,7 +25,6 @@ public class AdminWashBayController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    [AllowAnonymous]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {

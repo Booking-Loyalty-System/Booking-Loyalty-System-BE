@@ -7,7 +7,6 @@ public enum BookingStatus
     InProgress,
     Completed,
     Cancelled,
-    // Staff operational flow (appended to preserve existing stored values).
     CheckedIn,
     Queued,
     CheckedOut,

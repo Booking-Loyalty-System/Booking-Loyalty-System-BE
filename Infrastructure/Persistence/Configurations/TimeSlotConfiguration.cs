@@ -10,22 +10,19 @@ public class TimeSlotConfiguration : IEntityTypeConfiguration<TimeSlot>
     {
         builder.HasKey(ts => ts.Id);
 
-        builder.Property(ts => ts.Status)
-            .HasConversion<string>()
-            .HasMaxLength(20);
+        builder.Property(ts => ts.StartTime)
+            .IsRequired();
 
-        // Composite index for efficient queries
-        builder.HasIndex(ts => new { ts.WashBayId, ts.Date, ts.StartTime });
+        var staticTimeSlots = new List<TimeSlot>();
+        for (int i = 8; i < 18; i++)
+        {
+            staticTimeSlots.Add(new TimeSlot
+            {
+                Id = Guid.Parse($"00000000-0000-0000-0000-0000000000{i:D2}"), 
+                StartTime = new TimeOnly(i, 0),
+            });
+        }
 
-        // Foreign keys
-        builder.HasOne(ts => ts.WashBay)
-            .WithMany(wb => wb.TimeSlots)
-            .HasForeignKey(ts => ts.WashBayId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(ts => ts.Booking)
-            .WithOne(b => b.TimeSlot)
-            .HasForeignKey<TimeSlot>(ts => ts.BookingId)
-            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasData(staticTimeSlots);
     }
 }

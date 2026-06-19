@@ -3,6 +3,8 @@ using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
+using Infrastructure.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services;
@@ -11,11 +13,12 @@ public class StaffBookingService : IStaffBookingService
 {
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
-
-    public StaffBookingService(IApplicationDbContext context, ILoyaltyService loyaltyService)
+    private readonly IHubContext<BookingHub> _hubContext;
+    public StaffBookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IHubContext<BookingHub> hubContext)
     {
         _context = context;
         _loyaltyService = loyaltyService;
+        _hubContext = hubContext;
     }
 
     public async Task<List<BookingResponseData>> GetByDateAsync(DateOnly date)
@@ -43,70 +46,88 @@ public class StaffBookingService : IStaffBookingService
             .ToList();
     }
 
-    public async Task<BookingResponseData> CheckInAsync(Guid bookingId)
+    public async Task<BookingResponseData> UpdateStatusAsync(Guid bookingId, UpdateBookingStatusRequest request)
     {
         var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "check-in", BookingStatus.Confirmed);
+        
+        // Lưu lại trạng thái cũ để đối chiếu nếu cần
+        var oldStatus = booking.Status; 
 
-        booking.Status = BookingStatus.CheckedIn;
-        booking.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+        switch (request.TargetStatus)
+        {
+            case BookingStatus.Confirmed:
+                EnsureStatus(booking, "confirm", BookingStatus.Pending);
+                booking.Status = BookingStatus.Confirmed;
+                break;
+            
+            case BookingStatus.CheckedIn:
+                EnsureStatus(booking, "check-in", BookingStatus.Confirmed);
+                booking.Status = BookingStatus.CheckedIn;
+                break;
 
-        return await BuildResponseAsync(booking);
-    }
+            case BookingStatus.Queued:
+                // Cho phép xếp hàng từ lúc Confirmed (đến tiệm) hoặc CheckedIn đều được
+                EnsureStatus(booking, "queue", BookingStatus.Confirmed, BookingStatus.CheckedIn);
+                booking.Status = BookingStatus.Queued;
+                break;
 
-    public async Task<BookingResponseData> QueueAsync(Guid bookingId)
-    {
-        var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "queue", BookingStatus.CheckedIn);
+            case BookingStatus.InProgress:
+                // 🔥 SỬA TẠI ĐÂY: Cho phép bấm nút Start trực tiếp từ Confirmed, CheckedIn hoặc Queued
+                EnsureStatus(booking, "start", BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.Queued);
+    
+                if (!request.StaffId.HasValue || request.StaffId == Guid.Empty)
+                    throw new AppException("staffId is required to start a service.", 400);
 
-        booking.Status = BookingStatus.Queued;
-        booking.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+                var isValidStaff = await _context.Users
+                    .AnyAsync(u => u.Id == request.StaffId && u.Role == UserRole.Staff && u.IsActive);
+                if (!isValidStaff)
+                    throw new AppException("Assigned staff not found or is not an active staff member.", 400);
 
-        return await BuildResponseAsync(booking);
-    }
+                booking.AssignedStaffId = request.StaffId;
+                booking.Status = BookingStatus.InProgress;
+                break;
 
-    public async Task<BookingResponseData> StartAsync(Guid bookingId, Guid staffId)
-    {
-        var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "start", BookingStatus.Queued);
+            case BookingStatus.Completed:
+                EnsureStatus(booking, "finish", BookingStatus.InProgress);
+                booking.Status = BookingStatus.Completed;
+                if (booking.WashBayTimeSlot?.TimeSlot != null)
+                    booking.WashBayTimeSlot.Status = TimeSlotStatus.Completed;
+                break;
 
-        if (staffId == Guid.Empty)
-            throw new AppException("staffId is required to start a service.", 400);
+            case BookingStatus.CheckedOut:
+                EnsureStatus(booking, "checkout", BookingStatus.Completed);
+                booking.Status = BookingStatus.CheckedOut;
+                
+                if (!string.IsNullOrWhiteSpace(request.Reason))
+                {
+                    booking.CancellationReason = request.Reason; // Sẽ lưu chuỗi kiểu: "Paid via Cash" hoặc "Paid via Bank Transfer"
+                }
+                
+                // Cộng điểm Loyalty thưởng khi khách xuất xưởng thanh toán
+                await _loyaltyService.AwardPointsForBookingAsync(bookingId);
+                break;
 
-        var isValidStaff = await _context.Users
-            .AnyAsync(u => u.Id == staffId && u.Role == UserRole.Staff && u.IsActive);
-        if (!isValidStaff)
-            throw new AppException("Assigned staff not found or is not an active staff member.", 400);
+            case BookingStatus.Cancelled:
+                EnsureStatus(booking, "cancel", 
+                    BookingStatus.Pending, BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.Queued);
+                
+                booking.Status = BookingStatus.Cancelled;
+                booking.CancellationReason = request.Reason;
+                ReleaseTimeSlot(booking);
+                break;
 
-        booking.AssignedStaffId = staffId;
-        booking.Status = BookingStatus.InProgress;
-        booking.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+            case BookingStatus.NoShow:
+                EnsureStatus(booking, "no-show", BookingStatus.Confirmed, BookingStatus.CheckedIn);
+                
+                booking.Status = BookingStatus.NoShow;
+                booking.CancellationReason = request.Reason ?? "Customer did not show up.";
+                ReleaseTimeSlot(booking);
+                break;
 
-        return await BuildResponseAsync(booking);
-    }
-
-    public async Task<BookingResponseData> FinishAsync(Guid bookingId)
-    {
-        var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "finish", BookingStatus.InProgress);
-
-        booking.Status = BookingStatus.Completed;
-        booking.UpdatedAt = DateTime.UtcNow;
-        if (booking.TimeSlot != null)
-            booking.TimeSlot.Status = TimeSlotStatus.Completed;
-        await _context.SaveChangesAsync();
-
-        return await BuildResponseAsync(booking);
-    }
-
-    public async Task<BookingResponseData> CheckoutAsync(Guid bookingId)
-    {
-        var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "checkout", BookingStatus.Completed);
-
+            
+            default:
+                throw new AppException($"Invalid target status: {request.TargetStatus}", 400);
+        }
         booking.Status = BookingStatus.CheckedOut;
         booking.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -146,31 +167,35 @@ public class StaffBookingService : IStaffBookingService
         EnsureStatus(booking, "no-show",
             BookingStatus.Confirmed, BookingStatus.CheckedIn);
 
-        booking.Status = BookingStatus.NoShow;
         booking.UpdatedAt = DateTime.UtcNow;
-        ReleaseTimeSlot(booking);
         await _context.SaveChangesAsync();
 
+        await _hubContext.Clients.Group($"Customer_{booking.CustomerId}").SendAsync("BookingStatusChanged", new 
+        {
+            BookingId = booking.Id,
+            Status = booking.Status.ToString()
+        });
+        
         return await BuildResponseAsync(booking);
     }
 
     private async Task<Booking> LoadAsync(Guid bookingId)
     {
         return await _context.Bookings
-            .Include(b => b.Vehicle)
-            .Include(b => b.WashPackage)
-            .Include(b => b.TimeSlot)
-            .FirstOrDefaultAsync(b => b.Id == bookingId)
-            ?? throw new AppException("Booking not found.", 404);
+                   .Include(b => b.Vehicle)
+                   .Include(b => b.WashPackage)
+                   .Include(b => b.WashBayTimeSlot)
+                   .ThenInclude(wbts => wbts.TimeSlot)
+                   .FirstOrDefaultAsync(b => b.Id == bookingId)
+               ?? throw new AppException("Booking not found.", 404);
     }
 
     /// <summary>Releases the reserved bay/time slot so the window becomes bookable again.</summary>
     private void ReleaseTimeSlot(Booking booking)
     {
-        if (booking.TimeSlot != null)
+        if (booking.WashBayTimeSlot != null)
         {
-            _context.TimeSlots.Remove(booking.TimeSlot);
-            booking.TimeSlotId = null;
+            _context.WashBayTimeSlots.Remove(booking.WashBayTimeSlot);
         }
     }
 

@@ -1,4 +1,4 @@
-namespace Application.DTOs.Tier;
+﻿namespace Application.DTOs.Tier;
 
 public class TierResponse
 {

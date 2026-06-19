@@ -12,8 +12,6 @@ public class VerifyOtpRequestValidator : AbstractValidator<VerifyOtpRequest>
             .Matches(@"^(0|\+84)[0-9]{9}$").WithMessage("Phone number format is invalid.");
 
         RuleFor(x => x.OtpCode)
-            .NotEmpty().WithMessage("OTP code is required.")
-            .Length(6).WithMessage("OTP code must be exactly 6 digits.")
-            .Matches(@"^[0-9]{6}$").WithMessage("OTP code must contain numbers only.");
+            .NotEmpty().WithMessage("Mã xác thực token không được để trống.");
     }
 }
