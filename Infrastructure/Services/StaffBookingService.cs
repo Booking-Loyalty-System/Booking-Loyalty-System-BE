@@ -114,6 +114,13 @@ public class StaffBookingService : IStaffBookingService
         // Award loyalty points on checkout (idempotent — one Earn row per booking).
         await _loyaltyService.AwardPointsForBookingAsync(bookingId);
 
+        // Evaluate tier upgrade/downgrade after earning points.
+        var customer = await _context.Customers
+            .Include(c => c.Tier)
+            .FirstAsync(c => c.Id == booking.CustomerId);
+        await EvaluateTierAsync(customer);
+        await _context.SaveChangesAsync();
+
         return await BuildResponseAsync(booking);
     }
 
@@ -183,6 +190,40 @@ public class StaffBookingService : IStaffBookingService
             .FirstOrDefaultAsync();
 
         return MapToResponseData(booking, points);
+    }
+
+    private async Task EvaluateTierAsync(Customer customer)
+    {
+        var tiers = await _context.Tiers
+            .OrderByDescending(t => t.MinPointsRequired)
+            .ToListAsync();
+
+        // Upgrade: find the highest tier the customer qualifies for by lifetime points.
+        var qualifiedTier = tiers.FirstOrDefault(t => customer.LifetimePoints >= t.MinPointsRequired);
+
+        if (qualifiedTier != null && qualifiedTier.MinPointsRequired > customer.Tier.MinPointsRequired)
+        {
+            customer.TierId = qualifiedTier.Id;
+            return; // Upgrade takes priority — skip downgrade check.
+        }
+
+        // Downgrade: check points earned in the last 90 days against maintenance threshold.
+        var cutoff = DateTime.UtcNow.AddDays(-90);
+        var recentPoints = await _context.LoyaltyTransactions
+            .Where(lt => lt.CustomerId == customer.Id
+                      && lt.Type == LoyaltyTransactionType.Earn
+                      && lt.CreatedAt >= cutoff)
+            .SumAsync(lt => lt.Points);
+
+        if (recentPoints < customer.Tier.MaintenancePoints)
+        {
+            // Find the highest tier whose maintenance the customer can satisfy.
+            var newTier = tiers.FirstOrDefault(t =>
+                customer.LifetimePoints >= t.MinPointsRequired && recentPoints >= t.MaintenancePoints);
+
+            if (newTier != null && newTier.Id != customer.TierId)
+                customer.TierId = newTier.Id;
+        }
     }
 
     private static BookingResponseData MapToResponseData(Booking booking, int? pointsEarned)
