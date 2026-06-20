@@ -11,25 +11,17 @@ public interface IApplicationDbContext
     DbSet<User> Users { get; }
     DbSet<Customer> Customers { get; }
     DbSet<Vehicle> Vehicles { get; }
-    DbSet<Tier> Tiers { get; }
-
-    // --- Hệ thống Cửa hàng & Vận hành ---
-    DbSet<Branch> Branches { get; }
     DbSet<WashBay> WashBays { get; }
     DbSet<WashPackage> WashPackages { get; }
     DbSet<TimeSlot> TimeSlots { get; } 
-    
+    DbSet<Staff> Staffs { get; }
     // ĐÂY RỒI: Khai báo bảng trung gian vào đây để BookingService bốc lịch gối đầu
-    DbSet<WashBayTimeSlot> WashBayTimeSlots { get; } 
+    DbSet<BranchTimeSlot> BranchTimeSlots { get; } 
 
     // --- Hệ thống Đặt lịch & Giao dịch ---
     DbSet<Booking> Bookings { get; }
     DbSet<Transaction> Transactions { get; } 
     DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
-    DbSet<Reward> Rewards { get; } 
-
-    // --- Hệ thống Ưu đãi & Khuyến mãi (Promotions) ---
-    DbSet<Promotion> Promotions { get; }
     DbSet<CustomerPromotion> CustomerPromotions { get; }
     DbSet<PromotionBranch> PromotionBranches { get; }
     DbSet<TierPromotion> TierPromotions { get; } 

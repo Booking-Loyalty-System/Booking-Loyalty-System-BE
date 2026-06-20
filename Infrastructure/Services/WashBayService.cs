@@ -25,6 +25,23 @@ public class WashBayService : IWashBayService
         return bays.Select(MapToResponse).ToList();
     }
 
+    public async Task<List<WashBayResponse>> GetAllAsync(Guid branchId)
+    {
+        var query = _context.WashBays.AsQueryable();
+
+        // LỌC THEO CHI NHÁNH TẠI ĐÂY
+        if (branchId != Guid.Empty)
+        {
+            query = query.Where(wb => wb.BranchId == branchId);
+        }
+
+        var bays = await query
+            .OrderBy(wb => wb.Name)
+            .ToListAsync();
+        
+        return bays.Select(MapToResponse).ToList();
+    }
+    
     public async Task<WashBayResponse?> GetByIdAsync(Guid id)
     {
         var bay = await _context.WashBays.FindAsync(id);
@@ -78,6 +95,7 @@ public class WashBayService : IWashBayService
             Id = bay.Id,
             Name = bay.Name,
             Status = bay.Status.ToString(),
+            BranchId = bay.BranchId,
             SupportedTypes = bay.SupportedTypes.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
             CreatedAt = bay.CreatedAt
         };

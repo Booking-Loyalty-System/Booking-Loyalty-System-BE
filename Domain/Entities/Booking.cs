@@ -9,13 +9,10 @@ public class Booking
     public Guid CustomerId { get; set; }
     public Guid VehicleId { get; set; }
     public Guid WashPackageId { get; set; }
+    public Guid BranchTimeSlotId { get; set; } 
     
-    // ĐỔI Ở ĐÂY: Thay vì lưu rời rạc SlotId và BayId, ông chỉ cần trỏ tới ID của bảng trung gian
-    public Guid WashBayTimeSlotId { get; set; } 
-    
-    public Guid BranchId { get; set; }
-    public Guid? AssignedStaffId { get; set; }
-    public Guid? PromotionId { get; set; }
+    public Guid? BayId { get; set; }
+    public Guid? StaffId { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
     public Guid? RewardId { get; set; }
@@ -39,9 +36,9 @@ public class Booking
     public WashPackage WashPackage { get; set; } = null!;
     
     // ĐỔI Ở ĐÂY: Trỏ đến bảng trung gian
-    public WashBayTimeSlot WashBayTimeSlot { get; set; } = null!; 
-    
-    public Branch Branch { get; set; } = null!;
+    public BranchTimeSlot BranchTimeSlot { get; set; } = null!; 
+    public WashBay? WashBay { get; set; }
+    public Staff? Staff { get; set; }
     public Reward? Reward { get; set; }
     public Promotion? Promotion { get; set; }
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

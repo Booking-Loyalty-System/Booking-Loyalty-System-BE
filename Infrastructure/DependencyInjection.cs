@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
 
@@ -18,8 +19,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
-        
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
         
@@ -66,7 +66,11 @@ public static class DependencyInjection
 
         services.Configure<BookingOptions>(configuration.GetSection("Booking"));
         services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
-
+        services.AddScoped(provider => 
+            provider.GetRequiredService<IOptions<BookingOptions>>().Value);
+        services.AddSingleton<TimeZoneInfo>(provider => 
+            TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+        
         services.AddMemoryCache();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ILoyaltyService, LoyaltyService>();
@@ -84,8 +88,8 @@ public static class DependencyInjection
         services.AddScoped<ISmsService, SmsService>();
         services.AddScoped<ITierService, TierService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
+        services.AddScoped<IStaffService, StaffService>();
         services.AddHostedService<NotificationWorker>();
-        services.AddScoped<IOtpService, FirebaseService>();
 
         return services;
     }

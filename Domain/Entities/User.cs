@@ -15,6 +15,6 @@ public class User
     public DateTime? UpdatedAt { get; set; }
     public string? GoogleId { get; set; }
     public Customer? Customer { get; set; }
-
+    public Staff? Staff { get; set; }
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

@@ -19,6 +19,14 @@ public class StaffBookingController : ControllerBase
         _staffBookingService = staffBookingService;
     }
 
+    [HttpGet("scan-qr")]
+    [Authorize(Roles = "Staff")]
+    public async Task<IActionResult> ScanQrCode([FromQuery] string payload)
+    {
+        var result = await _staffBookingService.GetBookingByQrPayloadAsync(payload);
+        return Ok(ApiResponse<object>.SuccessResponse(result, "Quét mã QR thành công."));
+    }
+    
     /// <summary>Lists the bookings for a given day. Defaults to today when no date is supplied.</summary>
     [HttpGet]
     [Authorize(Roles = "Staff")] // 🌟 THÊM Ở ĐÂY: Chỉ có nhân viên mới được xem danh sách lịch đặt xe

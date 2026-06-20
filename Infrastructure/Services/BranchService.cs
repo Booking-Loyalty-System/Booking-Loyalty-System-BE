@@ -40,7 +40,9 @@ public class BranchService : IBranchService
             Address = request.Address,
             Hotline = request.Hotline,
             OperatingHours = request.OperatingHours,
-            Status = BranchStatus.Active
+            Status = BranchStatus.Active,
+            Longitude = request.Longitude,
+            Latitude = request.Latitude
         };
 
         _context.Branches.Add(branch);
@@ -59,7 +61,8 @@ public class BranchService : IBranchService
         if (request.Hotline != null) branch.Hotline = request.Hotline;
         if (request.OperatingHours != null) branch.OperatingHours = request.OperatingHours;
         if (request.Status != null) branch.Status = Enum.Parse<BranchStatus>(request.Status);
-
+        if (request.Longitude != null) branch.Longitude = request.Longitude;
+        if (request.Latitude != null) branch.Latitude = request.Latitude;   
         await _context.SaveChangesAsync();
 
         return MapToResponse(branch);

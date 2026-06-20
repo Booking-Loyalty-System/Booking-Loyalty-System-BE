@@ -14,6 +14,7 @@ public class StaffBookingService : IStaffBookingService
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
     private readonly IHubContext<BookingHub> _hubContext;
+    
     public StaffBookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IHubContext<BookingHub> hubContext)
     {
         _context = context;
@@ -21,18 +22,41 @@ public class StaffBookingService : IStaffBookingService
         _hubContext = hubContext;
     }
 
+    public async Task<BookingResponseData> GetBookingByQrPayloadAsync(string qrPayload)
+    {
+        if (string.IsNullOrWhiteSpace(qrPayload))
+            throw new AppException("Mã QR không hợp lệ hoặc rỗng.", 400);
+
+        qrPayload = qrPayload.Trim();
+        bool isGuid = Guid.TryParse(qrPayload, out Guid bookingId);
+
+        var booking = await _context.Bookings
+                          .Include(b => b.Vehicle)
+                          .Include(b => b.WashPackage)
+                          .Include(b => b.BranchTimeSlot)
+                          .ThenInclude(bts => bts.TimeSlot)
+                          .FirstOrDefaultAsync(b => 
+                              (isGuid && b.Id == bookingId) || 
+                              b.BookingCode == qrPayload)
+                      ?? throw new AppException("Không tìm thấy lịch đặt từ mã QR này.", 404);
+
+        return await BuildResponseAsync(booking);
+    }
+    
     public async Task<List<BookingResponseData>> GetByDateAsync(DateOnly date)
     {
         var bookings = await _context.Bookings
             .Where(b => b.BookingDate == date)
             .Include(b => b.Vehicle)
             .Include(b => b.WashPackage)
-            .OrderBy(b => b.StartTime)
+            .Include(b => b.BranchTimeSlot)
+            .ThenInclude(bts => bts.TimeSlot)
+            // ĐÃ FIX: Lấy StartTime từ TimeSlot gốc
+            .OrderBy(b => b.BranchTimeSlot.TimeSlot.StartTime) 
             .ToListAsync();
 
         var ids = bookings.Select(b => b.Id).ToList();
 
-        // Batch-load awarded points for the day's bookings to avoid an N+1 query.
         var pointsByBooking = await _context.LoyaltyTransactions
             .Where(lt => lt.Type == LoyaltyTransactionType.Earn
                          && lt.BookingId != null
@@ -49,9 +73,6 @@ public class StaffBookingService : IStaffBookingService
     public async Task<BookingResponseData> UpdateStatusAsync(Guid bookingId, UpdateBookingStatusRequest request)
     {
         var booking = await LoadAsync(bookingId);
-        
-        // Lưu lại trạng thái cũ để đối chiếu nếu cần
-        var oldStatus = booking.Status; 
 
         switch (request.TargetStatus)
         {
@@ -66,13 +87,11 @@ public class StaffBookingService : IStaffBookingService
                 break;
 
             case BookingStatus.Queued:
-                // Cho phép xếp hàng từ lúc Confirmed (đến tiệm) hoặc CheckedIn đều được
                 EnsureStatus(booking, "queue", BookingStatus.Confirmed, BookingStatus.CheckedIn);
                 booking.Status = BookingStatus.Queued;
                 break;
 
             case BookingStatus.InProgress:
-                // 🔥 SỬA TẠI ĐÂY: Cho phép bấm nút Start trực tiếp từ Confirmed, CheckedIn hoặc Queued
                 EnsureStatus(booking, "start", BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.Queued);
     
                 if (!request.StaffId.HasValue || request.StaffId == Guid.Empty)
@@ -83,15 +102,13 @@ public class StaffBookingService : IStaffBookingService
                 if (!isValidStaff)
                     throw new AppException("Assigned staff not found or is not an active staff member.", 400);
 
-                booking.AssignedStaffId = request.StaffId;
+                booking.StaffId = request.StaffId;
                 booking.Status = BookingStatus.InProgress;
                 break;
 
             case BookingStatus.Completed:
                 EnsureStatus(booking, "finish", BookingStatus.InProgress);
                 booking.Status = BookingStatus.Completed;
-                if (booking.WashBayTimeSlot?.TimeSlot != null)
-                    booking.WashBayTimeSlot.Status = TimeSlotStatus.Completed;
                 break;
 
             case BookingStatus.CheckedOut:
@@ -100,20 +117,15 @@ public class StaffBookingService : IStaffBookingService
                 
                 if (!string.IsNullOrWhiteSpace(request.Reason))
                 {
-                    booking.CancellationReason = request.Reason; // Sẽ lưu chuỗi kiểu: "Paid via Cash" hoặc "Paid via Bank Transfer"
+                    booking.CancellationReason = request.Reason; 
                 }
-                
-                // Cộng điểm Loyalty thưởng khi khách xuất xưởng thanh toán
-                await _loyaltyService.AwardPointsForBookingAsync(bookingId);
                 break;
 
             case BookingStatus.Cancelled:
-                EnsureStatus(booking, "cancel", 
-                    BookingStatus.Pending, BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.Queued);
+                EnsureStatus(booking, "cancel", BookingStatus.Pending, BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.Queued);
                 
                 booking.Status = BookingStatus.Cancelled;
                 booking.CancellationReason = request.Reason;
-                ReleaseTimeSlot(booking);
                 break;
 
             case BookingStatus.NoShow:
@@ -121,26 +133,31 @@ public class StaffBookingService : IStaffBookingService
                 
                 booking.Status = BookingStatus.NoShow;
                 booking.CancellationReason = request.Reason ?? "Customer did not show up.";
-                ReleaseTimeSlot(booking);
                 break;
 
-            
             default:
                 throw new AppException($"Invalid target status: {request.TargetStatus}", 400);
         }
-        booking.Status = BookingStatus.CheckedOut;
+
         booking.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        // Award loyalty points on checkout (idempotent — one Earn row per booking).
-        await _loyaltyService.AwardPointsForBookingAsync(bookingId);
+        if (request.TargetStatus == BookingStatus.CheckedOut)
+        {
+            await _loyaltyService.AwardPointsForBookingAsync(bookingId);
 
-        // Evaluate tier upgrade/downgrade after earning points.
-        var customer = await _context.Customers
-            .Include(c => c.Tier)
-            .FirstAsync(c => c.Id == booking.CustomerId);
-        await EvaluateTierAsync(customer);
-        await _context.SaveChangesAsync();
+            var customer = await _context.Customers
+                .Include(c => c.Tier)
+                .FirstAsync(c => c.Id == booking.CustomerId);
+            await EvaluateTierAsync(customer);
+            await _context.SaveChangesAsync();
+        }
+
+        await _hubContext.Clients.Group($"Customer_{booking.CustomerId}").SendAsync("BookingStatusChanged", new 
+        {
+            BookingId = booking.Id,
+            Status = booking.Status.ToString()
+        });
 
         return await BuildResponseAsync(booking);
     }
@@ -148,15 +165,14 @@ public class StaffBookingService : IStaffBookingService
     public async Task<BookingResponseData> CancelAsync(Guid bookingId, string? reason)
     {
         var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "cancel",
-            BookingStatus.Pending, BookingStatus.Confirmed,
-            BookingStatus.CheckedIn, BookingStatus.Queued);
+        EnsureStatus(booking, "cancel", BookingStatus.Pending, BookingStatus.Confirmed, BookingStatus.CheckedIn, BookingStatus.Queued);
 
         booking.Status = BookingStatus.Cancelled;
         booking.CancellationReason = reason;
         booking.UpdatedAt = DateTime.UtcNow;
-        ReleaseTimeSlot(booking);
         await _context.SaveChangesAsync();
+
+        await _hubContext.Clients.Group($"Customer_{booking.CustomerId}").SendAsync("BookingStatusChanged", new { BookingId = booking.Id, Status = booking.Status.ToString() });
 
         return await BuildResponseAsync(booking);
     }
@@ -164,9 +180,11 @@ public class StaffBookingService : IStaffBookingService
     public async Task<BookingResponseData> NoShowAsync(Guid bookingId)
     {
         var booking = await LoadAsync(bookingId);
-        EnsureStatus(booking, "no-show",
-            BookingStatus.Confirmed, BookingStatus.CheckedIn);
+        EnsureStatus(booking, "no-show", BookingStatus.Confirmed, BookingStatus.CheckedIn);
 
+        booking.Status = BookingStatus.NoShow;
+        booking.CancellationReason = "Customer did not show up.";
+        
         booking.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -184,19 +202,10 @@ public class StaffBookingService : IStaffBookingService
         return await _context.Bookings
                    .Include(b => b.Vehicle)
                    .Include(b => b.WashPackage)
-                   .Include(b => b.WashBayTimeSlot)
-                   .ThenInclude(wbts => wbts.TimeSlot)
+                   .Include(b => b.BranchTimeSlot)
+                   .ThenInclude(bts => bts.TimeSlot)
                    .FirstOrDefaultAsync(b => b.Id == bookingId)
                ?? throw new AppException("Booking not found.", 404);
-    }
-
-    /// <summary>Releases the reserved bay/time slot so the window becomes bookable again.</summary>
-    private void ReleaseTimeSlot(Booking booking)
-    {
-        if (booking.WashBayTimeSlot != null)
-        {
-            _context.WashBayTimeSlots.Remove(booking.WashBayTimeSlot);
-        }
     }
 
     private static void EnsureStatus(Booking booking, string action, params BookingStatus[] allowed)
@@ -223,16 +232,14 @@ public class StaffBookingService : IStaffBookingService
             .OrderByDescending(t => t.MinPointsRequired)
             .ToListAsync();
 
-        // Upgrade: find the highest tier the customer qualifies for by lifetime points.
         var qualifiedTier = tiers.FirstOrDefault(t => customer.LifetimePoints >= t.MinPointsRequired);
 
         if (qualifiedTier != null && qualifiedTier.MinPointsRequired > customer.Tier.MinPointsRequired)
         {
             customer.TierId = qualifiedTier.Id;
-            return; // Upgrade takes priority — skip downgrade check.
+            return; 
         }
 
-        // Downgrade: check points earned in the last 90 days against maintenance threshold.
         var cutoff = DateTime.UtcNow.AddDays(-90);
         var recentPoints = await _context.LoyaltyTransactions
             .Where(lt => lt.CustomerId == customer.Id
@@ -242,7 +249,6 @@ public class StaffBookingService : IStaffBookingService
 
         if (recentPoints < customer.Tier.MaintenancePoints)
         {
-            // Find the highest tier whose maintenance the customer can satisfy.
             var newTier = tiers.FirstOrDefault(t =>
                 customer.LifetimePoints >= t.MinPointsRequired && recentPoints >= t.MaintenancePoints);
 
@@ -262,9 +268,10 @@ public class StaffBookingService : IStaffBookingService
             LicensePlate = booking.Vehicle?.LicensePlate,
             WashPackageId = booking.WashPackageId,
             ServiceName = booking.WashPackage?.Name,
-            BranchId = booking.BranchId,
+            // ĐÃ FIX: Trỏ qua BranchTimeSlot để lấy dữ liệu
+            BranchId = booking.BranchTimeSlot?.BranchId ?? Guid.Empty,
             BookingDate = booking.BookingDate.ToString("yyyy-MM-dd"),
-            StartTime = booking.StartTime.ToString("HH\\:mm"),
+            StartTime = booking.BranchTimeSlot?.TimeSlot?.StartTime.ToString("HH\\:mm") ?? "00:00", 
             Status = booking.Status.ToString(),
             TotalAmount = booking.TotalPrice,
             PointsEarned = pointsEarned,

@@ -49,7 +49,6 @@ public class NotificationWorker : BackgroundService
                             var notification = new Notification
                             {
                                 Title = "Quà tặng sắp hết hạn!",
-                                Message = $"Mã quà {ur.Promotion.Name} của bạn chỉ còn hiệu lực đến ngày {ur.ExpiryDate:dd/MM/yyyy}.",
                                 Type = "RewardExpiry",
                                 ReferenceId = ur.Id,
                                 UserId = ur.Customer.UserId   

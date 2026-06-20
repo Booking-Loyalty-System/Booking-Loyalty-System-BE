@@ -12,4 +12,5 @@ public interface IStaffBookingService
 {
     Task<List<BookingResponseData>> GetByDateAsync(DateOnly date);
     Task<BookingResponseData> UpdateStatusAsync(Guid bookingId, UpdateBookingStatusRequest request);
+    Task<BookingResponseData> GetBookingByQrPayloadAsync(string qrPayload);
 }

@@ -12,6 +12,7 @@ public class Branch
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public BranchStatus Status { get; set; }
+    public ICollection<Staff> Staffs { get; set; } = new List<Staff>();
     public ICollection<WashBay> WashBays { get; set; } = new List<WashBay>();
-    public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public ICollection<BranchTimeSlot> BranchTimeSlots { get; set; } = new List<BranchTimeSlot>();
 }
