@@ -17,14 +17,14 @@ namespace Infrastructure.Migrations
                 name: "Branches",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    BranchName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Address = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    Hotline = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    OperatingHours = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Latitude = table.Column<double>(type: "double precision", nullable: true),
-                    Longitude = table.Column<double>(type: "double precision", nullable: true),
-                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Hotline = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    OperatingHours = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Latitude = table.Column<double>(type: "float", nullable: true),
+                    Longitude = table.Column<double>(type: "float", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -35,20 +35,20 @@ namespace Infrastructure.Migrations
                 name: "Promotions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    DiscountType = table.Column<int>(type: "integer", nullable: false),
-                    DiscountValue = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    PriorityLevel = table.Column<int>(type: "integer", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    MaxUses = table.Column<int>(type: "integer", nullable: true),
-                    UsedCount = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    MinSpend = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    DiscountType = table.Column<int>(type: "int", nullable: false),
+                    DiscountValue = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PriorityLevel = table.Column<int>(type: "int", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    MaxUses = table.Column<int>(type: "int", nullable: true),
+                    UsedCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    MinSpend = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,17 +59,17 @@ namespace Infrastructure.Migrations
                 name: "Rewards",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    PointsRequired = table.Column<int>(type: "integer", nullable: false),
-                    DiscountAmount = table.Column<decimal>(type: "numeric", nullable: false),
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PointsRequired = table.Column<int>(type: "int", nullable: false),
+                    DiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     StartDate = table.Column<DateOnly>(type: "date", nullable: false),
                     EndDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    Status = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true),
-                    PointsCost = table.Column<int>(type: "integer", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Status = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PointsCost = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -80,13 +80,13 @@ namespace Infrastructure.Migrations
                 name: "Tiers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TierName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    PointRate = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    BookingWindow = table.Column<int>(type: "integer", nullable: false),
-                    Level = table.Column<int>(type: "integer", nullable: false),
-                    MinPointsRequired = table.Column<int>(type: "integer", nullable: false),
-                    MaintenancePoints = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TierName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    PointRate = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    BookingWindow = table.Column<int>(type: "int", nullable: false),
+                    Level = table.Column<int>(type: "int", nullable: false),
+                    MinPointsRequired = table.Column<int>(type: "int", nullable: false),
+                    MaintenancePoints = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -97,8 +97,8 @@ namespace Infrastructure.Migrations
                 name: "TimeSlots",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "time without time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -109,16 +109,16 @@ namespace Infrastructure.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    PasswordHash = table.Column<string>(type: "text", nullable: true),
-                    Role = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    RefreshToken = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                    RefreshTokenExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    GoogleId = table.Column<string>(type: "text", nullable: true)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Role = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    RefreshToken = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    RefreshTokenExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    GoogleId = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -129,15 +129,15 @@ namespace Infrastructure.Migrations
                 name: "WashPackages",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    Price = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    DurationMinutes = table.Column<int>(type: "integer", nullable: false),
-                    Features = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    VehicleType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    DurationMinutes = table.Column<int>(type: "int", nullable: false),
+                    Features = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
+                    VehicleType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -148,12 +148,12 @@ namespace Infrastructure.Migrations
                 name: "WashBays",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    SupportedTypes = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    BranchId = table.Column<Guid>(type: "uuid", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    SupportedTypes = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -170,11 +170,11 @@ namespace Infrastructure.Migrations
                 name: "PromotionBranches",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    PromotionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    BranchId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -197,9 +197,9 @@ namespace Infrastructure.Migrations
                 name: "TierPromotions",
                 columns: table => new
                 {
-                    TierPromotionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    TierId = table.Column<Guid>(type: "uuid", nullable: false),
-                    PromotionId = table.Column<Guid>(type: "uuid", nullable: false)
+                    TierPromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TierId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -222,11 +222,11 @@ namespace Infrastructure.Migrations
                 name: "BranchTimeSlots",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    BranchId = table.Column<Guid>(type: "uuid", nullable: false),
-                    TimeSlotId = table.Column<Guid>(type: "uuid", nullable: false),
-                    MaxCapacity = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TimeSlotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MaxCapacity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
@@ -249,18 +249,18 @@ namespace Infrastructure.Migrations
                 name: "Customers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    FullName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    PhoneNumber = table.Column<string>(type: "character varying(15)", maxLength: 15, nullable: true),
-                    IsPhoneNumberVerified = table.Column<bool>(type: "boolean", nullable: false),
-                    DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    TierId = table.Column<Guid>(type: "uuid", nullable: false),
-                    TotalPoints = table.Column<int>(type: "integer", nullable: false),
-                    LifetimePoints = table.Column<int>(type: "integer", nullable: false),
-                    TotalWashes = table.Column<int>(type: "integer", nullable: false),
-                    TotalSpent = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(15)", maxLength: 15, nullable: true),
+                    IsPhoneNumberVerified = table.Column<bool>(type: "bit", nullable: false),
+                    DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TierId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TotalPoints = table.Column<int>(type: "int", nullable: false),
+                    LifetimePoints = table.Column<int>(type: "int", nullable: false),
+                    TotalWashes = table.Column<int>(type: "int", nullable: false),
+                    TotalSpent = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -283,14 +283,14 @@ namespace Infrastructure.Migrations
                 name: "Notifications",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    Message = table.Column<string>(type: "text", nullable: false),
-                    Type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    ReferenceId = table.Column<Guid>(type: "uuid", nullable: true),
-                    IsRead = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    ReferenceId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -307,12 +307,12 @@ namespace Infrastructure.Migrations
                 name: "Staffs",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    BranchId = table.Column<Guid>(type: "uuid", nullable: false),
-                    FullName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    PhoneNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
-                    IsAvailable = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    IsAvailable = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
                 },
                 constraints: table =>
                 {
@@ -335,12 +335,12 @@ namespace Infrastructure.Migrations
                 name: "CustomerPromotions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    IsUsed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    UsedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    PromotionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ExpiryDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsUsed = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    UsedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -363,13 +363,13 @@ namespace Infrastructure.Migrations
                 name: "RewardRedemptions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    RewardId = table.Column<Guid>(type: "uuid", nullable: false),
-                    PointsSpent = table.Column<int>(type: "integer", nullable: false),
-                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    FulfilledAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RewardId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PointsSpent = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    FulfilledAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -392,17 +392,17 @@ namespace Infrastructure.Migrations
                 name: "Vehicles",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    LicensePlate = table.Column<string>(type: "text", nullable: true),
-                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    IsPrimary = table.Column<bool>(type: "boolean", nullable: false),
-                    VehicleName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    Brand = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    Model = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
-                    Color = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    Type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    IsPrimary = table.Column<bool>(type: "bit", nullable: false),
+                    VehicleName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Brand = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Model = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Color = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -419,26 +419,26 @@ namespace Infrastructure.Migrations
                 name: "Bookings",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    BookingCode = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
-                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    VehicleId = table.Column<Guid>(type: "uuid", nullable: false),
-                    WashPackageId = table.Column<Guid>(type: "uuid", nullable: false),
-                    BranchTimeSlotId = table.Column<Guid>(type: "uuid", nullable: false),
-                    BayId = table.Column<Guid>(type: "uuid", nullable: true),
-                    StaffId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BookingCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    WashPackageId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchTimeSlotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BayId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    StaffId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     BookingDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
-                    RewardId = table.Column<Guid>(type: "uuid", nullable: true),
-                    PromotionId = table.Column<Guid>(type: "uuid", nullable: true),
-                    CustomerNote = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    TotalPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    DiscountAmount = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    RewardId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CustomerNote = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    TotalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    DiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     QrData = table.Column<string>(type: "text", nullable: true),
-                    CancellationReason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    CancellationReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -496,16 +496,16 @@ namespace Infrastructure.Migrations
                 name: "LoyaltyTransactions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    Points = table.Column<int>(type: "integer", nullable: false),
-                    BalanceAfter = table.Column<int>(type: "integer", nullable: false),
-                    BookingId = table.Column<Guid>(type: "uuid", nullable: true),
-                    RewardId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Points = table.Column<int>(type: "int", nullable: false),
+                    BalanceAfter = table.Column<int>(type: "int", nullable: false),
+                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    RewardId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -534,10 +534,10 @@ namespace Infrastructure.Migrations
                 name: "Transactions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TransactionCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    Status = table.Column<bool>(type: "boolean", nullable: false),
-                    BookingId = table.Column<Guid>(type: "uuid", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TransactionCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Status = table.Column<bool>(type: "bit", nullable: false),
+                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -593,11 +593,11 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 20, 10, 52, 28, 93, DateTimeKind.Utc).AddTicks(877), "admin@system.com", null, true, "$2a$11$fw.dFNx.NvBjV6Q1AE1Ud.oAuG7a57Qxx0V.DPWogCGK9JuC31xYa", null, null, "Admin", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 20, 10, 52, 28, 281, DateTimeKind.Utc).AddTicks(2351), "staff@system.com", null, true, "$2a$11$wBeKRHpdnZizG1//gA99TurhjGsM3rbxirXLqZNoMZtRD4GCQ3vma", null, null, "Staff", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 6, 20, 10, 52, 28, 554, DateTimeKind.Utc).AddTicks(8514), "staff1@system.com", null, true, "$2a$11$HeSjcgJ1dDcFExw9lC3KWetjNXJIubDyI1WWsMauyJ9HaCvIr2bcy", null, null, "Staff", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 6, 20, 10, 52, 28, 744, DateTimeKind.Utc).AddTicks(2691), "staff2@system.com", null, true, "$2a$11$L..jzR73e0jiHTDjo4RQ2eFsAdk76AV/rKuAuxb3qIiJuKFYCK/ly", null, null, "Staff", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 20, 10, 52, 28, 933, DateTimeKind.Utc).AddTicks(2870), "customer@system.com", null, true, "$2a$11$OL0r4JymEYmA.hP8W6LEJuoJD1JcFfEVxpZgOpggdUaig1XrmQHBG", null, null, "Customer", null }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 21, 13, 26, 6, 906, DateTimeKind.Utc).AddTicks(7782), "admin@system.com", null, true, "$2a$11$/o1z/CLdz8kWYTEVFpHI3OnDcgRh9xhZe9oNGXf8vPXfhIDYbW6w2", null, null, "Admin", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 33, DateTimeKind.Utc).AddTicks(9613), "staff@system.com", null, true, "$2a$11$ZQj6jt4AUh.HT34m.ynhjOvKtbzMXFaaKxVDOUWdvvsQca.myJ6tW", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 6, 21, 13, 26, 7, 161, DateTimeKind.Utc).AddTicks(1549), "staff1@system.com", null, true, "$2a$11$A.743pwk2N4D8IOBq5q6ounmrwdEkJMFty1MrljETcOsiBIaP0H9u", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 6, 21, 13, 26, 7, 288, DateTimeKind.Utc).AddTicks(577), "staff2@system.com", null, true, "$2a$11$KXoLDSdv3ZMtzPZ7FShgy.jf/jbJV31Ws7eAF2giQPP2Uv4QMSp8u", null, null, "Staff", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 21, 13, 26, 7, 415, DateTimeKind.Utc).AddTicks(307), "customer@system.com", null, true, "$2a$11$HOUQRkQeZm1V9ujX/H0xD.DoNugjK8k7EW0j2imqjBhn9SLo4Pwbq", null, null, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -613,7 +613,7 @@ namespace Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "Customers",
                 columns: new[] { "Id", "CreatedAt", "DateOfBirth", "FullName", "IsPhoneNumberVerified", "LifetimePoints", "PhoneNumber", "TierId", "TotalPoints", "TotalSpent", "TotalWashes", "UserId" },
-                values: new object[] { new Guid("cc1eb2da-f4d6-4648-aaf7-4421e64d0340"), new DateTime(2026, 6, 20, 10, 52, 27, 872, DateTimeKind.Utc).AddTicks(3767), null, "Customer User", false, 0, "0901234569", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
+                values: new object[] { new Guid("aaee83a2-1c01-4ee8-ad5d-1ca49a0f12fd"), new DateTime(2026, 6, 21, 13, 26, 6, 763, DateTimeKind.Utc).AddTicks(367), null, "Customer User", false, 0, "0901234569", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
 
             migrationBuilder.InsertData(
                 table: "Staffs",
@@ -630,18 +630,18 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "BranchId", "CreatedAt", "Name", "Status", "SupportedTypes" },
                 values: new object[,]
                 {
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3853), "Bay A1 (Q9)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3883), "Bay A2 (Q9)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3887), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3890), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3906), "Bay A1 (TB)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3908), "Bay A2 (TB)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3911), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3914), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3893), "Bay A1 (Q3)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3897), "Bay A2 (Q3)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3900), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3903), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1662), "Bay A1 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1740), "Bay A2 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1743), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1745), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1786), "Bay A1 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1788), "Bay A2 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1790), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1792), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1747), "Bay A1 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1749), "Bay A2 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1750), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1752), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -715,7 +715,8 @@ namespace Infrastructure.Migrations
                 name: "IX_Customers_PhoneNumber",
                 table: "Customers",
                 column: "PhoneNumber",
-                unique: true);
+                unique: true,
+                filter: "[PhoneNumber] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customers_TierId",
@@ -810,7 +811,8 @@ namespace Infrastructure.Migrations
                 name: "IX_Users_Email",
                 table: "Users",
                 column: "Email",
-                unique: true);
+                unique: true,
+                filter: "[Email] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Vehicles_CustomerId",
@@ -822,7 +824,7 @@ namespace Infrastructure.Migrations
                 table: "Vehicles",
                 column: "LicensePlate",
                 unique: true,
-                filter: "\"IsDeleted\" = false");
+                filter: "[IsDeleted] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_WashBays_BranchId",

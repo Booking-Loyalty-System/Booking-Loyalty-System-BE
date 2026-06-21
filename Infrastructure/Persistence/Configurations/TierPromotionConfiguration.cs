@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
+namespace Infrastructure.Persistence.Configurations;
+
 public class TierPromotionConfiguration : IEntityTypeConfiguration<TierPromotion>
 {
     public void Configure(EntityTypeBuilder<TierPromotion> builder)
