@@ -72,12 +72,5 @@ public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
             
         builder.Property(p => p.PriorityLevel)
             .IsRequired();
-
-        builder.Property(p => p.IsVoucher)
-            .HasDefaultValue(false)
-            .IsRequired();
-
-        builder.Property(p => p.PointsCost)
-            .IsRequired(false);
     }
 }
