@@ -66,11 +66,13 @@ public static class DependencyInjection
 
         services.Configure<BookingOptions>(configuration.GetSection("Booking"));
         services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
-        services.AddScoped(provider => 
+        services.Configure<VnPayOptions>(configuration.GetSection("VnPay"));
+
+        services.AddScoped(provider =>
             provider.GetRequiredService<IOptions<BookingOptions>>().Value);
-        services.AddSingleton<TimeZoneInfo>(provider => 
+        services.AddSingleton<TimeZoneInfo>(provider =>
             TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-        
+
         services.AddMemoryCache();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ILoyaltyService, LoyaltyService>();
@@ -82,6 +84,8 @@ public static class DependencyInjection
         services.AddScoped<IWashPackageService, WashPackageService>();
         services.AddScoped<IWashBayService, WashBayService>();
         services.AddScoped<IBranchService, BranchService>();
+        services.AddScoped<IAddOnService, AddOnService>();
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
@@ -91,6 +95,9 @@ public static class DependencyInjection
         services.AddScoped<IStaffService, StaffService>();
         services.AddScoped<IVoucherService, VoucherService>();
         services.AddHostedService<NotificationWorker>();
+
+        // Cancels unpaid bookings past the VNPay payment window, releasing their slots.
+        services.AddHostedService<PendingBookingCleanupService>();
 
         return services;
     }

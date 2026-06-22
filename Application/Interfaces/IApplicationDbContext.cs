@@ -35,6 +35,9 @@ public interface IApplicationDbContext
     DbSet<Reward> Rewards { get; }
     DbSet<RewardRedemption> RewardRedemptions { get; }
     DbSet<Promotion> Promotions { get; }
+    DbSet<AddOn> AddOns { get; }
+    DbSet<BookingAddOn> BookingAddOns { get; }
+    DbSet<Payment> Payments { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

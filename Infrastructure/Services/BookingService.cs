@@ -49,6 +49,18 @@ public class BookingService : IBookingService
         .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
         ?? throw new AppException("Wash package not found or inactive.", 404);
 
+    // Resolve optional add-ons. Every requested id must map to an active add-on.
+    var requestedAddOnIds = request.AddOnIds?.Distinct().ToList() ?? new List<Guid>();
+    var addOns = requestedAddOnIds.Count == 0
+        ? new List<AddOn>()
+        : await _context.AddOns
+            .Where(a => requestedAddOnIds.Contains(a.Id) && a.IsActive)
+            .ToListAsync();
+    if (addOns.Count != requestedAddOnIds.Count)
+        throw new AppException("One or more add-ons not found or inactive.", 400);
+
+    var addOnsTotal = addOns.Sum(a => a.Price);
+
     var branch = await _context.Branches
         .FirstOrDefaultAsync(b => b.Id == request.BranchId)
         ?? throw new AppException("Branch not found.", 404);
@@ -202,7 +214,8 @@ public class BookingService : IBookingService
         BayId = null,                
         QrData = qrDataBase64,
         PromotionId = promotionId,
-        TotalPrice = totalPrice,
+        // Vouchers/promotions discount the wash package only; add-ons are added on top.
+        TotalPrice = totalPrice + addOnsTotal,
         StartTime = branchTimeSlot.TimeSlot.StartTime,
         DiscountAmount = discountAmount,
         Status = BookingStatus.Pending,
@@ -210,6 +223,20 @@ public class BookingService : IBookingService
     };
 
     _context.Bookings.Add(booking);
+
+    // Snapshot the chosen add-ons onto the booking (price frozen at booking time).
+    var bookingAddOns = addOns.Select(a => new BookingAddOn
+    {
+        Id = Guid.NewGuid(),
+        BookingId = booking.Id,
+        AddOnId = a.Id,
+        Price = a.Price,
+        DurationMinutes = a.DurationMinutes,
+        CreatedAt = DateTime.UtcNow
+    }).ToList();
+    if (bookingAddOns.Count > 0)
+        _context.BookingAddOns.AddRange(bookingAddOns);
+
     await _context.SaveChangesAsync();
     
     // Commit transaction an toàn
@@ -217,6 +244,9 @@ public class BookingService : IBookingService
 
     // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
     var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
+    response.AddOns = addOns
+        .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
+        .ToList();
 
     await _hubContext.Clients.Group(branchTimeSlot.BranchId.ToString())
         .SendAsync("ReceiveBookingCreated", response);

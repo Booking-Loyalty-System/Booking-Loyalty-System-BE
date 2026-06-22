@@ -14,6 +14,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
     public DbSet<Tier> Tiers => Set<Tier>();
+    // Payment-specific sets (Branches/Rewards/Promotions are declared below by develop)
+    public DbSet<AddOn> AddOns => Set<AddOn>();
+    public DbSet<BookingAddOn> BookingAddOns => Set<BookingAddOn>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<WashBay> WashBays => Set<WashBay>();
