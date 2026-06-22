@@ -45,10 +45,16 @@ public class StaffBookingService : IStaffBookingService
         return await BuildResponseAsync(booking);
     }
     
-    public async Task<List<BookingResponseData>> GetByDateAsync(DateOnly date)
+    public async Task<List<BookingResponseData>> GetByDateAsync(Guid userId, DateOnly date)
     {
+        // 1. Tìm thông tin Staff dựa vào userId để lấy BranchId
+        var staff = await _context.Staffs
+                        .FirstOrDefaultAsync(s => s.UserId == userId)
+                    ?? throw new AppException("Staff profile not found.", 404);
+
+        // 2. Lấy danh sách Bookings của ngày đó VÀ phải thuộc Chi nhánh của Staff này
         var bookings = await _context.Bookings
-            .Where(b => b.BookingDate == date)
+            .Where(b => b.BookingDate == date && b.BranchTimeSlot.BranchId == staff.BranchId) // Thêm điều kiện lọc theo BranchId ở đây
             .Include(b => b.Vehicle)
             .Include(b => b.WashPackage)
             .Include(b => b.BranchTimeSlot)
@@ -56,6 +62,7 @@ public class StaffBookingService : IStaffBookingService
             .OrderBy(b => b.BranchTimeSlot.TimeSlot.StartTime) 
             .ToListAsync();
 
+        // 3. Gom danh sách ID để lấy điểm Loyalty (giữ nguyên logic cũ của bạn)
         var ids = bookings.Select(b => b.Id).ToList();
 
         var pointsByBooking = await _context.LoyaltyTransactions
@@ -64,6 +71,7 @@ public class StaffBookingService : IStaffBookingService
                          && ids.Contains(lt.BookingId.Value))
             .ToDictionaryAsync(lt => lt.BookingId!.Value, lt => lt.Points);
 
+        // 4. Map dữ liệu trả về
         return bookings
             .Select(b => MapToResponseData(
                 b,

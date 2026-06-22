@@ -15,10 +15,10 @@ public class LoyaltyService : ILoyaltyService
     private readonly LoyaltyOptions _options;
     private readonly IEmailService _emailService;
 
-    public LoyaltyService(IApplicationDbContext context, LoyaltyOptions options, IEmailService emailService)
+    public LoyaltyService(IApplicationDbContext context, IOptions<LoyaltyOptions> options, IEmailService emailService)
     {
         _context = context;
-        _options = options;
+        _options = options.Value;
         _emailService = emailService;
     }
 

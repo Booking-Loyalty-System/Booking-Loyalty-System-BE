@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using Application.Common;
 using Application.DTOs.Booking;
 using Application.Interfaces;
@@ -31,13 +32,14 @@ public class StaffBookingController : ControllerBase
     [Authorize(Roles = "Staff")] // 🌟 Chỉ có nhân viên mới được xem danh sách lịch đặt xe
     public async Task<IActionResult> GetByDate([FromQuery] string? date)
     {
+        var userId = GetUserId();
         DateOnly target;
         if (string.IsNullOrWhiteSpace(date))
             target = DateOnly.FromDateTime(DateTime.UtcNow);
         else if (!DateOnly.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.None, out target))
             return BadRequest(ApiResponse<object>.FailResponse("Invalid date. Expected format YYYY-MM-DD."));
 
-        var result = await _staffBookingService.GetByDateAsync(target);
+        var result = await _staffBookingService.GetByDateAsync(userId, target);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
@@ -105,5 +107,11 @@ public class StaffBookingController : ControllerBase
     {
         var result = await _staffBookingService.CompleteServiceAsync(id);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Hoàn thành dịch vụ."));
+    }
+    
+    private Guid GetUserId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.Parse(claim!);
     }
 }

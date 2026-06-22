@@ -90,6 +90,7 @@ public static class DependencyInjection
         services.AddScoped<ITimeSlotService, TimeSlotService>();
         services.AddScoped<IStaffService, StaffService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddHostedService<NotificationWorker>();
 
         return services;

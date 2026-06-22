@@ -10,7 +10,7 @@ namespace Application.Interfaces;
 /// </summary>
 public interface IStaffBookingService
 {
-    Task<List<BookingResponseData>> GetByDateAsync(DateOnly date);
+    Task<List<BookingResponseData>> GetByDateAsync(Guid userId, DateOnly date);
     Task<BookingResponseData> ConfirmAsync(Guid bookingId);
     Task<BookingResponseData> CheckInAsync(Guid bookingId, Guid staffId);
     Task<BookingResponseData> QueueAsync(Guid bookingId, Guid washBayId);

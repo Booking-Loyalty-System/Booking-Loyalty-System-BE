@@ -2,16 +2,19 @@
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.AspNetCore.SignalR; 
+using Infrastructure.Hubs;       
 namespace Infrastructure.Services;
 
 public class NotificationService : INotificationService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IHubContext<BookingHub> _hubContext; // Thêm biến này
 
-    public NotificationService(ApplicationDbContext context)
+    public NotificationService(ApplicationDbContext context, IHubContext<BookingHub> hubContext)
     {
         _context = context;
+        _hubContext = hubContext; // Gán giá trị
     }
 
     public async Task<IEnumerable<Notification>> GetNotificationsByUserIdAsync(Guid userId)
@@ -67,5 +70,35 @@ public class NotificationService : INotificationService
             .ToListAsync();
 
         return (items, totalCount);
+    }
+    
+    public async Task SendNotificationToStaffAsync(Guid branchId, string title, string message, Guid relatedId, string type)
+    {
+        // Kiểm tra xem Staff có tồn tại không
+        var staffIds = await _context.Staffs
+            .Where(s => s.BranchId == branchId) // Kiểm tra lại tên property ở đây
+            .Select(s => s.UserId)
+            .ToListAsync();
+
+        var notifications = staffIds.Select(userId => new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Title = title,
+            Message = message,
+            ReferenceId = relatedId,
+            Type = type,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        }).ToList();
+
+        _context.Notifications.AddRange(notifications);
+        await _context.SaveChangesAsync();
+
+        foreach (var userId in staffIds)
+        {
+            await _hubContext.Clients.User(userId.ToString())
+                .SendAsync("ReceiveNotification", new { title, message, relatedId, type });
+        }
     }
 }

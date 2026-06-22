@@ -20,8 +20,9 @@ public class BookingService : IBookingService
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
     private readonly IHubContext<BookingHub> _hubContext;
+    private readonly INotificationService _notificationService;
 
-    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext)
+    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext, INotificationService notificationService)
     {
         _context = context;
         _loyaltyService = loyaltyService;
@@ -29,6 +30,7 @@ public class BookingService : IBookingService
         _options = options;
         _shopTimeZone = shopTimeZone;
         _hubContext = hubContext;
+        _notificationService = notificationService;
     }
 
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
@@ -150,6 +152,25 @@ public class BookingService : IBookingService
     // Commit transaction an toàn
     await transaction.CommitAsync();
 
+    try 
+    {
+        string message = $"Khách hàng mới đã đặt lịch: {booking.BookingCode} - Gói: {washPackage.Name} lúc {booking.StartTime}";
+        
+        // Gọi service gửi thông báo đến các nhân viên thuộc chi nhánh này
+        await _notificationService.SendNotificationToStaffAsync(
+            branchId: branch.Id, 
+            title: "Lịch hẹn mới", 
+            message: message,
+            relatedId: booking.Id,
+            type: "NewBooking"
+        );
+    }
+    catch (Exception ex)
+    {
+        // Log lỗi nếu gửi thông báo thất bại nhưng không làm gián đoạn luồng đặt lịch
+        Console.WriteLine($"Gửi thông báo thất bại: {ex.Message}");
+    }
+    
     // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
     var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null);
     
