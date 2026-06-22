@@ -13,11 +13,13 @@ public class LoyaltyService : ILoyaltyService
 {
     private readonly IApplicationDbContext _context;
     private readonly LoyaltyOptions _options;
+    private readonly IEmailService _emailService;
 
-    public LoyaltyService(IApplicationDbContext context, IOptions<LoyaltyOptions> options)
+    public LoyaltyService(IApplicationDbContext context, LoyaltyOptions options, IEmailService emailService)
     {
         _context = context;
-        _options = options.Value;
+        _options = options;
+        _emailService = emailService;
     }
 
     public async Task AwardPointsForBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
@@ -42,9 +44,13 @@ public class LoyaltyService : ILoyaltyService
 
         var customer = await _context.Customers
             .Include(c => c.Tier)
+            .Include(u => u.User)
             .FirstOrDefaultAsync(c => c.Id == booking.CustomerId, cancellationToken)
             ?? throw new AppException("Customer profile not found.", 404);
 
+        var oldTierId = customer.TierId;
+        var oldTierName = customer.Tier?.TierName ?? "Thành viên mới";
+        
         var points = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
         var now = DateTime.UtcNow;
 
@@ -54,6 +60,21 @@ public class LoyaltyService : ILoyaltyService
         customer.TotalWashes += 1;
         customer.TotalSpent += booking.TotalPrice;
 
+        var eligibleTier = await _context.Tiers
+            .Where(t => t.MinPointsRequired <= customer.TotalPoints)
+            .OrderByDescending(t => t.MinPointsRequired)
+            .FirstOrDefaultAsync(cancellationToken);
+        
+        bool isUpgraded = false;
+        string newTierName = string.Empty;
+        
+        if (eligibleTier != null && eligibleTier.Id != oldTierId)
+        {
+            customer.TierId = eligibleTier.Id;
+            newTierName = eligibleTier.TierName;
+            isUpgraded = true;
+        }
+        
         var earn = new LoyaltyTransaction
         {
             Id = Guid.NewGuid(),
@@ -70,8 +91,28 @@ public class LoyaltyService : ILoyaltyService
         _context.LoyaltyTransactions.Add(earn);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        if (isUpgraded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+        {
+            await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, customer.TotalPoints);
+        }
     }
 
+    private async Task SendUpgradeEmailSafeAsync(string toEmail, string oldTier, string newTier, int currentPoints)
+    {
+            string subject = "🎉 Chúc mừng bạn đã thăng hạng thành viên!";
+            string body = $@"
+            <h2>Chào bạn,</h2>
+            <p>Chúc mừng bạn đã tích luỹ đủ điểm và chính thức thăng hạng từ <b>{oldTier}</b> lên <b>{newTier}</b>!</p>
+            <p>Số điểm hiện tại của bạn là: <b>{currentPoints} điểm</b>.</p>
+            <p>Đăng nhập vào ứng dụng ngay để khám phá các Voucher và đặc quyền mới dành riêng cho hạng {newTier} nhé.</p>
+            <br/>
+            <p>Cảm ơn bạn đã đồng hành cùng chúng tôi!</p>
+        ";
+
+            await _emailService.SendEmailAsync(toEmail, subject, body);
+    }
+    
     public async Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId)
     {
         var customer = await _context.Customers

@@ -11,6 +11,13 @@ namespace Application.Interfaces;
 public interface IStaffBookingService
 {
     Task<List<BookingResponseData>> GetByDateAsync(DateOnly date);
-    Task<BookingResponseData> UpdateStatusAsync(Guid bookingId, UpdateBookingStatusRequest request);
+    Task<BookingResponseData> ConfirmAsync(Guid bookingId);
+    Task<BookingResponseData> CheckInAsync(Guid bookingId, Guid staffId);
+    Task<BookingResponseData> QueueAsync(Guid bookingId, Guid washBayId);
+    Task<BookingResponseData> StartServiceAsync(Guid bookingId, Guid? bayId);
+    Task<BookingResponseData> CheckOutAsync(Guid bookingId);
+    Task<BookingResponseData> CompleteServiceAsync(Guid bookingId);
+    Task<BookingResponseData> CancelAsync(Guid bookingId, string? reason);
+    Task<BookingResponseData> NoShowAsync(Guid bookingId);
     Task<BookingResponseData> GetBookingByQrPayloadAsync(string qrPayload);
 }
