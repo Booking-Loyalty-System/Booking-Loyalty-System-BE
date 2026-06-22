@@ -24,6 +24,10 @@ public class RewardConfiguration : IEntityTypeConfiguration<Reward>
             .IsRequired()
             .HasDefaultValue(true);
 
+        // Fixed-amount discount this reward/voucher grants when applied to a booking.
+        builder.Property(r => r.DiscountAmount)
+            .HasPrecision(18, 2);
+
         builder.HasMany(r => r.Bookings)
             .WithOne(b => b.Reward) 
             .HasForeignKey(b => b.RewardId)

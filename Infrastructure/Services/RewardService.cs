@@ -45,6 +45,7 @@ public class RewardService : IRewardService
             Name = request.Name,
             Description = request.Description,
             PointsCost = request.PointsCost,
+            DiscountAmount = request.DiscountAmount,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -63,6 +64,7 @@ public class RewardService : IRewardService
         if (request.Name != null) reward.Name = request.Name;
         if (request.Description != null) reward.Description = request.Description;
         if (request.PointsCost.HasValue) reward.PointsCost = request.PointsCost.Value;
+        if (request.DiscountAmount.HasValue) reward.DiscountAmount = request.DiscountAmount.Value;
         if (request.IsActive.HasValue) reward.IsActive = request.IsActive.Value;
 
         await _context.SaveChangesAsync();
@@ -130,7 +132,8 @@ public class RewardService : IRewardService
             RewardId = reward.Id,
             PointsSpent = reward.PointsCost,
             Status = RedemptionStatus.Pending,
-            CreatedAt = now
+            CreatedAt = now,
+            ExpiryDate = now.AddDays(30)
         };
 
         _context.PointHistories.Add(ledger);
@@ -189,6 +192,7 @@ public class RewardService : IRewardService
         Name = reward.Name,
         Description = reward.Description,
         PointsCost = reward.PointsCost,
+        DiscountAmount = reward.DiscountAmount,
         IsActive = reward.IsActive,
         CreatedAt = reward.CreatedAt
     };

@@ -127,18 +127,35 @@ public class BookingService : IBookingService
     var totalPrice = washPackage.Price;
     var discountAmount = 0m;
     Guid? promotionId = null;
+    Guid? rewardId = null;
     string? voucherName = null;
+    RewardRedemption? appliedRedemption = null;
 
     if (!string.IsNullOrWhiteSpace(request.PromotionCode))
     {
-        // Priority 1: explicit promotion code
+        // Priority 1: explicit promotion code (percentage discount on the wash package).
         var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
         promotionId = pid;
         discountAmount = discount;
         totalPrice = washPackage.Price - discount;
     }
-    // NOTE: Voucher (đổi bằng điểm loyalty) đã được tách khỏi Promotion.
-    // Sẽ được áp vào booking qua Reward/RewardRedemption ở Phase 3.
+    else if (request.RewardRedemptionId.HasValue)
+    {
+        // Priority 2: a voucher the customer redeemed with loyalty points (fixed-amount off).
+        appliedRedemption = await _context.RewardRedemptions
+            .Include(r => r.Reward)
+            .FirstOrDefaultAsync(r => r.Id == request.RewardRedemptionId.Value
+                && r.CustomerId == customer.Id
+                && r.Status == RedemptionStatus.Pending
+                && (r.ExpiryDate == null || r.ExpiryDate > DateTime.UtcNow))
+            ?? throw new AppException("Voucher not found, already used, or expired.", 400);
+
+        var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, washPackage.Price);
+        discountAmount = voucherDiscount;
+        totalPrice = washPackage.Price - voucherDiscount;
+        rewardId = appliedRedemption.RewardId;
+        voucherName = appliedRedemption.Reward.Name;
+    }
 
     // 7. Khởi tạo và lưu Booking mới vào DB (ĐÃ ĐỒI THEO DB MỚI)
     var booking = new Booking
@@ -153,6 +170,7 @@ public class BookingService : IBookingService
         BayId = null,                
         QrData = qrDataBase64,
         PromotionId = promotionId,
+        RewardId = rewardId,
         // Vouchers/promotions discount the wash package only; add-ons are added on top.
         TotalPrice = totalPrice + addOnsTotal,
         StartTime = branchTimeSlot.TimeSlot.StartTime,
@@ -162,6 +180,14 @@ public class BookingService : IBookingService
     };
 
     _context.Bookings.Add(booking);
+
+    // Consume the voucher: mark its redemption fulfilled and link it to this booking.
+    if (appliedRedemption != null)
+    {
+        appliedRedemption.Status = RedemptionStatus.Fulfilled;
+        appliedRedemption.FulfilledAt = DateTime.UtcNow;
+        appliedRedemption.BookingId = booking.Id;
+    }
 
     // Snapshot the chosen add-ons onto the booking (price frozen at booking time).
     var bookingAddOns = addOns.Select(a => new BookingAddOn
