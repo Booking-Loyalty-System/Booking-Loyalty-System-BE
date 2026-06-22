@@ -17,15 +17,17 @@ public class BookingService : IBookingService
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
     private readonly IPromotionService _promotionService;
+    private readonly IVoucherService _voucherService;
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
     private readonly IHubContext<BookingHub> _hubContext;
 
-    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext)
+    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, IVoucherService voucherService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext)
     {
         _context = context;
         _loyaltyService = loyaltyService;
         _promotionService = promotionService;
+        _voucherService = voucherService;
         _options = options;
         _shopTimeZone = shopTimeZone;
         _hubContext = hubContext;
@@ -115,13 +117,76 @@ public class BookingService : IBookingService
     var totalPrice = washPackage.Price;
     var discountAmount = 0m;
     Guid? promotionId = null;
-    
+    string? voucherName = null;
+
     if (!string.IsNullOrWhiteSpace(request.PromotionCode))
     {
+        // Priority 1: explicit promotion code
         var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
         promotionId = pid;
         discountAmount = discount;
         totalPrice = washPackage.Price - discount;
+    }
+    else
+    {
+        // Priority 2: explicit voucher or auto-apply best voucher
+        CustomerPromotion? customerPromotion = null;
+
+        if (request.VoucherId.HasValue)
+        {
+            customerPromotion = await _context.CustomerPromotions
+                .Include(cp => cp.Promotion)
+                .FirstOrDefaultAsync(cp => cp.Id == request.VoucherId.Value
+                    && cp.CustomerId == customer.Id
+                    && cp.Promotion.IsVoucher
+                    && !cp.IsUsed
+                    && (cp.ExpiryDate == null || cp.ExpiryDate > DateTime.UtcNow))
+                ?? throw new AppException("Voucher not found, already used, or expired.", 400);
+
+            if (customerPromotion.Promotion.MinSpend.HasValue && washPackage.Price < customerPromotion.Promotion.MinSpend.Value)
+                throw new AppException($"Minimum spend of {customerPromotion.Promotion.MinSpend.Value:N0} is required for this voucher.", 400);
+        }
+        else
+        {
+            // Auto-apply: find the best unused voucher for this customer
+            var now = DateTime.UtcNow;
+            var candidates = await _context.CustomerPromotions
+                .Include(cp => cp.Promotion)
+                .Where(cp => cp.CustomerId == customer.Id
+                    && cp.Promotion.IsVoucher
+                    && !cp.IsUsed
+                    && (cp.ExpiryDate == null || cp.ExpiryDate > now)
+                    && (cp.Promotion.MinSpend == null || cp.Promotion.MinSpend <= washPackage.Price))
+                .ToListAsync();
+
+            if (candidates.Count > 0)
+            {
+                customerPromotion = candidates
+                    .OrderByDescending(cp => cp.Promotion.DiscountType == DiscountType.FixedAmount
+                        ? cp.Promotion.DiscountValue
+                        : washPackage.Price * cp.Promotion.DiscountValue / 100)
+                    .First();
+            }
+        }
+
+        if (customerPromotion != null)
+        {
+            var promo = customerPromotion.Promotion;
+            discountAmount = promo.DiscountType == DiscountType.Percentage
+                ? Math.Round(washPackage.Price * promo.DiscountValue / 100, 2)
+                : promo.DiscountValue;
+
+            if (discountAmount > washPackage.Price)
+                discountAmount = washPackage.Price;
+
+            totalPrice = washPackage.Price - discountAmount;
+            promotionId = promo.Id;
+            voucherName = promo.Name;
+
+            // Mark voucher as used
+            customerPromotion.IsUsed = true;
+            customerPromotion.UsedAt = DateTime.UtcNow;
+        }
     }
 
     // 7. Khởi tạo và lưu Booking mới vào DB (ĐÃ ĐỒI THEO DB MỚI)
@@ -151,11 +216,11 @@ public class BookingService : IBookingService
     await transaction.CommitAsync();
 
     // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
-    var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null);
-    
+    var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
+
     await _hubContext.Clients.Group(branchTimeSlot.BranchId.ToString())
         .SendAsync("ReceiveBookingCreated", response);
-        
+
     return response;
 }
 
@@ -423,7 +488,7 @@ public class BookingService : IBookingService
     }
     
     private static BookingResponse MapToResponse(
-        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot timeSlot, Branch branch, WashBay? washBay)
+        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot timeSlot, Branch branch, WashBay? washBay, string? voucherName = null)
     {
         return new BookingResponse
         {
@@ -431,13 +496,15 @@ public class BookingService : IBookingService
             BookingCode = booking.BookingCode,
             WashPackageName = washPackage.Name,
             DurationMinutes = washPackage.DurationMinutes,
-            BookingDate = booking.BookingDate, // Lấy thẳng ngày từ Booking
-            StartTime = timeSlot.StartTime, 
-            EndTime = timeSlot.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes)), 
-            WashBayName = washBay?.Name ?? "Not Assigned Yet", // Bệ rửa nếu null sẽ báo chưa xếp bệ
+            BookingDate = booking.BookingDate,
+            StartTime = timeSlot.StartTime,
+            EndTime = timeSlot.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes)),
+            WashBayName = washBay?.Name ?? "Not Assigned Yet",
             VehiclePlate = vehicle.LicensePlate,
             VehicleName = vehicle.VehicleName,
             TotalPrice = booking.TotalPrice,
+            DiscountAmount = booking.DiscountAmount,
+            VoucherName = voucherName,
             Status = booking.Status.ToString(),
             QrData = booking.QrData,
             CreatedAt = booking.CreatedAt,
