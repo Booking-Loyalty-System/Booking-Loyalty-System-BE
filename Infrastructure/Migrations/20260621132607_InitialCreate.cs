@@ -21,8 +21,10 @@ namespace Infrastructure.Migrations
                     BranchName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Address = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     Hotline = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    OperatingHours = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false)
+                    OperatingHours = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Latitude = table.Column<double>(type: "float", nullable: true),
+                    Longitude = table.Column<double>(type: "float", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -34,16 +36,18 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Code = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
-                    DiscountType = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    DiscountValue = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    DiscountType = table.Column<int>(type: "int", nullable: false),
+                    DiscountValue = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    PriorityLevel = table.Column<int>(type: "int", nullable: false),
                     StartDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     MaxUses = table.Column<int>(type: "int", nullable: true),
-                    UsedCount = table.Column<int>(type: "int", nullable: false),
-                    MinSpend = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    UsedCount = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    MinSpend = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
@@ -56,8 +60,13 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    PointsRequired = table.Column<int>(type: "int", nullable: false),
+                    DiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Status = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PointsCost = table.Column<int>(type: "int", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -82,6 +91,18 @@ namespace Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Tiers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TimeSlots",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TimeSlots", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -146,6 +167,85 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PromotionBranches",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PromotionBranches", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PromotionBranches_Branches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "Branches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PromotionBranches_Promotions_PromotionId",
+                        column: x => x.PromotionId,
+                        principalTable: "Promotions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TierPromotions",
+                columns: table => new
+                {
+                    TierPromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TierId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TierPromotions", x => x.TierPromotionId);
+                    table.ForeignKey(
+                        name: "FK_TierPromotions_Promotions_PromotionId",
+                        column: x => x.PromotionId,
+                        principalTable: "Promotions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TierPromotions_Tiers_TierId",
+                        column: x => x.TierId,
+                        principalTable: "Tiers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BranchTimeSlots",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TimeSlotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MaxCapacity = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BranchTimeSlots", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BranchTimeSlots_Branches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "Branches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_BranchTimeSlots_TimeSlots_TimeSlotId",
+                        column: x => x.TimeSlotId,
+                        principalTable: "TimeSlots",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Customers",
                 columns: table => new
                 {
@@ -175,6 +275,86 @@ namespace Infrastructure.Migrations
                         name: "FK_Customers_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    ReferenceId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Notifications_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Staffs",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    IsAvailable = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Staffs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Staffs_Branches_BranchId",
+                        column: x => x.BranchId,
+                        principalTable: "Branches",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Staffs_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CustomerPromotions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsUsed = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    UsedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ExpiryDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CustomerPromotions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CustomerPromotions_Customers_CustomerId",
+                        column: x => x.CustomerId,
+                        principalTable: "Customers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CustomerPromotions_Promotions_PromotionId",
+                        column: x => x.PromotionId,
+                        principalTable: "Promotions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -244,17 +424,18 @@ namespace Infrastructure.Migrations
                     CustomerId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     VehicleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     WashPackageId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    TimeSlotId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    BayId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    BranchId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AssignedStaffId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    BranchTimeSlotId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    BayId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    StaffId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     BookingDate = table.Column<DateOnly>(type: "date", nullable: false),
                     StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
+                    RewardId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    PromotionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CustomerNote = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     TotalPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     DiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    QrData = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    QrData = table.Column<string>(type: "text", nullable: true),
                     CancellationReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
@@ -263,9 +444,9 @@ namespace Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Bookings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Bookings_Branches_BranchId",
-                        column: x => x.BranchId,
-                        principalTable: "Branches",
+                        name: "FK_Bookings_BranchTimeSlots_BranchTimeSlotId",
+                        column: x => x.BranchTimeSlotId,
+                        principalTable: "BranchTimeSlots",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -281,6 +462,17 @@ namespace Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "FK_Bookings_Rewards_RewardId",
+                        column: x => x.RewardId,
+                        principalTable: "Rewards",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Bookings_Staffs_StaffId",
+                        column: x => x.StaffId,
+                        principalTable: "Staffs",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_Bookings_Vehicles_VehicleId",
                         column: x => x.VehicleId,
                         principalTable: "Vehicles",
@@ -291,7 +483,7 @@ namespace Infrastructure.Migrations
                         column: x => x.BayId,
                         principalTable: "WashBays",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_Bookings_WashPackages_WashPackageId",
                         column: x => x.WashPackageId,
@@ -310,7 +502,8 @@ namespace Infrastructure.Migrations
                     Points = table.Column<int>(type: "int", nullable: false),
                     BalanceAfter = table.Column<int>(type: "int", nullable: false),
                     BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    RewardId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
@@ -329,41 +522,43 @@ namespace Infrastructure.Migrations
                         principalTable: "Customers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_LoyaltyTransactions_Rewards_RewardId",
+                        column: x => x.RewardId,
+                        principalTable: "Rewards",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
-                name: "TimeSlots",
+                name: "Transactions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    WashBayId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Date = table.Column<DateOnly>(type: "date", nullable: false),
-                    StartTime = table.Column<TimeOnly>(type: "time", nullable: false),
-                    EndTime = table.Column<TimeOnly>(type: "time", nullable: false),
-                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    TransactionCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Status = table.Column<bool>(type: "bit", nullable: false),
+                    BookingId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_TimeSlots", x => x.Id);
+                    table.PrimaryKey("PK_Transactions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_TimeSlots_Bookings_BookingId",
+                        name: "FK_Transactions_Bookings_BookingId",
                         column: x => x.BookingId,
                         principalTable: "Bookings",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_TimeSlots_WashBays_WashBayId",
-                        column: x => x.WashBayId,
-                        principalTable: "WashBays",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.InsertData(
                 table: "Branches",
-                columns: new[] { "Id", "Address", "BranchName", "Hotline", "OperatingHours", "Status" },
-                values: new object[] { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), "123 Street", "Main Branch", "0123456789", "8am-9pm", 0 });
+                columns: new[] { "Id", "Address", "BranchName", "Hotline", "Latitude", "Longitude", "OperatingHours", "Status" },
+                values: new object[,]
+                {
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), "19Bis Cộng Hòa, Bảy Hiền, Hồ Chí Minh, Vietnam", "Tân Bình Branch", "0912345678", 10.801600799999999, 106.64823730000001, "8am-9pm", "Active" },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), "303 Cách Mạng Tháng 8 Tổ 20, Khu phố Khu phố, Hòa Hưng, Hồ Chí Minh, Vietnam", "Quận 3 Branch", "0987654321", 10.7794176, 106.678039, "8am-8pm", "Active" },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), "625 Nguyễn Xiển, Long Bình, Hồ Chí Minh 70000, Vietnam", "Quận 9 Branch", "0123456789", 10.8415798, 106.8294047, "8am-9pm", "Active" }
+                });
 
             migrationBuilder.InsertData(
                 table: "Tiers",
@@ -377,13 +572,32 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "TimeSlots",
+                columns: new[] { "Id", "StartTime" },
+                values: new object[,]
+                {
+                    { new Guid("00000000-0000-0000-0000-000000000008"), new TimeOnly(8, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000009"), new TimeOnly(9, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000010"), new TimeOnly(10, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000011"), new TimeOnly(11, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000012"), new TimeOnly(12, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000013"), new TimeOnly(13, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000014"), new TimeOnly(14, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000015"), new TimeOnly(15, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000016"), new TimeOnly(16, 0, 0) },
+                    { new Guid("00000000-0000-0000-0000-000000000017"), new TimeOnly(17, 0, 0) }
+                });
+
+            migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 17, 14, 33, 19, 724, DateTimeKind.Utc).AddTicks(1933), "admin@system.com", null, true, "$2a$11$rn6bboE7P/BuBpzCDM94tO5b6QBMCgoGgr.QmSoPLfCYc6ZiRq6rq", null, null, "Admin", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 17, 14, 33, 19, 884, DateTimeKind.Utc).AddTicks(9527), "staff@system.com", null, true, "$2a$11$.3.6Qs0OPHROG1c5r5Gi5uB.aB8D3rtpmC8oGKd/PXDAaHb8iapJq", null, null, "Staff", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 17, 14, 33, 20, 53, DateTimeKind.Utc).AddTicks(6889), "customer@system.com", null, true, "$2a$11$vL9Q5cYpIu57M6EzuZ2XLusSDQRr.AjCdLo9WzLTh4kZn2VoeUeBm", null, null, "Customer", null }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 21, 13, 26, 6, 906, DateTimeKind.Utc).AddTicks(7782), "admin@system.com", null, true, "$2a$11$/o1z/CLdz8kWYTEVFpHI3OnDcgRh9xhZe9oNGXf8vPXfhIDYbW6w2", null, null, "Admin", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 33, DateTimeKind.Utc).AddTicks(9613), "staff@system.com", null, true, "$2a$11$ZQj6jt4AUh.HT34m.ynhjOvKtbzMXFaaKxVDOUWdvvsQca.myJ6tW", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 6, 21, 13, 26, 7, 161, DateTimeKind.Utc).AddTicks(1549), "staff1@system.com", null, true, "$2a$11$A.743pwk2N4D8IOBq5q6ounmrwdEkJMFty1MrljETcOsiBIaP0H9u", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 6, 21, 13, 26, 7, 288, DateTimeKind.Utc).AddTicks(577), "staff2@system.com", null, true, "$2a$11$KXoLDSdv3ZMtzPZ7FShgy.jf/jbJV31Ws7eAF2giQPP2Uv4QMSp8u", null, null, "Staff", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 21, 13, 26, 7, 415, DateTimeKind.Utc).AddTicks(307), "customer@system.com", null, true, "$2a$11$HOUQRkQeZm1V9ujX/H0xD.DoNugjK8k7EW0j2imqjBhn9SLo4Pwbq", null, null, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -399,16 +613,35 @@ namespace Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "Customers",
                 columns: new[] { "Id", "CreatedAt", "DateOfBirth", "FullName", "IsPhoneNumberVerified", "LifetimePoints", "PhoneNumber", "TierId", "TotalPoints", "TotalSpent", "TotalWashes", "UserId" },
-                values: new object[] { new Guid("4220590e-136c-4dc0-aabd-1b0c7ca78fee"), new DateTime(2026, 6, 17, 14, 33, 19, 547, DateTimeKind.Utc).AddTicks(1398), null, "Customer User", false, 0, "0901234567", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
+                values: new object[] { new Guid("aaee83a2-1c01-4ee8-ad5d-1ca49a0f12fd"), new DateTime(2026, 6, 21, 13, 26, 6, 763, DateTimeKind.Utc).AddTicks(367), null, "Customer User", false, 0, "0901234569", new Guid("11111111-1111-1111-1111-111111111111"), 0, 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") });
+
+            migrationBuilder.InsertData(
+                table: "Staffs",
+                columns: new[] { "Id", "BranchId", "FullName", "IsAvailable", "PhoneNumber", "UserId" },
+                values: new object[,]
+                {
+                    { new Guid("11111111-1111-1111-1111-111111111111"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), "Nguyễn Văn Staff", true, "0901234567", new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") },
+                    { new Guid("11111111-1111-1111-1111-111111111112"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), "Trần Thị Staff Một", true, "0907654321", new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc") },
+                    { new Guid("11111111-1111-1111-1111-111111111113"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), "Lê Hoàng Staff Hai", true, "0911223344", new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd") }
+                });
 
             migrationBuilder.InsertData(
                 table: "WashBays",
                 columns: new[] { "Id", "BranchId", "CreatedAt", "Name", "Status", "SupportedTypes" },
                 values: new object[,]
                 {
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay A1", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay A2", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Bay B1", "Available", "Small,Medium,Large" }
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1662), "Bay A1 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1740), "Bay A2 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1743), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1745), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1786), "Bay A1 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1788), "Bay A2 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1790), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1792), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1747), "Bay A1 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1749), "Bay A2 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1750), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 21, 13, 26, 7, 416, DateTimeKind.Utc).AddTicks(1752), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -423,9 +656,9 @@ namespace Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Bookings_BranchId",
+                name: "IX_Bookings_BranchTimeSlotId",
                 table: "Bookings",
-                column: "BranchId");
+                column: "BranchTimeSlotId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Bookings_CustomerId",
@@ -438,6 +671,16 @@ namespace Infrastructure.Migrations
                 column: "PromotionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Bookings_RewardId",
+                table: "Bookings",
+                column: "RewardId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Bookings_StaffId",
+                table: "Bookings",
+                column: "StaffId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Bookings_VehicleId",
                 table: "Bookings",
                 column: "VehicleId");
@@ -446,6 +689,27 @@ namespace Infrastructure.Migrations
                 name: "IX_Bookings_WashPackageId",
                 table: "Bookings",
                 column: "WashPackageId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BranchTimeSlots_BranchId_TimeSlotId",
+                table: "BranchTimeSlots",
+                columns: new[] { "BranchId", "TimeSlotId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BranchTimeSlots_TimeSlotId",
+                table: "BranchTimeSlots",
+                column: "TimeSlotId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomerPromotions_CustomerId",
+                table: "CustomerPromotions",
+                column: "CustomerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CustomerPromotions_PromotionId",
+                table: "CustomerPromotions",
+                column: "PromotionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Customers_PhoneNumber",
@@ -476,6 +740,26 @@ namespace Infrastructure.Migrations
                 columns: new[] { "CustomerId", "CreatedAt" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_LoyaltyTransactions_RewardId",
+                table: "LoyaltyTransactions",
+                column: "RewardId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_UserId",
+                table: "Notifications",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PromotionBranches_BranchId",
+                table: "PromotionBranches",
+                column: "BranchId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PromotionBranches_PromotionId",
+                table: "PromotionBranches",
+                column: "PromotionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Promotions_Code",
                 table: "Promotions",
                 column: "Code",
@@ -492,16 +776,36 @@ namespace Infrastructure.Migrations
                 column: "RewardId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TimeSlots_BookingId",
-                table: "TimeSlots",
-                column: "BookingId",
-                unique: true,
-                filter: "[BookingId] IS NOT NULL");
+                name: "IX_Staffs_BranchId",
+                table: "Staffs",
+                column: "BranchId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TimeSlots_WashBayId_Date_StartTime",
-                table: "TimeSlots",
-                columns: new[] { "WashBayId", "Date", "StartTime" });
+                name: "IX_Staffs_UserId",
+                table: "Staffs",
+                column: "UserId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TierPromotions_PromotionId",
+                table: "TierPromotions",
+                column: "PromotionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TierPromotions_TierId",
+                table: "TierPromotions",
+                column: "TierId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_BookingId",
+                table: "Transactions",
+                column: "BookingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_TransactionCode",
+                table: "Transactions",
+                column: "TransactionCode",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
@@ -532,22 +836,40 @@ namespace Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "CustomerPromotions");
+
+            migrationBuilder.DropTable(
                 name: "LoyaltyTransactions");
+
+            migrationBuilder.DropTable(
+                name: "Notifications");
+
+            migrationBuilder.DropTable(
+                name: "PromotionBranches");
 
             migrationBuilder.DropTable(
                 name: "RewardRedemptions");
 
             migrationBuilder.DropTable(
-                name: "TimeSlots");
+                name: "TierPromotions");
 
             migrationBuilder.DropTable(
-                name: "Rewards");
+                name: "Transactions");
 
             migrationBuilder.DropTable(
                 name: "Bookings");
 
             migrationBuilder.DropTable(
+                name: "BranchTimeSlots");
+
+            migrationBuilder.DropTable(
                 name: "Promotions");
+
+            migrationBuilder.DropTable(
+                name: "Rewards");
+
+            migrationBuilder.DropTable(
+                name: "Staffs");
 
             migrationBuilder.DropTable(
                 name: "Vehicles");
@@ -557,6 +879,9 @@ namespace Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "WashPackages");
+
+            migrationBuilder.DropTable(
+                name: "TimeSlots");
 
             migrationBuilder.DropTable(
                 name: "Customers");

@@ -13,4 +13,7 @@ public class CreateBookingRequest
 
     /// <summary>Optional add-on services to attach to the booking.</summary>
     public List<Guid>? AddOnIds { get; set; }
+
+    /// <summary>Optional voucher (CustomerPromotion) ID to apply a personal voucher discount.</summary>
+    public Guid? VoucherId { get; set; }
 }

@@ -9,26 +9,67 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
 {
     public void Configure(EntityTypeBuilder<Branch> builder)
     {
-        builder.ToTable("Branches");
         builder.HasKey(b => b.Id);
 
         builder.Property(b => b.BranchName).IsRequired().HasMaxLength(100);
         builder.Property(b => b.Address).IsRequired().HasMaxLength(255);
         builder.Property(b => b.Hotline).HasMaxLength(20);
+        builder.Property(b => b.OperatingHours).HasMaxLength(50);
+
+        builder.Property(b => b.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
 
         // Cấu hình quan hệ: 1 Branch có nhiều WashBays
         builder.HasMany(b => b.WashBays)
             .WithOne(wb => wb.Branch)
             .HasForeignKey(wb => wb.BranchId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Cấu hình quan hệ: 1 Branch có nhiều Staffs
+        builder.HasMany(b => b.Staffs)
+            .WithOne(s => s.Branch)
+            .HasForeignKey(s => s.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // CẤU HÌNH MỚI: 1 Branch có nhiều BranchTimeSlots (Khung giờ hoạt động)
+        builder.HasMany(b => b.BranchTimeSlots)
+            .WithOne(bts => bts.Branch)
+            .HasForeignKey(bts => bts.BranchId)
+            .OnDelete(DeleteBehavior.Cascade);
         
-        builder.HasData(new Branch { 
-            Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 
-            BranchName = "Main Branch", 
-            Address = "123 Street", 
-            Hotline = "0123456789", 
-            OperatingHours = "8am-9pm", 
-            Status = BranchStatus.Active 
-        });
+        // Seed Data giữ nguyên
+        builder.HasData(
+            new Branch { 
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 
+                BranchName = "Quận 9 Branch", 
+                Address = "625 Nguyễn Xiển, Long Bình, Hồ Chí Minh 70000, Vietnam", 
+                Hotline = "0123456789", 
+                OperatingHours = "8am-9pm", 
+                Latitude = 10.8415798,
+                Longitude = 106.8294047,
+                Status = BranchStatus.Active
+            },
+            new Branch { 
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                BranchName = "Quận 3 Branch", 
+                Address = "303 Cách Mạng Tháng 8 Tổ 20, Khu phố Khu phố, Hòa Hưng, Hồ Chí Minh, Vietnam", 
+                Hotline = "0987654321", 
+                OperatingHours = "8am-8pm", 
+                Latitude = 10.7794176, 
+                Longitude = 106.678039, 
+                Status = BranchStatus.Active
+            },
+            new Branch { 
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                BranchName = "Tân Bình Branch", 
+                Address = "19Bis Cộng Hòa, Bảy Hiền, Hồ Chí Minh, Vietnam", 
+                Hotline = "0912345678", 
+                OperatingHours = "8am-9pm", 
+                Latitude = 10.8016008, 
+                Longitude = 106.6482373, 
+                Status = BranchStatus.Active
+            }
+        );
     }
 }

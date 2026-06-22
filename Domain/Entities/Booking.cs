@@ -9,15 +9,17 @@ public class Booking
     public Guid CustomerId { get; set; }
     public Guid VehicleId { get; set; }
     public Guid WashPackageId { get; set; }
-    public Guid? TimeSlotId { get; set; }
-    public Guid BayId { get; set; }
-    public Guid BranchId { get; set; }
-    public Guid? AssignedStaffId { get; set; }
-    public Guid? PromotionId { get; set; }
+    public Guid BranchTimeSlotId { get; set; } 
+    
+    public Guid? BayId { get; set; }
+    public Guid? StaffId { get; set; }
     public DateOnly BookingDate { get; set; }
     public TimeOnly StartTime { get; set; }
-
-    /// <summary>Final price charged after any promotion discount.</summary>
+    public Guid? RewardId { get; set; }
+    public Guid? PromotionId { get; set; }
+    
+    // XÓA: BookingDate, StartTime, EndTime (Vì lấy từ WashBayTimeSlot -> TimeSlot ra là có hết)
+    public string? CustomerNote { get; set; }
     public decimal TotalPrice { get; set; }
 
     /// <summary>Amount discounted by an applied promotion (0 when none).</summary>
@@ -28,14 +30,18 @@ public class Booking
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
-    // Navigation
+    // Navigation Properties
     public Customer Customer { get; set; } = null!;
     public Vehicle Vehicle { get; set; } = null!;
     public WashPackage WashPackage { get; set; } = null!;
-    public TimeSlot? TimeSlot { get; set; }
-    public Branch Branch { get; set; } = null!;
-    public WashBay WashBay { get; set; } = null!;
+    
+    // ĐỔI Ở ĐÂY: Trỏ đến bảng trung gian
+    public BranchTimeSlot BranchTimeSlot { get; set; } = null!; 
+    public WashBay? WashBay { get; set; }
+    public Staff? Staff { get; set; }
+    public Reward? Reward { get; set; }
     public Promotion? Promotion { get; set; }
     public ICollection<BookingAddOn> BookingAddOns { get; set; } = new List<BookingAddOn>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

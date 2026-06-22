@@ -39,7 +39,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 Id = Guid.NewGuid(),
                 UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
                 FullName = "Customer User",
-                PhoneNumber = "0901234567",
+                PhoneNumber = "0901234569",
                 TierId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                 TotalSpent = 0m,
                 TotalWashes = 0,

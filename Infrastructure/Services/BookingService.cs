@@ -4,8 +4,11 @@ using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
+using Infrastructure.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using QRCoder;
 
 namespace Infrastructure.Services;
 
@@ -14,221 +17,242 @@ public class BookingService : IBookingService
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
     private readonly IPromotionService _promotionService;
+    private readonly IVoucherService _voucherService;
     private readonly BookingOptions _options;
     private readonly TimeZoneInfo _shopTimeZone;
+    private readonly IHubContext<BookingHub> _hubContext;
 
-    public BookingService(
-        IApplicationDbContext context,
-        ILoyaltyService loyaltyService,
-        IPromotionService promotionService,
-        IOptions<BookingOptions> options)
+    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, IVoucherService voucherService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext)
     {
         _context = context;
         _loyaltyService = loyaltyService;
         _promotionService = promotionService;
-        _options = options.Value;
-        _shopTimeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
+        _voucherService = voucherService;
+        _options = options;
+        _shopTimeZone = shopTimeZone;
+        _hubContext = hubContext;
     }
 
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
-    {
-        var customer = await _context.Customers
-                           .Include(c => c.Tier)
-            .FirstOrDefaultAsync(c => c.UserId == userId)
-            ?? throw new AppException("Customer profile not found.", 404);
+{
+    // 1. Kiểm tra các thực thể cơ bản
+    var customer = await _context.Customers
+        .Include(c => c.Tier)
+        .FirstOrDefaultAsync(c => c.UserId == userId)
+        ?? throw new AppException("Customer profile not found.", 404);
 
-        var vehicle = await _context.Vehicles
-            .FirstOrDefaultAsync(v => v.Id == request.VehicleId && v.CustomerId == customer.Id && !v.IsDeleted)
-            ?? throw new AppException("Vehicle not found or does not belong to you.", 404);
+    var vehicle = await _context.Vehicles
+        .FirstOrDefaultAsync(v => v.Id == request.VehicleId && v.CustomerId == customer.Id && !v.IsDeleted)
+        ?? throw new AppException("Vehicle not found or does not belong to you.", 404);
 
-        var washPackage = await _context.WashPackages
-            .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
-            ?? throw new AppException("Wash package not found or inactive.", 404);
+    var washPackage = await _context.WashPackages
+        .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
+        ?? throw new AppException("Wash package not found or inactive.", 404);
 
-        // Resolve optional add-ons. Every requested id must map to an active add-on.
-        var requestedAddOnIds = request.AddOnIds?.Distinct().ToList() ?? new List<Guid>();
-        var addOns = requestedAddOnIds.Count == 0
-            ? new List<AddOn>()
-            : await _context.AddOns
-                .Where(a => requestedAddOnIds.Contains(a.Id) && a.IsActive)
-                .ToListAsync();
-        if (addOns.Count != requestedAddOnIds.Count)
-            throw new AppException("One or more add-ons not found or inactive.", 400);
-
-        var addOnsTotal = addOns.Sum(a => a.Price);
-        var addOnsDuration = addOns.Sum(a => a.DurationMinutes);
-
-        // The customer must pick a branch first; only an open branch can take bookings.
-        var branch = await _context.Branches
-            .FirstOrDefaultAsync(b => b.Id == request.BranchId)
-            ?? throw new AppException("Branch not found.", 404);
-
-        if (branch.Status != BranchStatus.Active)
-            throw new AppException("The selected branch is not currently open for booking.", 400);
-
-        // Shop-local "now" — bookings are expressed in the shop's local clock, not UTC.
-        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone);
-        var today = DateOnly.FromDateTime(nowLocal);
-        var nowTime = TimeOnly.FromDateTime(nowLocal);
-
-        if (request.BookingDate < today)
-            throw new AppException("Booking date cannot be in the past.", 400);
-
-        // For same-day bookings, the start time must still be in the future
-        if (request.BookingDate == today && request.StartTime <= nowTime)
-            throw new AppException("Start time cannot be in the past.", 400);
-
-        // Tier-based booking window
-        var maxDays = customer.Tier.BookingWindow;
-        var maxDate = today.AddDays(maxDays);
-        if (request.BookingDate > maxDate)
-            throw new AppException($"Your {customer.Tier} tier allows booking up to {maxDays} days in advance.", 400);
-
-        // The booking occupies the bay for [StartTime, StartTime + package duration + add-on duration)
-        var totalDuration = washPackage.DurationMinutes + addOnsDuration;
-        var endTime = request.StartTime.Add(TimeSpan.FromMinutes(totalDuration));
-        if (endTime <= request.StartTime)
-            throw new AppException("The selected start time and wash duration are invalid (the wash would run past midnight).", 400);
-
-        // The whole wash must fit inside the shop's operating hours.
-        if (request.StartTime < _options.OpenTime || endTime > _options.CloseTime)
-            throw new AppException(
-                $"Booking time must be within business hours " +
-                $"({_options.OpenTime:HH\\:mm}–{_options.CloseTime:HH\\:mm}).", 400);
-
-        // A single vehicle cannot be in two places at once — block overlapping active bookings.
-        var vehicleConflict = await _context.Bookings.AnyAsync(b =>
-            b.VehicleId == vehicle.Id &&
-            b.TimeSlot != null &&
-            b.TimeSlot.Date == request.BookingDate &&
-            (b.Status == BookingStatus.Pending ||
-             b.Status == BookingStatus.Confirmed ||
-             b.Status == BookingStatus.InProgress) &&
-            b.TimeSlot.StartTime < endTime && b.TimeSlot.EndTime > request.StartTime);
-
-        if (vehicleConflict)
-            throw new AppException(
-                "This vehicle already has a booking that overlaps the selected time.", 409);
-
-        // Reserve a wash bay + time slot atomically so the same bay can never be
-        // double-booked for an overlapping window (Serializable transaction).
-        await using var transaction = await _context.BeginTransactionAsync();
-
-        var bay = await FindAvailableBayAsync(branch.Id, vehicle.Type, request.BookingDate, request.StartTime, endTime)
-            ?? throw new AppException(
-                "No wash bay is available at this branch for the selected date and time. Please choose another slot.", 409);
-
-        // Generate booking code (6 chars A-Z0-9)
-        var bookingCode = await GenerateUniqueBookingCodeAsync();
-
-        // Subtotal = wash package + selected add-ons; a promotion discounts the whole subtotal.
-        var subtotal = washPackage.Price + addOnsTotal;
-
-        // Apply an optional promotion. ApplyAsync validates and reserves a use on the tracked
-        // promotion; the SaveChanges/commit below persists the increment atomically with the booking.
-        var totalPrice = subtotal;
-        var discountAmount = 0m;
-        Guid? promotionId = null;
-        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
-        {
-            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, subtotal);
-            promotionId = pid;
-            discountAmount = discount;
-            totalPrice = subtotal - discount;
-        }
-
-        var booking = new Booking
-        {
-            Id = Guid.NewGuid(),
-            BookingCode = bookingCode,
-            CustomerId = customer.Id,
-            VehicleId = vehicle.Id,
-            WashPackageId = washPackage.Id,
-            BranchId = branch.Id,
-            BayId = bay.Id,
-            PromotionId = promotionId,
-            BookingDate = request.BookingDate,
-            StartTime = request.StartTime,
-            TotalPrice = totalPrice,
-            DiscountAmount = discountAmount,
-            // Booking is held as Pending until a successful VNPay payment confirms it.
-            // The reserved bay/slot is still kept (Pending counts as an active booking);
-            // PendingBookingCleanupService releases it if payment is never completed.
-            Status = BookingStatus.Pending,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var slot = new TimeSlot
-        {
-            Id = Guid.NewGuid(),
-            WashBayId = bay.Id,
-            Date = request.BookingDate,
-            StartTime = request.StartTime,
-            EndTime = endTime,
-            Status = TimeSlotStatus.Booked,
-            BookingId = booking.Id
-        };
-        booking.TimeSlotId = slot.Id;
-
-        // Snapshot the add-ons onto the booking (price/duration frozen at booking time).
-        var bookingAddOns = addOns.Select(a => new BookingAddOn
-        {
-            Id = Guid.NewGuid(),
-            BookingId = booking.Id,
-            AddOnId = a.Id,
-            Price = a.Price,
-            DurationMinutes = a.DurationMinutes,
-            CreatedAt = DateTime.UtcNow
-        }).ToList();
-
-        _context.Bookings.Add(booking);
-        _context.TimeSlots.Add(slot);
-        _context.BookingAddOns.AddRange(bookingAddOns);
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        var addOnResponses = addOns
-            .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
-            .ToList();
-        return MapToResponse(booking, washPackage, vehicle, slot, bay, addOnResponses);
-    }
-
-    /// <summary>
-    /// Finds the first wash bay that is operational, supports the vehicle type, and
-    /// has no active time slot overlapping the requested [start, end) window.
-    /// Returns null when every bay is busy or none supports the vehicle type.
-    /// </summary>
-    private async Task<WashBay?> FindAvailableBayAsync(
-        Guid branchId, VehicleType vehicleType, DateOnly date, TimeOnly start, TimeOnly end)
-    {
-        var typeName = vehicleType.ToString();
-
-        var bays = await _context.WashBays
-            .Where(b => b.BranchId == branchId && b.Status == WashBayStatus.Available)
-            .OrderBy(b => b.Name)
+    // Resolve optional add-ons. Every requested id must map to an active add-on.
+    var requestedAddOnIds = request.AddOnIds?.Distinct().ToList() ?? new List<Guid>();
+    var addOns = requestedAddOnIds.Count == 0
+        ? new List<AddOn>()
+        : await _context.AddOns
+            .Where(a => requestedAddOnIds.Contains(a.Id) && a.IsActive)
             .ToListAsync();
+    if (addOns.Count != requestedAddOnIds.Count)
+        throw new AppException("One or more add-ons not found or inactive.", 400);
 
-        foreach (var bay in bays)
+    var addOnsTotal = addOns.Sum(a => a.Price);
+
+    var branch = await _context.Branches
+        .FirstOrDefaultAsync(b => b.Id == request.BranchId)
+        ?? throw new AppException("Branch not found.", 404);
+
+    if (branch.Status != BranchStatus.Active)
+        throw new AppException("The selected branch is not currently open for booking.", 400);
+
+    // 2. Kiểm tra thời gian thực tại địa phương của Shop
+    var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone);
+    var today = DateOnly.FromDateTime(nowLocal);
+    var nowTime = TimeOnly.FromDateTime(nowLocal);
+
+    if (request.BookingDate < today)
+        throw new AppException("Booking date cannot be in the past.", 400);
+
+    if (request.BookingDate == today && request.StartTime <= nowTime)
+        throw new AppException("Start time cannot be in the past.", 400);
+
+    var maxDays = customer.Tier.BookingWindow;
+    var maxDate = today.AddDays(maxDays);
+    if (request.BookingDate > maxDate)
+        throw new AppException($"Your {customer.Tier.TierName} tier allows booking up to {maxDays} days in advance.", 400);
+
+    if (request.StartTime < _options.OpenTime || request.StartTime >= _options.CloseTime)
+        throw new AppException($"Booking time must be within business hours ({_options.OpenTime:HH\\:mm}–{_options.CloseTime:HH\\:mm}).", 400);
+
+    // 3. Tìm cấu hình Khung Giờ gốc và bảng trung gian BranchTimeSlot
+    var timeSlot = await _context.TimeSlots
+        .FirstOrDefaultAsync(t => t.StartTime == request.StartTime)
+        ?? throw new AppException("Invalid start time. Time slot not found.", 400);
+
+    var branchTimeSlot = await _context.BranchTimeSlots
+        .FirstOrDefaultAsync(bts => bts.BranchId == branch.Id && bts.TimeSlotId == timeSlot.Id)
+        ?? throw new AppException("This time slot is not available for the selected branch.", 400);
+
+    if (!branchTimeSlot.IsActive)
+        throw new AppException("This time slot is currently locked or inactive at this branch.", 400);
+
+    // 4. Chặn trùng lịch của chiếc xe này trong cùng khung giờ
+    var vehicleConflict = await _context.Bookings.AnyAsync(b =>
+        b.VehicleId == vehicle.Id &&
+        b.BookingDate == request.BookingDate &&
+        b.BranchTimeSlot.TimeSlotId == timeSlot.Id &&
+        (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress));
+
+    if (vehicleConflict)
+        throw new AppException("This vehicle already has a booking that overlaps the selected time.", 409);
+
+    // 5. Mở TRANSACTION chống Race Condition khi đặt chỗ cùng giây
+    await using var transaction = await _context.BeginTransactionAsync();
+
+    // Đã sửa: Tính toán những xe đang chiếm chỗ (Bỏ Cancelled và NoShow)
+    var currentBookingsCount = await _context.Bookings
+        .CountAsync(b => b.BranchTimeSlotId == branchTimeSlot.Id 
+                      && b.BookingDate == request.BookingDate 
+                      && b.Status != BookingStatus.Cancelled
+                      && b.Status != BookingStatus.NoShow);
+
+    if (currentBookingsCount >= branchTimeSlot.MaxCapacity)
+        throw new AppException("This time slot is fully booked. Please select another time or branch.", 409);
+
+    // 6. Xử lý mã Code, QR và Promotion
+    var bookingCode = await GenerateUniqueBookingCodeAsync();
+    var qrDataBase64 = GenerateQrCodeBase64(bookingCode);
+    
+    var totalPrice = washPackage.Price;
+    var discountAmount = 0m;
+    Guid? promotionId = null;
+    string? voucherName = null;
+
+    if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+    {
+        // Priority 1: explicit promotion code
+        var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
+        promotionId = pid;
+        discountAmount = discount;
+        totalPrice = washPackage.Price - discount;
+    }
+    else
+    {
+        // Priority 2: explicit voucher or auto-apply best voucher
+        CustomerPromotion? customerPromotion = null;
+
+        if (request.VoucherId.HasValue)
         {
-            // A bay with no declared SupportedTypes is treated as supporting all types.
-            var supported = bay.SupportedTypes
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (supported.Length > 0 &&
-                !supported.Any(s => string.Equals(s, typeName, StringComparison.OrdinalIgnoreCase)))
-                continue;
+            customerPromotion = await _context.CustomerPromotions
+                .Include(cp => cp.Promotion)
+                .FirstOrDefaultAsync(cp => cp.Id == request.VoucherId.Value
+                    && cp.CustomerId == customer.Id
+                    && cp.Promotion.IsVoucher
+                    && !cp.IsUsed
+                    && (cp.ExpiryDate == null || cp.ExpiryDate > DateTime.UtcNow))
+                ?? throw new AppException("Voucher not found, already used, or expired.", 400);
 
-            var hasConflict = await _context.TimeSlots.AnyAsync(ts =>
-                ts.WashBayId == bay.Id &&
-                ts.Date == date &&
-                (ts.Status == TimeSlotStatus.Booked || ts.Status == TimeSlotStatus.InProgress) &&
-                ts.StartTime < end && ts.EndTime > start);
+            if (customerPromotion.Promotion.MinSpend.HasValue && washPackage.Price < customerPromotion.Promotion.MinSpend.Value)
+                throw new AppException($"Minimum spend of {customerPromotion.Promotion.MinSpend.Value:N0} is required for this voucher.", 400);
+        }
+        else
+        {
+            // Auto-apply: find the best unused voucher for this customer
+            var now = DateTime.UtcNow;
+            var candidates = await _context.CustomerPromotions
+                .Include(cp => cp.Promotion)
+                .Where(cp => cp.CustomerId == customer.Id
+                    && cp.Promotion.IsVoucher
+                    && !cp.IsUsed
+                    && (cp.ExpiryDate == null || cp.ExpiryDate > now)
+                    && (cp.Promotion.MinSpend == null || cp.Promotion.MinSpend <= washPackage.Price))
+                .ToListAsync();
 
-            if (!hasConflict)
-                return bay;
+            if (candidates.Count > 0)
+            {
+                customerPromotion = candidates
+                    .OrderByDescending(cp => cp.Promotion.DiscountType == DiscountType.FixedAmount
+                        ? cp.Promotion.DiscountValue
+                        : washPackage.Price * cp.Promotion.DiscountValue / 100)
+                    .First();
+            }
         }
 
-        return null;
+        if (customerPromotion != null)
+        {
+            var promo = customerPromotion.Promotion;
+            discountAmount = promo.DiscountType == DiscountType.Percentage
+                ? Math.Round(washPackage.Price * promo.DiscountValue / 100, 2)
+                : promo.DiscountValue;
+
+            if (discountAmount > washPackage.Price)
+                discountAmount = washPackage.Price;
+
+            totalPrice = washPackage.Price - discountAmount;
+            promotionId = promo.Id;
+            voucherName = promo.Name;
+
+            // Mark voucher as used
+            customerPromotion.IsUsed = true;
+            customerPromotion.UsedAt = DateTime.UtcNow;
+        }
     }
+
+    // 7. Khởi tạo và lưu Booking mới vào DB (ĐÃ ĐỒI THEO DB MỚI)
+    var booking = new Booking
+    {
+        Id = Guid.NewGuid(),
+        BookingCode = bookingCode,
+        CustomerId = customer.Id,
+        VehicleId = vehicle.Id,
+        WashPackageId = washPackage.Id,
+        BranchTimeSlotId = branchTimeSlot.Id, 
+        BookingDate = request.BookingDate,   
+        BayId = null,                
+        QrData = qrDataBase64,
+        PromotionId = promotionId,
+        // Vouchers/promotions discount the wash package only; add-ons are added on top.
+        TotalPrice = totalPrice + addOnsTotal,
+        StartTime = branchTimeSlot.TimeSlot.StartTime,
+        DiscountAmount = discountAmount,
+        Status = BookingStatus.Pending,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    _context.Bookings.Add(booking);
+
+    // Snapshot the chosen add-ons onto the booking (price frozen at booking time).
+    var bookingAddOns = addOns.Select(a => new BookingAddOn
+    {
+        Id = Guid.NewGuid(),
+        BookingId = booking.Id,
+        AddOnId = a.Id,
+        Price = a.Price,
+        DurationMinutes = a.DurationMinutes,
+        CreatedAt = DateTime.UtcNow
+    }).ToList();
+    if (bookingAddOns.Count > 0)
+        _context.BookingAddOns.AddRange(bookingAddOns);
+
+    await _context.SaveChangesAsync();
+    
+    // Commit transaction an toàn
+    await transaction.CommitAsync();
+
+    // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
+    var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
+    response.AddOns = addOns
+        .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
+        .ToList();
+
+    await _hubContext.Clients.Group(branchTimeSlot.BranchId.ToString())
+        .SendAsync("ReceiveBookingCreated", response);
+
+    return response;
+}
 
     public async Task<BookingResponse> GetBookingByIdAsync(Guid userId, Guid bookingId)
     {
@@ -239,14 +263,15 @@ public class BookingService : IBookingService
         var booking = await _context.Bookings
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
-            .Include(b => b.TimeSlot)
-                .ThenInclude(ts => ts!.WashBay)
-            .Include(b => b.BookingAddOns)
-                .ThenInclude(ba => ba.AddOn)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.TimeSlot)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.Branch)
+            .Include(b => b.WashBay) // Lấy thông tin bệ rửa nếu đã được xếp
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot, null, MapAddOns(booking));
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
     }
 
     public async Task<List<BookingResponse>> GetMyBookingsAsync(Guid userId)
@@ -259,14 +284,15 @@ public class BookingService : IBookingService
             .Where(b => b.CustomerId == customer.Id)
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
-            .Include(b => b.TimeSlot)
-                .ThenInclude(ts => ts!.WashBay)
-            .Include(b => b.BookingAddOns)
-                .ThenInclude(ba => ba.AddOn)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.TimeSlot)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.Branch)
+            .Include(b => b.WashBay)
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
 
-        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.TimeSlot, null, MapAddOns(b))).ToList();
+        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.BranchTimeSlot.TimeSlot, b.BranchTimeSlot.Branch, b.WashBay)).ToList();
     }
 
     public async Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason)
@@ -278,10 +304,11 @@ public class BookingService : IBookingService
         var booking = await _context.Bookings
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
-            .Include(b => b.TimeSlot)
-                .ThenInclude(ts => ts!.WashBay)
-            .Include(b => b.BookingAddOns)
-                .ThenInclude(ba => ba.AddOn)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.TimeSlot)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.Branch)
+            .Include(b => b.WashBay)
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
@@ -292,49 +319,175 @@ public class BookingService : IBookingService
         booking.CancellationReason = reason;
         booking.UpdatedAt = DateTime.UtcNow;
 
-        // Release the reserved bay/time slot so the window becomes bookable again.
-        var slot = booking.TimeSlot;
-        if (slot != null)
-        {
-            _context.TimeSlots.Remove(slot);
-            booking.TimeSlotId = null;
-        }
+        // Chỉ cần đổi status, Capacity sẽ tự động nới lỏng ra nhờ câu lệnh CountAsync không đếm Cancelled.
 
         await _context.SaveChangesAsync();
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, slot, null, MapAddOns(booking));
+        var response = MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
+        
+        await _hubContext.Clients.Group(booking.BranchTimeSlot.BranchId.ToString())
+            .SendAsync("ReceiveBookingCancelled", new { BookingId = booking.Id, Reason = reason });
+            
+        return response;
     }
 
+    public async Task<BookingResponse> UpdateBookingAsync(Guid userId, Guid bookingId, UpdateBookingRequest request)
+    {
+        var customer = await _context.Customers
+            .Include(c => c.Tier)
+            .FirstOrDefaultAsync(c => c.UserId == userId)
+            ?? throw new AppException("Customer profile not found.", 404);
+
+        var booking = await _context.Bookings
+            .Include(b => b.WashPackage)
+            .Include(b => b.Vehicle)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.TimeSlot)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.Branch)
+            .Include(b => b.WashBay)
+            .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
+            ?? throw new AppException("Booking not found.", 404);
+
+        if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Confirmed)
+            throw new AppException("Only Pending or Confirmed bookings can be modified.", 400);
+
+        var targetBranchId = request.BranchId ?? booking.BranchTimeSlot.BranchId;
+        var targetWashPackageId = request.WashPackageId ?? booking.WashPackageId;
+        var targetBookingDate = request.BookingDate ?? booking.BookingDate;
+        var targetStartTime = request.StartTime ?? booking.BranchTimeSlot.TimeSlot.StartTime;
+
+        bool isBranchChanged = targetBranchId != booking.BranchTimeSlot.BranchId;
+        bool isPackageChanged = targetWashPackageId != booking.WashPackageId;
+        bool isTimeChanged = targetBookingDate != booking.BookingDate || targetStartTime != booking.BranchTimeSlot.TimeSlot.StartTime;
+
+        if (!isBranchChanged && !isPackageChanged && !isTimeChanged)
+        {
+            throw new AppException("No changes detected in your update request.", 400);
+        }
+
+        if (isPackageChanged)
+        {
+            var newPackage = await _context.WashPackages
+                .FirstOrDefaultAsync(wp => wp.Id == targetWashPackageId && wp.IsActive)
+                ?? throw new AppException("New wash package not found or inactive.", 404);
+            
+            booking.WashPackageId = newPackage.Id;
+            booking.TotalPrice = newPackage.Price; 
+        }
+
+        if (isBranchChanged || isTimeChanged)
+        {
+            var branch = await _context.Branches.FirstOrDefaultAsync(b => b.Id == targetBranchId)
+                ?? throw new AppException("Target branch not found.", 404);
+
+            if (branch.Status != BranchStatus.Active)
+                throw new AppException("The selected branch is not active.", 400);
+
+            var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone);
+            var today = DateOnly.FromDateTime(nowLocal);
+            var nowTime = TimeOnly.FromDateTime(nowLocal);
+
+            if (targetBookingDate < today)
+                throw new AppException("New booking date cannot be in the past.", 400);
+
+            if (targetBookingDate == today && targetStartTime <= nowTime)
+                throw new AppException("New start time cannot be in the past.", 400);
+
+            var maxDays = customer.Tier.BookingWindow;
+            if (targetBookingDate > today.AddDays(maxDays))
+                throw new AppException($"Your tier allows booking up to {maxDays} days in advance.", 400);
+
+            if (targetStartTime < _options.OpenTime || targetStartTime >= _options.CloseTime)
+                throw new AppException($"Booking time must be within business hours ({_options.OpenTime:HH\\:mm}–{_options.CloseTime:HH\\:mm}).", 400);
+
+            var newTimeSlot = await _context.TimeSlots
+                .FirstOrDefaultAsync(t => t.StartTime == targetStartTime)
+                ?? throw new AppException("Invalid start time. Time slot not found.", 400);
+
+            var newBranchTimeSlot = await _context.BranchTimeSlots
+                .FirstOrDefaultAsync(bts => bts.BranchId == targetBranchId && bts.TimeSlotId == newTimeSlot.Id)
+                ?? throw new AppException("This time slot is not available for the selected branch.", 400);
+
+            if (!newBranchTimeSlot.IsActive)
+                throw new AppException("This time slot is currently locked or inactive at this branch.", 400);
+
+            var vehicleConflict = await _context.Bookings.AnyAsync(b =>
+                b.Id != booking.Id &&
+                b.VehicleId == booking.VehicleId &&
+                b.BookingDate == targetBookingDate &&
+                b.BranchTimeSlotId == newBranchTimeSlot.Id &&
+                (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress));
+
+            if (vehicleConflict)
+                throw new AppException("This vehicle already has another booking at the selected time.", 409);
+
+            await using var transaction = await _context.BeginTransactionAsync();
+
+            var currentBookingsCount = await _context.Bookings
+                .CountAsync(b => b.BranchTimeSlotId == newBranchTimeSlot.Id 
+                              && b.BookingDate == targetBookingDate 
+                              && b.Status != BookingStatus.Cancelled);
+
+            if (currentBookingsCount >= newBranchTimeSlot.MaxCapacity)
+                throw new AppException("This new time slot is fully booked. Please select another time or branch.", 409);
+
+            // Đổi lịch: Cập nhật thông tin và NHẢ BỆ RỬA CŨ (nếu đã được gán)
+            booking.BranchTimeSlotId = newBranchTimeSlot.Id;
+            booking.BookingDate = targetBookingDate;
+            booking.BayId = null; // Khách đổi giờ nên phải chờ nhân viên xếp lại bệ khác
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            _context.Bookings.Update(booking);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var updatedBooking = await _context.Bookings
+                .Include(b => b.WashPackage)
+                .Include(b => b.Vehicle)
+                .Include(b => b.BranchTimeSlot)
+                    .ThenInclude(bts => bts.TimeSlot)
+                .Include(b => b.BranchTimeSlot)
+                    .ThenInclude(bts => bts.Branch)
+                .Include(b => b.WashBay)
+                .FirstAsync(b => b.Id == booking.Id);
+
+            return MapToResponse(updatedBooking, updatedBooking.WashPackage, updatedBooking.Vehicle, updatedBooking.BranchTimeSlot.TimeSlot, updatedBooking.BranchTimeSlot.Branch, updatedBooking.WashBay);
+        }
+
+        booking.UpdatedAt = DateTime.UtcNow;
+        _context.Bookings.Update(booking);
+        await _context.SaveChangesAsync();
+
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
+    }
+    
     public async Task<BookingResponse> CompleteBookingAsync(Guid bookingId)
     {
         var booking = await _context.Bookings
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
-            .Include(b => b.TimeSlot)
-                .ThenInclude(ts => ts!.WashBay)
-            .Include(b => b.BookingAddOns)
-                .ThenInclude(ba => ba.AddOn)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.TimeSlot)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.Branch)
+            .Include(b => b.WashBay)
             .FirstOrDefaultAsync(b => b.Id == bookingId)
             ?? throw new AppException("Booking not found.", 404);
 
         if (booking.Status is BookingStatus.Pending or BookingStatus.Cancelled)
             throw new AppException("Only confirmed or in-progress bookings can be completed.", 400);
 
-        // Confirmed/InProgress -> Completed. An already-Completed booking falls through
-        // so a prior partial award (status saved but points failed) can be retried.
         if (booking.Status != BookingStatus.Completed)
         {
             booking.Status = BookingStatus.Completed;
             booking.UpdatedAt = DateTime.UtcNow;
-            if (booking.TimeSlot != null)
-                booking.TimeSlot.Status = TimeSlotStatus.Completed;
             await _context.SaveChangesAsync();
         }
 
-        // Award loyalty points — idempotent, so a repeated call for the same booking is a no-op.
         await _loyaltyService.AwardPointsForBookingAsync(bookingId);
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.TimeSlot, null, MapAddOns(booking));
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
     }
 
     private async Task<string> GenerateUniqueBookingCodeAsync()
@@ -351,22 +504,21 @@ public class BookingService : IBookingService
         return code;
     }
 
-    /// <summary>Projects a booking's loaded add-ons into response DTOs (name from catalog, price snapshotted).</summary>
-    private static List<BookingAddOnResponse> MapAddOns(Booking booking)
+    private string GenerateQrCodeBase64(string text)
     {
-        return booking.BookingAddOns
-            .Select(ba => new BookingAddOnResponse
-            {
-                AddOnId = ba.AddOnId,
-                Name = ba.AddOn?.Name ?? string.Empty,
-                Price = ba.Price
-            })
-            .ToList();
-    }
+        using var qrGenerator = new QRCodeGenerator();
+        using var qrCodeData = qrGenerator.CreateQrCode(text, QRCodeGenerator.ECCLevel.Q);
+        using var bitmapByteQrCode = new BitmapByteQRCode(qrCodeData);
+        
+        byte[] qrCodeAsBmpByteArr = bitmapByteQrCode.GetGraphic(2); 
 
+        string base64String = Convert.ToBase64String(qrCodeAsBmpByteArr);
+
+        return $"data:image/bmp;base64,{base64String}";
+    }
+    
     private static BookingResponse MapToResponse(
-        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot? slot, WashBay? bay = null,
-        List<BookingAddOnResponse>? addOns = null)
+        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot timeSlot, Branch branch, WashBay? washBay, string? voucherName = null)
     {
         return new BookingResponse
         {
@@ -375,16 +527,19 @@ public class BookingService : IBookingService
             WashPackageName = washPackage.Name,
             DurationMinutes = washPackage.DurationMinutes,
             BookingDate = booking.BookingDate,
-            StartTime = booking.StartTime,
-            EndTime = slot?.EndTime,
-            WashBayName = bay?.Name ?? slot?.WashBay?.Name,
+            StartTime = timeSlot.StartTime,
+            EndTime = timeSlot.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes)),
+            WashBayName = washBay?.Name ?? "Not Assigned Yet",
             VehiclePlate = vehicle.LicensePlate,
             VehicleName = vehicle.VehicleName,
             TotalPrice = booking.TotalPrice,
+            DiscountAmount = booking.DiscountAmount,
+            VoucherName = voucherName,
             Status = booking.Status.ToString(),
             QrData = booking.QrData,
-            AddOns = addOns ?? new(),
-            CreatedAt = booking.CreatedAt
+            CreatedAt = booking.CreatedAt,
+            BranchId = branch.Id,
+            BranchName = branch.BranchName
         };
     }
 }

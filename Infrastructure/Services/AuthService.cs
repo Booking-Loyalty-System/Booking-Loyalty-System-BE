@@ -10,6 +10,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Oauth2.v2;
 using Google.Apis.Services;
+
 namespace Infrastructure.Services;
 
 public class AuthService : IAuthService
@@ -17,6 +18,7 @@ public class AuthService : IAuthService
     private readonly IApplicationDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _config;
+
     public AuthService(IApplicationDbContext context, ITokenService tokenService, IConfiguration config)
     {
         _context = context;
@@ -165,6 +167,7 @@ public class AuthService : IAuthService
     {
         var user = await _context.Users
             .Include(u => u.Customer)
+                .ThenInclude(c => c.Tier) // 🔥 FIX LỖI: Cần nạp bảng Tier để không bị NullReferenceException
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new AppException("User not found.", 404);
 
@@ -173,7 +176,7 @@ public class AuthService : IAuthService
             UserId = user.Id,
             Email = user.Email,
             Role = user.Role.ToString(),
-            Tier = user.Customer?.Tier.ToString(),
+            Tier = user.Customer?.Tier?.TierName, // Sửa lại lấy đúng thuộc tính tên Hạng (ví dụ TierName)
             TotalPoints = user.Customer?.TotalPoints,
             TotalWashes = user.Customer?.TotalWashes
         };
@@ -230,7 +233,6 @@ public class AuthService : IAuthService
                     Role = UserRole.Customer,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
-                    // Thêm trường Avatar/Picture nếu bản User của bạn có hỗ trợ
                 };
 
                 var customer = new Customer
@@ -238,11 +240,10 @@ public class AuthService : IAuthService
                     Id = Guid.NewGuid(),
                     UserId = user.Id,
                     FullName = userInfo.Name ?? "Google User",
-                    PhoneNumber = null, // Chấp nhận NULL lúc này, User cập nhật sau
+                    PhoneNumber = null, 
                     DateOfBirth = null,
                     TierId = tier.Id,
-                    CreatedAt = DateTime.UtcNow,
-                    User = user
+                    CreatedAt = DateTime.UtcNow
                 };
 
                 _context.Users.Add(user);
@@ -254,7 +255,6 @@ public class AuthService : IAuthService
                 if (!user.IsActive)
                     throw new AppException("User account is deactivated.", 403);
 
-                // Cập nhật lại thông tin Customer nếu cần
                 var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == user.Id);
                 if (customer != null && string.IsNullOrEmpty(customer.FullName))
                 {
@@ -263,7 +263,7 @@ public class AuthService : IAuthService
                 }
             }
 
-            // Tạo cặp AccessToken và RefreshToken nội bộ dựa trên cấu trúc TokenService của bạn
+            // Tạo cặp AccessToken và RefreshToken nội bộ
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
@@ -271,14 +271,14 @@ public class AuthService : IAuthService
             user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
             user.UpdatedAt = DateTime.UtcNow;
 
-            // Lưu toàn bộ thay đổi xuống DB
+            // Lưu toàn bộ thay đổi xuống DB Postgres
             await _context.SaveChangesAsync();
 
             return ApiResponse<TokenResponse>.SuccessResponse(new TokenResponse
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                AccessTokenExpiry = DateTime.UtcNow.AddMinutes(60) // Khớp thời gian hết hạn hệ thống bạn
+                AccessTokenExpiry = DateTime.UtcNow.AddMinutes(60)
             }, message);
         }
         catch (AppException)

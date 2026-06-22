@@ -10,22 +10,25 @@ public class TimeSlotConfiguration : IEntityTypeConfiguration<TimeSlot>
     {
         builder.HasKey(ts => ts.Id);
 
-        builder.Property(ts => ts.Status)
-            .HasConversion<string>()
-            .HasMaxLength(20);
+        builder.Property(ts => ts.StartTime)
+            .IsRequired();
 
-        // Composite index for efficient queries
-        builder.HasIndex(ts => new { ts.WashBayId, ts.Date, ts.StartTime });
+        // CẤU HÌNH MỚI: 1 TimeSlot có thể xuất hiện ở nhiều BranchTimeSlots
+        builder.HasMany(ts => ts.BranchTimeSlots)
+            .WithOne(bts => bts.TimeSlot)
+            .HasForeignKey(bts => bts.TimeSlotId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        // Foreign keys
-        builder.HasOne(ts => ts.WashBay)
-            .WithMany(wb => wb.TimeSlots)
-            .HasForeignKey(ts => ts.WashBayId)
-            .OnDelete(DeleteBehavior.Restrict);
+        var staticTimeSlots = new List<TimeSlot>();
+        for (int i = 8; i < 18; i++)
+        {
+            staticTimeSlots.Add(new TimeSlot
+            {
+                Id = Guid.Parse($"00000000-0000-0000-0000-0000000000{i:D2}"), 
+                StartTime = new TimeOnly(i, 0),
+            });
+        }
 
-        builder.HasOne(ts => ts.Booking)
-            .WithOne(b => b.TimeSlot)
-            .HasForeignKey<TimeSlot>(ts => ts.BookingId)
-            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasData(staticTimeSlots);
     }
 }

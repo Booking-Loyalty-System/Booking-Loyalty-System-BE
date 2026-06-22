@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260620030224_AddAddOnsAndPayment")]
+    [Migration("20260622064750_AddAddOnsAndPayment")]
     partial class AddAddOnsAndPayment
     {
         /// <inheritdoc />
@@ -20,10 +20,42 @@ namespace Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "8.0.28")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("BranchTimeSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("MaxCapacity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<Guid>("TimeSlotId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TimeSlotId");
+
+                    b.HasIndex("BranchId", "TimeSlotId")
+                        .IsUnique();
+
+                    b.ToTable("BranchTimeSlots");
+                });
 
             modelBuilder.Entity("Domain.Entities.AddOn", b =>
                 {
@@ -105,10 +137,7 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("AssignedStaffId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BayId")
+                    b.Property<Guid?>("BayId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("BookingCode")
@@ -119,7 +148,7 @@ namespace Infrastructure.Migrations
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date");
 
-                    b.Property<Guid>("BranchId")
+                    b.Property<Guid>("BranchTimeSlotId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CancellationReason")
@@ -132,6 +161,10 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("CustomerNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal>("DiscountAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -139,8 +172,13 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("QrData")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("RewardId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("StaffId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<TimeOnly>("StartTime")
                         .HasColumnType("time");
@@ -149,9 +187,6 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<Guid?>("TimeSlotId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
@@ -172,11 +207,15 @@ namespace Infrastructure.Migrations
                     b.HasIndex("BookingCode")
                         .IsUnique();
 
-                    b.HasIndex("BranchId");
+                    b.HasIndex("BranchTimeSlotId");
 
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("PromotionId");
+
+                    b.HasIndex("RewardId");
+
+                    b.HasIndex("StaffId");
 
                     b.HasIndex("VehicleId");
 
@@ -237,26 +276,59 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
                     b.Property<string>("OperatingHours")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Branches", (string)null);
+                    b.ToTable("Branches");
 
                     b.HasData(
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            Address = "123 Street",
-                            BranchName = "Main Branch",
+                            Address = "625 Nguyễn Xiển, Long Bình, Hồ Chí Minh 70000, Vietnam",
+                            BranchName = "Quận 9 Branch",
                             Hotline = "0123456789",
+                            Latitude = 10.8415798,
+                            Longitude = 106.8294047,
                             OperatingHours = "8am-9pm",
-                            Status = 0
+                            Status = "Active"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            Address = "303 Cách Mạng Tháng 8 Tổ 20, Khu phố Khu phố, Hòa Hưng, Hồ Chí Minh, Vietnam",
+                            BranchName = "Quận 3 Branch",
+                            Hotline = "0987654321",
+                            Latitude = 10.7794176,
+                            Longitude = 106.678039,
+                            OperatingHours = "8am-8pm",
+                            Status = "Active"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            Address = "19Bis Cộng Hòa, Bảy Hiền, Hồ Chí Minh, Vietnam",
+                            BranchName = "Tân Bình Branch",
+                            Hotline = "0912345678",
+                            Latitude = 10.801600799999999,
+                            Longitude = 106.64823730000001,
+                            OperatingHours = "8am-9pm",
+                            Status = "Active"
                         });
                 });
 
@@ -318,12 +390,12 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("055bd3de-11b3-48ae-bd36-6510de2a65c4"),
-                            CreatedAt = new DateTime(2026, 6, 20, 3, 2, 22, 331, DateTimeKind.Utc).AddTicks(1041),
+                            Id = new Guid("a6581345-8fad-49b4-b6ea-8622a720f33d"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 48, 774, DateTimeKind.Utc).AddTicks(5773),
                             FullName = "Customer User",
                             IsPhoneNumberVerified = false,
                             LifetimePoints = 0,
-                            PhoneNumber = "0901234567",
+                            PhoneNumber = "0901234569",
                             TierId = new Guid("11111111-1111-1111-1111-111111111111"),
                             TotalPoints = 0,
                             TotalSpent = 0m,
@@ -332,46 +404,77 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.LoyaltyTransaction", b =>
+            modelBuilder.Entity("Domain.Entities.CustomerPromotion", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("BalanceAfter")
-                        .HasColumnType("int");
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("BookingId")
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("PromotionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.ToTable("CustomerPromotions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("CustomerId")
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ReferenceId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Points")
-                        .HasColumnType("int");
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BookingId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("CustomerId", "CreatedAt");
-
-                    b.ToTable("LoyaltyTransactions");
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Domain.Entities.Payment", b =>
@@ -442,48 +545,97 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
-                    b.Property<string>("DiscountType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int>("DiscountType")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("DiscountValue")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsVoucher")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<int?>("MaxUses")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("MinSpend")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int?>("PointsCost")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PriorityLevel")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("UsedCount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Promotions", (string)null);
+                    b.ToTable("Promotions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PromotionBranch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid>("PromotionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.ToTable("PromotionBranches");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reward", b =>
@@ -496,19 +648,34 @@ namespace Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PointsCost")
                         .HasColumnType("int");
+
+                    b.Property<int>("PointsRequired")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.HasKey("Id");
 
@@ -548,6 +715,71 @@ namespace Infrastructure.Migrations
                     b.HasIndex("RewardId");
 
                     b.ToTable("RewardRedemptions", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Staff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsAvailable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Staffs");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            FullName = "Nguyễn Văn Staff",
+                            IsAvailable = true,
+                            PhoneNumber = "0901234567",
+                            UserId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+                        },
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111112"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            FullName = "Trần Thị Staff Một",
+                            IsAvailable = true,
+                            PhoneNumber = "0907654321",
+                            UserId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc")
+                        },
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111113"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            FullName = "Lê Hoàng Staff Hai",
+                            IsAvailable = true,
+                            PhoneNumber = "0911223344",
+                            UserId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd")
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Tier", b =>
@@ -623,41 +855,52 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.TimeSlot", b =>
+            modelBuilder.Entity("Domain.Entities.TierPromotion", b =>
+                {
+                    b.Property<Guid>("TierPromotionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PromotionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("TierPromotionId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.HasIndex("TierId");
+
+                    b.ToTable("TierPromotions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Transaction", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("BookingId")
+                    b.Property<Guid>("BookingId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
+                    b.Property<bool>("Status")
+                        .HasColumnType("bit");
 
-                    b.Property<TimeOnly>("EndTime")
-                        .HasColumnType("time");
-
-                    b.Property<TimeOnly>("StartTime")
-                        .HasColumnType("time");
-
-                    b.Property<string>("Status")
+                    b.Property<string>("TransactionCode")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<Guid>("WashBayId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BookingId")
-                        .IsUnique()
-                        .HasFilter("[BookingId] IS NOT NULL");
+                    b.HasIndex("BookingId");
 
-                    b.HasIndex("WashBayId", "Date", "StartTime");
+                    b.HasIndex("TransactionCode")
+                        .IsUnique();
 
-                    b.ToTable("TimeSlots");
+                    b.ToTable("Transactions");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>
@@ -709,28 +952,46 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            CreatedAt = new DateTime(2026, 6, 20, 3, 2, 22, 528, DateTimeKind.Utc).AddTicks(6108),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 48, 976, DateTimeKind.Utc).AddTicks(8152),
                             Email = "admin@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$ketiM.L5xl3qmN56.elkMe0zbQ9ZLKCJWk8nlcfYePf0bnr5symJu",
+                            PasswordHash = "$2a$11$vJwHizeagMPdgp1DWtoJEeK62hGgctMYm5KHf1iu2FT5frrFzaXCi",
                             Role = "Admin"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 20, 3, 2, 22, 706, DateTimeKind.Utc).AddTicks(19),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 178, DateTimeKind.Utc).AddTicks(7640),
                             Email = "staff@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$NKtGJxvXvxDiImQgbsPATucsA/wJqCrwaQvEHw.D/GXEdLAM3Mq8K",
+                            PasswordHash = "$2a$11$bzWm7rl/Ty6AIwKRTlCffO/5mBPIt4zpgen03BBqrtXm4b5gs/w.S",
+                            Role = "Staff"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 363, DateTimeKind.Utc).AddTicks(940),
+                            Email = "staff1@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$OjK1kUIy/PG0XA3EYQ2ZjuRpCk8HXLmqE25zAdkwW8Z5j95pKgUqC",
+                            Role = "Staff"
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 545, DateTimeKind.Utc).AddTicks(8099),
+                            Email = "staff2@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$YUf.tUvs/lZIi.66sK8L.uEtO4adJCT6pYhmI/tCmDIRn8kNWeyUu",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            CreatedAt = new DateTime(2026, 6, 20, 3, 2, 22, 882, DateTimeKind.Utc).AddTicks(3070),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 736, DateTimeKind.Utc).AddTicks(7382),
                             Email = "customer@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$W8HqnEi345uElfrv3cfpWe9s8xSo/N7tQ1EA.iT1dd.TTCV9vTbvK",
+                            PasswordHash = "$2a$11$b88k0ldRKrGS1b0dJMvDJeWQoGGYt4PNjLKcGHyG8tfLuWziSc4S2",
                             Role = "Customer"
                         });
                 });
@@ -826,17 +1087,17 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Bay A1",
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8775),
+                            Name = "Bay A1 (Q9)",
                             Status = "Available",
-                            SupportedTypes = "Small,Medium,Large"
+                            SupportedTypes = "Small,Medium"
                         },
                         new
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Bay A2",
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8823),
+                            Name = "Bay A2 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
                         },
@@ -844,8 +1105,89 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Bay B1",
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8827),
+                            Name = "Bay B1 (Q9)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium,Large"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0001-0001-0001-000000000004"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8829),
+                            Name = "Bay B2 (Q9)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium,Large"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0003-0001-0001-000000000001"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8832),
+                            Name = "Bay A1 (Q3)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0003-0001-0001-000000000002"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8835),
+                            Name = "Bay A2 (Q3)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0003-0001-0001-000000000003"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8838),
+                            Name = "Bay B1 (Q3)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium,Large"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0003-0001-0001-000000000004"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8841),
+                            Name = "Bay B2 (Q3)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium,Large"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0002-0001-0001-000000000001"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8843),
+                            Name = "Bay A1 (TB)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0002-0001-0001-000000000002"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8846),
+                            Name = "Bay A2 (TB)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0002-0001-0001-000000000003"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8849),
+                            Name = "Bay B1 (TB)",
+                            Status = "Available",
+                            SupportedTypes = "Small,Medium,Large"
+                        },
+                        new
+                        {
+                            Id = new Guid("b1b2c3d4-0002-0001-0001-000000000004"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            CreatedAt = new DateTime(2026, 6, 22, 6, 47, 49, 738, DateTimeKind.Utc).AddTicks(8851),
+                            Name = "Bay B2 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
                         });
@@ -926,17 +1268,149 @@ namespace Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LoyaltyTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BalanceAfter")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("BookingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("RewardId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("RewardId");
+
+                    b.HasIndex("CustomerId", "CreatedAt");
+
+                    b.ToTable("LoyaltyTransactions");
+                });
+
+            modelBuilder.Entity("TimeSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TimeSlots");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000008"),
+                            StartTime = new TimeOnly(8, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000009"),
+                            StartTime = new TimeOnly(9, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000010"),
+                            StartTime = new TimeOnly(10, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000011"),
+                            StartTime = new TimeOnly(11, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000012"),
+                            StartTime = new TimeOnly(12, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000013"),
+                            StartTime = new TimeOnly(13, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000014"),
+                            StartTime = new TimeOnly(14, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000015"),
+                            StartTime = new TimeOnly(15, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000016"),
+                            StartTime = new TimeOnly(16, 0, 0)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000017"),
+                            StartTime = new TimeOnly(17, 0, 0)
+                        });
+                });
+
+            modelBuilder.Entity("BranchTimeSlot", b =>
+                {
+                    b.HasOne("Domain.Entities.Branch", "Branch")
+                        .WithMany("BranchTimeSlots")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TimeSlot", "TimeSlot")
+                        .WithMany("BranchTimeSlots")
+                        .HasForeignKey("TimeSlotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("TimeSlot");
+                });
+
             modelBuilder.Entity("Domain.Entities.Booking", b =>
                 {
                     b.HasOne("Domain.Entities.WashBay", "WashBay")
-                        .WithMany()
+                        .WithMany("Bookings")
                         .HasForeignKey("BayId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Domain.Entities.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
+                    b.HasOne("BranchTimeSlot", "BranchTimeSlot")
+                        .WithMany("Bookings")
+                        .HasForeignKey("BranchTimeSlotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -951,6 +1425,15 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("PromotionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Domain.Entities.Reward", "Reward")
+                        .WithMany("Bookings")
+                        .HasForeignKey("RewardId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Staff", "Staff")
+                        .WithMany("Bookings")
+                        .HasForeignKey("StaffId");
+
                     b.HasOne("Domain.Entities.Vehicle", "Vehicle")
                         .WithMany("Bookings")
                         .HasForeignKey("VehicleId")
@@ -963,11 +1446,15 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Branch");
+                    b.Navigation("BranchTimeSlot");
 
                     b.Navigation("Customer");
 
                     b.Navigation("Promotion");
+
+                    b.Navigation("Reward");
+
+                    b.Navigation("Staff");
 
                     b.Navigation("Vehicle");
 
@@ -1014,22 +1501,34 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Domain.Entities.LoyaltyTransaction", b =>
+            modelBuilder.Entity("Domain.Entities.CustomerPromotion", b =>
                 {
-                    b.HasOne("Domain.Entities.Booking", "Booking")
-                        .WithMany()
-                        .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Domain.Entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Booking");
+                    b.HasOne("Domain.Entities.Promotion", "Promotion")
+                        .WithMany()
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Customer");
+
+                    b.Navigation("Promotion");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Domain.Entities.Payment", b =>
@@ -1041,6 +1540,25 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PromotionBranch", b =>
+                {
+                    b.HasOne("Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Promotion", "Promotion")
+                        .WithMany("PromotionBranches")
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Promotion");
                 });
 
             modelBuilder.Entity("Domain.Entities.RewardRedemption", b =>
@@ -1062,22 +1580,53 @@ namespace Infrastructure.Migrations
                     b.Navigation("Reward");
                 });
 
-            modelBuilder.Entity("Domain.Entities.TimeSlot", b =>
+            modelBuilder.Entity("Domain.Entities.Staff", b =>
                 {
-                    b.HasOne("Domain.Entities.Booking", "Booking")
-                        .WithOne("TimeSlot")
-                        .HasForeignKey("Domain.Entities.TimeSlot", "BookingId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Entities.WashBay", "WashBay")
-                        .WithMany("TimeSlots")
-                        .HasForeignKey("WashBayId")
+                    b.HasOne("Domain.Entities.Branch", "Branch")
+                        .WithMany("Staffs")
+                        .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Booking");
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithOne("Staff")
+                        .HasForeignKey("Domain.Entities.Staff", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.Navigation("WashBay");
+                    b.Navigation("Branch");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.TierPromotion", b =>
+                {
+                    b.HasOne("Domain.Entities.Promotion", "Promotion")
+                        .WithMany()
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Tier", "Tier")
+                        .WithMany()
+                        .HasForeignKey("TierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Promotion");
+
+                    b.Navigation("Tier");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Transaction", b =>
+                {
+                    b.HasOne("Domain.Entities.Booking", "Booking")
+                        .WithMany("Transactions")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
                 });
 
             modelBuilder.Entity("Domain.Entities.Vehicle", b =>
@@ -1102,6 +1651,36 @@ namespace Infrastructure.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("LoyaltyTransaction", b =>
+                {
+                    b.HasOne("Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Reward", "Reward")
+                        .WithMany()
+                        .HasForeignKey("RewardId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Reward");
+                });
+
+            modelBuilder.Entity("BranchTimeSlot", b =>
+                {
+                    b.Navigation("Bookings");
+                });
+
             modelBuilder.Entity("Domain.Entities.AddOn", b =>
                 {
                     b.Navigation("BookingAddOns");
@@ -1113,11 +1692,15 @@ namespace Infrastructure.Migrations
 
                     b.Navigation("Payments");
 
-                    b.Navigation("TimeSlot");
+                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Branch", b =>
                 {
+                    b.Navigation("BranchTimeSlots");
+
+                    b.Navigation("Staffs");
+
                     b.Navigation("WashBays");
                 });
 
@@ -1128,9 +1711,21 @@ namespace Infrastructure.Migrations
                     b.Navigation("Vehicles");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Promotion", b =>
+                {
+                    b.Navigation("PromotionBranches");
+                });
+
             modelBuilder.Entity("Domain.Entities.Reward", b =>
                 {
+                    b.Navigation("Bookings");
+
                     b.Navigation("Redemptions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Staff", b =>
+                {
+                    b.Navigation("Bookings");
                 });
 
             modelBuilder.Entity("Domain.Entities.Tier", b =>
@@ -1141,6 +1736,10 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Entities.User", b =>
                 {
                     b.Navigation("Customer");
+
+                    b.Navigation("Notifications");
+
+                    b.Navigation("Staff");
                 });
 
             modelBuilder.Entity("Domain.Entities.Vehicle", b =>
@@ -1150,12 +1749,17 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.WashBay", b =>
                 {
-                    b.Navigation("TimeSlots");
+                    b.Navigation("Bookings");
                 });
 
             modelBuilder.Entity("Domain.Entities.WashPackage", b =>
                 {
                     b.Navigation("Bookings");
+                });
+
+            modelBuilder.Entity("TimeSlot", b =>
+                {
+                    b.Navigation("BranchTimeSlots");
                 });
 #pragma warning restore 612, 618
         }

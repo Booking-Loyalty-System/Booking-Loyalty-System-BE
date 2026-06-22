@@ -18,7 +18,6 @@ public class AdminWashBayController : ControllerBase
         _washBayService = washBayService;
     }
 
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -26,7 +25,16 @@ public class AdminWashBayController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    [AllowAnonymous]
+    [HttpGet("by-branch/{branchId}")]
+    public async Task<IActionResult> GetAll(Guid branchId)
+    {
+        var result = await _washBayService.GetAllAsync(branchId);
+        if (result == null)
+            return NotFound(ApiResponse<object>.FailResponse("Wash bay not found."));
+
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+    
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {

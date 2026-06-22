@@ -25,6 +25,14 @@ public class TierService : ITierService
         return tiers.Select(MapToResponse).ToList();
     }
 
+    public async Task<TierResponse> GetByIdAsync(Guid id)
+    {
+        var tier = await _context.Tiers.FindAsync(id)
+            ?? throw new AppException("Tier not found.", 404);
+
+        return MapToResponse(tier);
+    }
+
     public async Task<CustomerTierResponse> GetMyTierAsync(Guid userId)
     {
         var customer = await _context.Customers
@@ -71,8 +79,9 @@ public class TierService : ITierService
                     TierName = nextTier.TierName,
                     MinPointsRequired = nextTier.MinPointsRequired,
                     PointsNeeded = nextTier.MinPointsRequired - customer.LifetimePoints,
-                    ProgressPercent = Math.Round(
-                        (double)customer.LifetimePoints / nextTier.MinPointsRequired * 100, 1)
+                    ProgressPercent = nextTier.MinPointsRequired > 0 
+                        ? Math.Round((double)customer.LifetimePoints / nextTier.MinPointsRequired * 100, 1)
+                        : 0
                 }
                 : null,
             Maintenance = new MaintenanceInfo
@@ -85,16 +94,15 @@ public class TierService : ITierService
         };
     }
 
-    public async Task<TierResponse> GetByIdAsync(Guid id)
-    {
-        var tier = await _context.Tiers.FindAsync(id)
-            ?? throw new AppException("Tier not found.", 404);
-
-        return MapToResponse(tier);
-    }
-
     public async Task<TierResponse> CreateAsync(CreateTierRequest request)
     {
+        // Kiểm tra xem tên Tier đã tồn tại chưa
+        var existingName = await _context.Tiers
+            .AnyAsync(t => t.TierName == request.TierName);
+
+        if (existingName)
+            throw new AppException("A tier with this name already exists.", 409);
+
         var tier = new Tier
         {
             Id = Guid.NewGuid(),
@@ -117,7 +125,15 @@ public class TierService : ITierService
         var tier = await _context.Tiers.FindAsync(id)
             ?? throw new AppException("Tier not found.", 404);
 
-        if (request.TierName != null) tier.TierName = request.TierName;
+        if (request.TierName != null && tier.TierName != request.TierName)
+        {
+            var nameExists = await _context.Tiers.AnyAsync(t => t.TierName == request.TierName);
+            if (nameExists) 
+                throw new AppException("A tier with this name already exists.", 409);
+            
+            tier.TierName = request.TierName;
+        }
+
         if (request.PointRate != null) tier.PointRate = request.PointRate.Value;
         if (request.BookingWindow != null) tier.BookingWindow = request.BookingWindow.Value;
         if (request.Level != null) tier.Level = Enum.Parse<PriorityLevel>(request.Level, true);

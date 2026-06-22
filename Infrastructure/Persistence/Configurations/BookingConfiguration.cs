@@ -1,5 +1,4 @@
 using Domain.Entities;
-using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,8 +8,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 {
     public void Configure(EntityTypeBuilder<Booking> builder)
     {
+        // Khóa chính
         builder.HasKey(b => b.Id);
 
+        // Cấu hình các thuộc tính cơ bản
         builder.Property(b => b.BookingCode)
             .IsRequired()
             .HasMaxLength(10);
@@ -29,9 +30,26 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasMaxLength(500);
 
         builder.Property(b => b.QrData)
-            .HasMaxLength(1000);
+            .HasColumnType("text");
 
-        // Foreign keys
+        builder.Property(b => b.CustomerNote)
+            .HasMaxLength(500);
+
+        // --- CẤU HÌNH QUAN HỆ KHÓA NGOẠI ---
+
+        // 1. Quan hệ chặt chẽ với bảng trung gian BranchTimeSlot
+        builder.HasOne(b => b.BranchTimeSlot)
+            .WithMany(bts => bts.Bookings) // 1 BranchTimeSlot có nhiều Bookings
+            .HasForeignKey(b => b.BranchTimeSlotId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // 2. Quan hệ tùy chọn (Nullable) với WashBay - Để Staff kéo thả xe vào bệ
+        builder.HasOne(b => b.WashBay)
+            .WithMany(wb => wb.Bookings) 
+            .HasForeignKey(b => b.BayId)
+            .OnDelete(DeleteBehavior.SetNull); // Nếu WashBay bị xóa, Booking không bị xóa, chỉ rớt WashBayId về null
+
+        // 3. Các quan hệ 1-Nhiều khác giữ nguyên
         builder.HasOne(b => b.Customer)
             .WithMany(c => c.Bookings)
             .HasForeignKey(b => b.CustomerId)
@@ -45,19 +63,6 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.HasOne(b => b.WashPackage)
             .WithMany(wp => wp.Bookings)
             .HasForeignKey(b => b.WashPackageId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Map the WashBay relationship onto the existing BayId column instead of
-        // letting EF create a separate shadow "WashBayId" FK.
-        builder.HasOne(b => b.WashBay)
-            .WithMany()
-            .HasForeignKey(b => b.BayId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Likewise pin the Branch relationship to the existing BranchId column.
-        builder.HasOne(b => b.Branch)
-            .WithMany()
-            .HasForeignKey(b => b.BranchId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Optional promotion applied to the booking.

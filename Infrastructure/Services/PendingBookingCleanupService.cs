@@ -66,7 +66,6 @@ public class PendingBookingCleanupService : BackgroundService
         var cutoff = DateTime.UtcNow.AddMinutes(-_timeoutMinutes);
 
         var expired = await context.Bookings
-            .Include(b => b.TimeSlot)
             .Where(b => b.Status == BookingStatus.Pending && b.CreatedAt < cutoff)
             .ToListAsync(ct);
 
@@ -78,13 +77,8 @@ public class PendingBookingCleanupService : BackgroundService
             booking.Status = BookingStatus.Cancelled;
             booking.CancellationReason = "Payment was not completed within the allowed time.";
             booking.UpdatedAt = DateTime.UtcNow;
-
-            // Release the reserved bay/time slot so the window becomes bookable again.
-            if (booking.TimeSlot != null)
-            {
-                context.TimeSlots.Remove(booking.TimeSlot);
-                booking.TimeSlotId = null;
-            }
+            // Capacity-based slots: a Cancelled booking no longer counts toward
+            // BranchTimeSlot.MaxCapacity, so the slot frees up automatically.
         }
 
         await context.SaveChangesAsync(ct);
