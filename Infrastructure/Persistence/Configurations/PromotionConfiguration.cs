@@ -70,9 +70,14 @@ public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
             .HasForeignKey(pb => pb.PromotionId)
             .OnDelete(DeleteBehavior.Cascade);
             
-        // Giữ lại PriorityLevel cũ của bạn (nếu trong Entity vẫn cần dùng)
-        // Nếu Entity bạn bỏ trường này rồi thì xóa dòng dưới đi nhé:
         builder.Property(p => p.PriorityLevel)
             .IsRequired();
+
+        builder.Property(p => p.IsVoucher)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(p => p.PointsCost)
+            .IsRequired(false);
     }
 }

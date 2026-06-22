@@ -32,7 +32,13 @@ public class Promotion
     public decimal? MinSpend { get; set; }
 
     public bool IsActive { get; set; } = true;
-    
+
+    /// <summary>True = this promotion is a voucher redeemable with loyalty points.</summary>
+    public bool IsVoucher { get; set; } = false;
+
+    /// <summary>Loyalty points required to redeem this voucher. Only relevant when IsVoucher = true.</summary>
+    public int? PointsCost { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Quan hệ 1-Nhiều với PromotionBranch (Cần thiết để Configuration map được)

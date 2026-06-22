@@ -10,4 +10,7 @@ public class CreateBookingRequest
 
     /// <summary>Optional promotion code to discount the booking price.</summary>
     public string? PromotionCode { get; set; }
+
+    /// <summary>Optional voucher (CustomerPromotion) ID to apply a personal voucher discount.</summary>
+    public Guid? VoucherId { get; set; }
 }

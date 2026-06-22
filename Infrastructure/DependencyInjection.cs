@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<ITierService, TierService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
         services.AddScoped<IStaffService, StaffService>();
+        services.AddScoped<IVoucherService, VoucherService>();
         services.AddHostedService<NotificationWorker>();
 
         return services;
