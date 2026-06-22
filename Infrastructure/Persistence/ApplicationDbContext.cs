@@ -29,7 +29,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Transaction> Transactions => Set<Transaction>(); 
-    public DbSet<LoyaltyTransaction> LoyaltyTransactions => Set<LoyaltyTransaction>();
+    public DbSet<Point> Points => Set<Point>();
+    public DbSet<PointHistory> PointHistories => Set<PointHistory>();
     public DbSet<Reward> Rewards => Set<Reward>(); 
     
     // 🔥 BỔ SUNG DÒNG NÀY ĐỂ FIX LỖI INTERFACE

@@ -43,8 +43,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 TierId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                 TotalSpent = 0m,
                 TotalWashes = 0,
-                TotalPoints = 0,
-                LifetimePoints = 0,
                 IsPhoneNumberVerified = false,
                 CreatedAt = DateTime.UtcNow
             }

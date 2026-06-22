@@ -21,7 +21,8 @@ public interface IApplicationDbContext
     // --- Hệ thống Đặt lịch & Giao dịch ---
     DbSet<Booking> Bookings { get; }
     DbSet<Transaction> Transactions { get; } 
-    DbSet<LoyaltyTransaction> LoyaltyTransactions { get; }
+    DbSet<Point> Points { get; }
+    DbSet<PointHistory> PointHistories { get; }
     DbSet<CustomerPromotion> CustomerPromotions { get; }
     DbSet<PromotionBranch> PromotionBranches { get; }
     DbSet<TierPromotion> TierPromotions { get; } 

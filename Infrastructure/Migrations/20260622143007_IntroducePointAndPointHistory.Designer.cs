@@ -4,6 +4,7 @@ using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622143007_IntroducePointAndPointHistory")]
+    partial class IntroducePointAndPointHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,7 +54,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("BranchId", "TimeSlotId")
                         .IsUnique();
 
-                    b.ToTable("BranchTimeSlots", (string)null);
+                    b.ToTable("BranchTimeSlots");
                 });
 
             modelBuilder.Entity("Domain.Entities.AddOn", b =>
@@ -218,7 +221,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("WashPackageId");
 
-                    b.ToTable("Bookings", (string)null);
+                    b.ToTable("Bookings");
                 });
 
             modelBuilder.Entity("Domain.Entities.BookingAddOn", b =>
@@ -291,7 +294,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Branches", (string)null);
+                    b.ToTable("Branches");
 
                     b.HasData(
                         new
@@ -376,7 +379,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
 
                     b.HasData(
                         new
@@ -422,7 +425,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PromotionId");
 
-                    b.ToTable("CustomerPromotions", (string)null);
+                    b.ToTable("CustomerPromotions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Notification", b =>
@@ -463,7 +466,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Domain.Entities.Payment", b =>
@@ -549,7 +552,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Points", (string)null);
+                    b.ToTable("Points");
                 });
 
             modelBuilder.Entity("Domain.Entities.PointHistory", b =>
@@ -597,7 +600,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PointId", "CreatedAt");
 
-                    b.ToTable("PointHistories", (string)null);
+                    b.ToTable("PointHistories");
                 });
 
             modelBuilder.Entity("Domain.Entities.Promotion", b =>
@@ -661,7 +664,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Promotions", (string)null);
+                    b.ToTable("Promotions");
                 });
 
             modelBuilder.Entity("Domain.Entities.PromotionBranch", b =>
@@ -690,7 +693,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PromotionId");
 
-                    b.ToTable("PromotionBranches", (string)null);
+                    b.ToTable("PromotionBranches");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reward", b =>
@@ -805,7 +808,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Staffs", (string)null);
+                    b.ToTable("Staffs");
 
                     b.HasData(
                         new
@@ -865,7 +868,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tiers", (string)null);
+                    b.ToTable("Tiers");
 
                     b.HasData(
                         new
@@ -928,7 +931,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TierId");
 
-                    b.ToTable("TierPromotions", (string)null);
+                    b.ToTable("TierPromotions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Transaction", b =>
@@ -955,7 +958,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("TransactionCode")
                         .IsUnique();
 
-                    b.ToTable("Transactions", (string)null);
+                    b.ToTable("Transactions");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>
@@ -1001,7 +1004,7 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[Email] IS NOT NULL");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
 
                     b.HasData(
                         new
@@ -1101,7 +1104,7 @@ namespace Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("[IsDeleted] = 0");
 
-                    b.ToTable("Vehicles", (string)null);
+                    b.ToTable("Vehicles");
                 });
 
             modelBuilder.Entity("Domain.Entities.WashBay", b =>
@@ -1135,7 +1138,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("BranchId");
 
-                    b.ToTable("WashBays", (string)null);
+                    b.ToTable("WashBays");
 
                     b.HasData(
                         new
@@ -1285,7 +1288,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WashPackages", (string)null);
+                    b.ToTable("WashPackages");
 
                     b.HasData(
                         new
@@ -1334,7 +1337,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TimeSlots", (string)null);
+                    b.ToTable("TimeSlots");
 
                     b.HasData(
                         new
