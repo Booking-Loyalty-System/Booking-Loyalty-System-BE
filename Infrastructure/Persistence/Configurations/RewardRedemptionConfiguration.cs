@@ -24,5 +24,10 @@ public class RewardRedemptionConfiguration : IEntityTypeConfiguration<RewardRede
             .WithMany(r => r.Redemptions)
             .HasForeignKey(rr => rr.RewardId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(rr => rr.Booking)
+            .WithMany()
+            .HasForeignKey(rr => rr.BookingId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

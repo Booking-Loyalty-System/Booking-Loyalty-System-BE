@@ -93,7 +93,6 @@ public static class DependencyInjection
         services.AddScoped<ITierService, TierService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
         services.AddScoped<IStaffService, StaffService>();
-        services.AddScoped<IVoucherService, VoucherService>();
         services.AddHostedService<NotificationWorker>();
 
         // Cancels unpaid bookings past the VNPay payment window, releasing their slots.

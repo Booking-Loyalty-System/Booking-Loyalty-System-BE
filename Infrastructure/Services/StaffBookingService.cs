@@ -57,11 +57,11 @@ public class StaffBookingService : IStaffBookingService
 
         var ids = bookings.Select(b => b.Id).ToList();
 
-        var pointsByBooking = await _context.LoyaltyTransactions
-            .Where(lt => lt.Type == LoyaltyTransactionType.Earn
-                         && lt.BookingId != null
-                         && ids.Contains(lt.BookingId.Value))
-            .ToDictionaryAsync(lt => lt.BookingId!.Value, lt => lt.Points);
+        var pointsByBooking = await _context.PointHistories
+            .Where(h => h.TransactionType == LoyaltyTransactionType.Earn
+                         && h.BookingId != null
+                         && ids.Contains(h.BookingId.Value))
+            .ToDictionaryAsync(h => h.BookingId!.Value, h => h.Amount);
 
         return bookings
             .Select(b => MapToResponseData(
@@ -218,9 +218,9 @@ public class StaffBookingService : IStaffBookingService
 
     private async Task<BookingResponseData> BuildResponseAsync(Booking booking)
     {
-        var points = await _context.LoyaltyTransactions
-            .Where(lt => lt.BookingId == booking.Id && lt.Type == LoyaltyTransactionType.Earn)
-            .Select(lt => (int?)lt.Points)
+        var points = await _context.PointHistories
+            .Where(h => h.BookingId == booking.Id && h.TransactionType == LoyaltyTransactionType.Earn)
+            .Select(h => (int?)h.Amount)
             .FirstOrDefaultAsync();
 
         return MapToResponseData(booking, points);
@@ -232,25 +232,28 @@ public class StaffBookingService : IStaffBookingService
             .OrderByDescending(t => t.MinPointsRequired)
             .ToListAsync();
 
-        var qualifiedTier = tiers.FirstOrDefault(t => customer.LifetimePoints >= t.MinPointsRequired);
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == customer.UserId);
+        var lifetimePoints = point?.TotalPoints ?? 0;
+
+        var qualifiedTier = tiers.FirstOrDefault(t => lifetimePoints >= t.MinPointsRequired);
 
         if (qualifiedTier != null && qualifiedTier.MinPointsRequired > customer.Tier.MinPointsRequired)
         {
             customer.TierId = qualifiedTier.Id;
-            return; 
+            return;
         }
 
         var cutoff = DateTime.UtcNow.AddDays(-90);
-        var recentPoints = await _context.LoyaltyTransactions
-            .Where(lt => lt.CustomerId == customer.Id
-                      && lt.Type == LoyaltyTransactionType.Earn
-                      && lt.CreatedAt >= cutoff)
-            .SumAsync(lt => lt.Points);
+        var recentPoints = point is null ? 0 : await _context.PointHistories
+            .Where(h => h.PointId == point.Id
+                      && h.TransactionType == LoyaltyTransactionType.Earn
+                      && h.CreatedAt >= cutoff)
+            .SumAsync(h => h.Amount);
 
         if (recentPoints < customer.Tier.MaintenancePoints)
         {
             var newTier = tiers.FirstOrDefault(t =>
-                customer.LifetimePoints >= t.MinPointsRequired && recentPoints >= t.MaintenancePoints);
+                lifetimePoints >= t.MinPointsRequired && recentPoints >= t.MaintenancePoints);
 
             if (newTier != null && newTier.Id != customer.TierId)
                 customer.TierId = newTier.Id;

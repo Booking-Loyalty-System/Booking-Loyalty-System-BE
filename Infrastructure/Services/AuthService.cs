@@ -171,13 +171,15 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new AppException("User not found.", 404);
 
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
+
         var response = new MeResponse
         {
             UserId = user.Id,
             Email = user.Email,
             Role = user.Role.ToString(),
             Tier = user.Customer?.Tier?.TierName, // Sửa lại lấy đúng thuộc tính tên Hạng (ví dụ TierName)
-            TotalPoints = user.Customer?.TotalPoints,
+            TotalPoints = point?.AvailablePoints,
             TotalWashes = user.Customer?.TotalWashes
         };
 

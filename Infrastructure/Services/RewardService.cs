@@ -45,6 +45,7 @@ public class RewardService : IRewardService
             Name = request.Name,
             Description = request.Description,
             PointsCost = request.PointsCost,
+            DiscountAmount = request.DiscountAmount,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -63,6 +64,7 @@ public class RewardService : IRewardService
         if (request.Name != null) reward.Name = request.Name;
         if (request.Description != null) reward.Description = request.Description;
         if (request.PointsCost.HasValue) reward.PointsCost = request.PointsCost.Value;
+        if (request.DiscountAmount.HasValue) reward.DiscountAmount = request.DiscountAmount.Value;
         if (request.IsActive.HasValue) reward.IsActive = request.IsActive.Value;
 
         await _context.SaveChangesAsync();
@@ -98,21 +100,29 @@ public class RewardService : IRewardService
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
-        if (customer.TotalPoints < reward.PointsCost)
+        var point = await _context.Points
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (point is null || point.AvailablePoints < reward.PointsCost)
             throw new AppException("Insufficient points to redeem this reward.", 400);
 
         var now = DateTime.UtcNow;
-        customer.TotalPoints -= reward.PointsCost;
+        point.AvailablePoints -= reward.PointsCost;
+        point.UpdatedAt = now;
 
-        var ledger = new LoyaltyTransaction
+        // Redeeming a reward spends points and produces a voucher: a Redeem ledger row
+        // carrying the RewardId and an expiry date (per ERD Point History).
+        var ledger = new PointHistory
         {
             Id = Guid.NewGuid(),
-            CustomerId = customer.Id,
-            Type = LoyaltyTransactionType.Redeem,
-            Points = -reward.PointsCost,
-            BalanceAfter = customer.TotalPoints,
+            PointId = point.Id,
+            TransactionType = LoyaltyTransactionType.Redeem,
+            Amount = -reward.PointsCost,
+            BalanceAfter = point.AvailablePoints,
+            RewardId = reward.Id,
             Description = $"Redeemed {reward.Name}",
-            CreatedAt = now
+            CreatedAt = now,
+            ExpiryDate = now.AddDays(30)
         };
 
         var redemption = new RewardRedemption
@@ -122,15 +132,16 @@ public class RewardService : IRewardService
             RewardId = reward.Id,
             PointsSpent = reward.PointsCost,
             Status = RedemptionStatus.Pending,
-            CreatedAt = now
+            CreatedAt = now,
+            ExpiryDate = now.AddDays(30)
         };
 
-        _context.LoyaltyTransactions.Add(ledger);
+        _context.PointHistories.Add(ledger);
         _context.RewardRedemptions.Add(redemption);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        return MapRedemption(redemption, reward.Name, customer.TotalPoints);
+        return MapRedemption(redemption, reward.Name, point.AvailablePoints);
     }
 
     public async Task<List<RedemptionResponse>> GetMyRedemptionsAsync(Guid userId)
@@ -181,6 +192,7 @@ public class RewardService : IRewardService
         Name = reward.Name,
         Description = reward.Description,
         PointsCost = reward.PointsCost,
+        DiscountAmount = reward.DiscountAmount,
         IsActive = reward.IsActive,
         CreatedAt = reward.CreatedAt
     };
