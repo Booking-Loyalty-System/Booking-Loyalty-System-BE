@@ -32,9 +32,9 @@ public class Promotion
     public decimal? MinSpend { get; set; }
 
     public bool IsActive { get; set; } = true;
-    
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Quan hệ 1-Nhiều với PromotionBranch (Cần thiết để Configuration map được)
     public ICollection<PromotionBranch> PromotionBranches { get; set; } = new List<PromotionBranch>();
+    public ICollection<TierPromotion> TierPromotions { get; set; } = new List<TierPromotion>();
 }

@@ -13,4 +13,5 @@ public class Tier
     public int MaintenancePoints { get; set; }
 
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
+    public ICollection<TierPromotion> TierPromotions { get; set; } = new List<TierPromotion>();
 }

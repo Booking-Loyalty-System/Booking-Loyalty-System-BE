@@ -81,7 +81,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 Role = UserRole.Customer,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
-            }
-        );
+            },
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccd"), Email = "cus2@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccce"), Email = "cus3@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"), Email = "cus4@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow }      );
     }
 }

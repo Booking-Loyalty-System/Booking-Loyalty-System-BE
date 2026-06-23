@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260620105229_InitialCreate")]
+    [Migration("20260623082202_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.28")
+                .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -55,6 +55,80 @@ namespace Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("BranchTimeSlots");
+                });
+
+            modelBuilder.Entity("Domain.Entities.AddOn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AddOns", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("a1110001-0000-0000-0000-000000000001"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Phủ wax bảo vệ sơn",
+                            DurationMinutes = 15,
+                            IsActive = true,
+                            Name = "Phủ wax",
+                            Price = 50000m
+                        },
+                        new
+                        {
+                            Id = new Guid("a1110001-0000-0000-0000-000000000002"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Hút bụi, lau sạch nội thất",
+                            DurationMinutes = 20,
+                            IsActive = true,
+                            Name = "Vệ sinh nội thất",
+                            Price = 80000m
+                        },
+                        new
+                        {
+                            Id = new Guid("a1110001-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Khử mùi khoang xe",
+                            DurationMinutes = 10,
+                            IsActive = true,
+                            Name = "Khử mùi",
+                            Price = 30000m
+                        },
+                        new
+                        {
+                            Id = new Guid("a1110001-0000-0000-0000-000000000004"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Đánh bóng pha đèn ố mờ",
+                            DurationMinutes = 15,
+                            IsActive = true,
+                            Name = "Đánh bóng đèn",
+                            Price = 40000m
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Booking", b =>
@@ -148,6 +222,37 @@ namespace Infrastructure.Migrations
                     b.HasIndex("WashPackageId");
 
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("Domain.Entities.BookingAddOn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AddOnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AddOnId");
+
+                    b.HasIndex("BookingId", "AddOnId")
+                        .IsUnique();
+
+                    b.ToTable("BookingAddOns", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Branch", b =>
@@ -247,18 +352,12 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsPhoneNumberVerified")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("LifetimePoints")
-                        .HasColumnType("integer");
-
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(15)
                         .HasColumnType("character varying(15)");
 
                     b.Property<Guid>("TierId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("TotalPoints")
-                        .HasColumnType("integer");
 
                     b.Property<decimal>("TotalSpent")
                         .HasColumnType("decimal(18,2)");
@@ -284,17 +383,51 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("cc1eb2da-f4d6-4648-aaf7-4421e64d0340"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 27, 872, DateTimeKind.Utc).AddTicks(3767),
-                            FullName = "Customer User",
+                            Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FullName = "Customer Bronze Tier",
                             IsPhoneNumberVerified = false,
-                            LifetimePoints = 0,
                             PhoneNumber = "0901234569",
                             TierId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            TotalPoints = 0,
                             TotalSpent = 0m,
                             TotalWashes = 0,
                             UserId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc")
+                        },
+                        new
+                        {
+                            Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FullName = "Customer Silver Tier",
+                            IsPhoneNumberVerified = true,
+                            PhoneNumber = "0901234568",
+                            TierId = new Guid("22222222-2222-2222-2222-222222222222"),
+                            TotalSpent = 500m,
+                            TotalWashes = 5,
+                            UserId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd")
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FullName = "Customer Gold Tier",
+                            IsPhoneNumberVerified = true,
+                            PhoneNumber = "0901234567",
+                            TierId = new Guid("33333333-3333-3333-3333-333333333333"),
+                            TotalSpent = 2500m,
+                            TotalWashes = 15,
+                            UserId = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce")
+                        },
+                        new
+                        {
+                            Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            FullName = "Customer Diamond Tier",
+                            IsPhoneNumberVerified = true,
+                            PhoneNumber = "0901234566",
+                            TierId = new Guid("44444444-4444-4444-4444-444444444444"),
+                            TotalSpent = 7000m,
+                            TotalWashes = 40,
+                            UserId = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf")
                         });
                 });
 
@@ -371,6 +504,140 @@ namespace Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BankCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResponseCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TransactionNo")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TransactionRef")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("TransactionRef")
+                        .IsUnique();
+
+                    b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Point", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AvailablePoints")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Points");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PointHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Amount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BalanceAfter")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PointId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RewardId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("RewardId");
+
+                    b.HasIndex("PointId", "CreatedAt");
+
+                    b.ToTable("PointHistories");
+                });
+
             modelBuilder.Entity("Domain.Entities.Promotion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -433,6 +700,168 @@ namespace Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Promotions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000001"),
+                            Code = "TB-PERCENT",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4319),
+                            Description = "Giảm 10% cho toàn bộ hóa đơn tại Tân Bình",
+                            DiscountType = 0,
+                            DiscountValue = 10.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MaxUses = 500,
+                            MinSpend = 100000m,
+                            Name = "Ưu đãi Tân Bình",
+                            PriorityLevel = 1,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000002"),
+                            Code = "Q3-PERCENT",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4331),
+                            Description = "Giảm 15% cho toàn bộ hóa đơn tại Quận 3",
+                            DiscountType = 0,
+                            DiscountValue = 15.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MaxUses = 500,
+                            MinSpend = 150000m,
+                            Name = "Ưu đãi Quận 3",
+                            PriorityLevel = 1,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000003"),
+                            Code = "Q9-PERCENT",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4339),
+                            Description = "Giảm 20% cho toàn bộ hóa đơn tại Quận 9",
+                            DiscountType = 0,
+                            DiscountValue = 20.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MaxUses = 500,
+                            MinSpend = 200000m,
+                            Name = "Ưu đãi Quận 9",
+                            PriorityLevel = 1,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000004"),
+                            Code = "BRONZE-10K",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4346),
+                            Description = "Giảm 5% cho thành viên Đồng",
+                            DiscountType = 1,
+                            DiscountValue = 5.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Ưu đãi hạng Bronze",
+                            PriorityLevel = 2,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000005"),
+                            Code = "SILVER-50K",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4354),
+                            Description = "Giảm 10% cho thành viên Bạc",
+                            DiscountType = 1,
+                            DiscountValue = 10.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MinSpend = 150000m,
+                            Name = "Ưu đãi hạng Silver",
+                            PriorityLevel = 3,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000006"),
+                            Code = "GOLD-15",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4361),
+                            Description = "Giảm 15% cho thành viên Vàng",
+                            DiscountType = 0,
+                            DiscountValue = 15.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Đặc quyền hạng Gold",
+                            PriorityLevel = 4,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000007"),
+                            Code = "DIAMOND-VIP",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4367),
+                            Description = "Giảm 25% tối đa đặc quyền Kim Cương",
+                            DiscountType = 0,
+                            DiscountValue = 25.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            Name = "Đẳng cấp Diamond",
+                            PriorityLevel = 5,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000008"),
+                            Code = "BDAY-15",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4373),
+                            Description = "Giảm 15% trong ngày sinh nhật của bạn",
+                            DiscountType = 0,
+                            DiscountValue = 15.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MinSpend = 200000m,
+                            Name = "Mừng Sinh Nhật 15%",
+                            PriorityLevel = 10,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000009"),
+                            Code = "BDAY-HAPPY",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4380),
+                            Description = "Giảm 5% cho hóa đơn đặt trước vào tuần sinh nhật",
+                            DiscountType = 0,
+                            DiscountValue = 5.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MinSpend = 500000m,
+                            Name = "Sinh Nhật Vui Vẻ 5%",
+                            PriorityLevel = 10,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000010"),
+                            Code = "BDAY-MEGA",
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4387),
+                            Description = "Giảm tối đa 20% cho hóa đơn đặt tiệc sinh nhật lớn",
+                            DiscountType = 0,
+                            DiscountValue = 20.00m,
+                            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            MinSpend = 1000000m,
+                            Name = "Đại Tiệc Sinh Nhật 20%",
+                            PriorityLevel = 9,
+                            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            UsedCount = 0
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.PromotionBranch", b =>
@@ -462,6 +891,32 @@ namespace Infrastructure.Migrations
                     b.HasIndex("PromotionId");
 
                     b.ToTable("PromotionBranches");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("e0000000-0000-0000-0000-000000000001"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
+                            ExpiryDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000001")
+                        },
+                        new
+                        {
+                            Id = new Guid("e0000000-0000-0000-0000-000000000002"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
+                            ExpiryDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000002")
+                        },
+                        new
+                        {
+                            Id = new Guid("e0000000-0000-0000-0000-000000000003"),
+                            BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                            ExpiryDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsActive = true,
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000003")
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Reward", b =>
@@ -477,7 +932,8 @@ namespace Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("numeric");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
@@ -506,6 +962,148 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Rewards", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000001"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1685),
+                            Description = "Giảm 10,000đ",
+                            DiscountAmount = 10.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 10k",
+                            PointsCost = 50,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000002"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1738),
+                            Description = "Giảm 20,000đ",
+                            DiscountAmount = 20.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 20k",
+                            PointsCost = 100,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1744),
+                            Description = "Giảm 50,000đ",
+                            DiscountAmount = 50.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 50k",
+                            PointsCost = 250,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000004"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1748),
+                            Description = "Giảm 100,000đ",
+                            DiscountAmount = 100.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 100k",
+                            PointsCost = 500,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000005"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1751),
+                            Description = "Giảm 150,000đ",
+                            DiscountAmount = 150.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 150k",
+                            PointsCost = 750,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000006"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1756),
+                            Description = "Giảm 200,000đ",
+                            DiscountAmount = 200.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 200k",
+                            PointsCost = 1000,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000007"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1761),
+                            Description = "Giảm 250,000đ",
+                            DiscountAmount = 250.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 250k",
+                            PointsCost = 1250,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000008"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1764),
+                            Description = "Giảm 300,000đ",
+                            DiscountAmount = 300.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 300k",
+                            PointsCost = 1500,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000009"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1768),
+                            Description = "Giảm 400,000đ",
+                            DiscountAmount = 400.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 400k",
+                            PointsCost = 2000,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000010"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1772),
+                            Description = "Giảm 500,000đ",
+                            DiscountAmount = 500.00m,
+                            EndDate = new DateOnly(2026, 12, 31),
+                            IsActive = true,
+                            Name = "Voucher 500k",
+                            PointsCost = 2500,
+                            PointsRequired = 0,
+                            StartDate = new DateOnly(2026, 1, 1),
+                            Status = true
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.RewardRedemption", b =>
@@ -514,11 +1112,17 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BookingId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("FulfilledAt")
                         .HasColumnType("timestamp with time zone");
@@ -535,6 +1139,8 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BookingId");
 
                     b.HasIndex("CustomerId");
 
@@ -700,6 +1306,32 @@ namespace Infrastructure.Migrations
                     b.HasIndex("TierId");
 
                     b.ToTable("TierPromotions");
+
+                    b.HasData(
+                        new
+                        {
+                            TierPromotionId = new Guid("d0000000-0000-0000-0000-000000000001"),
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000004"),
+                            TierId = new Guid("11111111-1111-1111-1111-111111111111")
+                        },
+                        new
+                        {
+                            TierPromotionId = new Guid("d0000000-0000-0000-0000-000000000002"),
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000005"),
+                            TierId = new Guid("22222222-2222-2222-2222-222222222222")
+                        },
+                        new
+                        {
+                            TierPromotionId = new Guid("d0000000-0000-0000-0000-000000000003"),
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000006"),
+                            TierId = new Guid("33333333-3333-3333-3333-333333333333")
+                        },
+                        new
+                        {
+                            TierPromotionId = new Guid("d0000000-0000-0000-0000-000000000004"),
+                            PromotionId = new Guid("c0000000-0000-0000-0000-000000000007"),
+                            TierId = new Guid("44444444-4444-4444-4444-444444444444")
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Transaction", b =>
@@ -777,46 +1409,73 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 93, DateTimeKind.Utc).AddTicks(877),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 429, DateTimeKind.Utc).AddTicks(1604),
                             Email = "admin@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$fw.dFNx.NvBjV6Q1AE1Ud.oAuG7a57Qxx0V.DPWogCGK9JuC31xYa",
+                            PasswordHash = "$2a$11$BdVSeDdRPBwuEpoFgIOl6uaJdfAScyVJKkZCAKmizhF0zTbzln7v6",
                             Role = "Admin"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 281, DateTimeKind.Utc).AddTicks(2351),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 615, DateTimeKind.Utc).AddTicks(7337),
                             Email = "staff@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$wBeKRHpdnZizG1//gA99TurhjGsM3rbxirXLqZNoMZtRD4GCQ3vma",
+                            PasswordHash = "$2a$11$/qGSfGzw20ZdqEBurTe90Oeh99wTPokDBahL27dYPPGisTN6ioL.W",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 554, DateTimeKind.Utc).AddTicks(8514),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 811, DateTimeKind.Utc).AddTicks(3091),
                             Email = "staff1@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$HeSjcgJ1dDcFExw9lC3KWetjNXJIubDyI1WWsMauyJ9HaCvIr2bcy",
+                            PasswordHash = "$2a$11$Zqnb.F.hZPzDugqxtNSdg.Dc3TeWgKDrXwCmot4RNSuJmRn.ldF52",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 744, DateTimeKind.Utc).AddTicks(2691),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 0, 999, DateTimeKind.Utc).AddTicks(7281),
                             Email = "staff2@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$L..jzR73e0jiHTDjo4RQ2eFsAdk76AV/rKuAuxb3qIiJuKFYCK/ly",
+                            PasswordHash = "$2a$11$GwMemSFZrN.h7g9se70ux.tChf7qMvRgybMzr5qOzx5GF.R74LrM2",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 933, DateTimeKind.Utc).AddTicks(2870),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 182, DateTimeKind.Utc).AddTicks(1751),
                             Email = "customer@system.com",
                             IsActive = true,
-                            PasswordHash = "$2a$11$OL0r4JymEYmA.hP8W6LEJuoJD1JcFfEVxpZgOpggdUaig1XrmQHBG",
+                            PasswordHash = "$2a$11$apVO5ormGNb2eFVj1WuqUuhCS7w.wciZL1USP95N8lRXNkrc.Gnyq",
+                            Role = "Customer"
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 369, DateTimeKind.Utc).AddTicks(7337),
+                            Email = "cus2@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$C1X2xnM38iycFQoUXFFH..XjW69m90Hs5xyhuW3RRzhlU.WLWjGAK",
+                            Role = "Customer"
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 557, DateTimeKind.Utc).AddTicks(2570),
+                            Email = "cus3@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$AaZ0xLb1Tz2o7N2bjTiAhexcwlnOSrhaE/cOnAhY04ab6IpCpoJSO",
+                            Role = "Customer"
+                        },
+                        new
+                        {
+                            Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf"),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 750, DateTimeKind.Utc).AddTicks(5721),
+                            Email = "cus4@system.com",
+                            IsActive = true,
+                            PasswordHash = "$2a$11$t0QGUk4gKjz6AeVII.Kbfe2OcTAazoYes/CK5ENMfuWnxNNdAZeOq",
                             Role = "Customer"
                         });
                 });
@@ -912,7 +1571,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3853),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8185),
                             Name = "Bay A1 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -921,7 +1580,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3883),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8200),
                             Name = "Bay A2 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -930,7 +1589,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3887),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8203),
                             Name = "Bay B1 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -939,7 +1598,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000004"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3890),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8206),
                             Name = "Bay B2 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -948,7 +1607,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3893),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8209),
                             Name = "Bay A1 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -957,7 +1616,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3897),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8212),
                             Name = "Bay A2 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -966,7 +1625,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3900),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8215),
                             Name = "Bay B1 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -975,7 +1634,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000004"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3903),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8218),
                             Name = "Bay B2 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -984,7 +1643,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3906),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8220),
                             Name = "Bay A1 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -993,7 +1652,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3908),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8223),
                             Name = "Bay A2 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -1002,7 +1661,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3911),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8226),
                             Name = "Bay B1 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -1011,7 +1670,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000004"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 6, 20, 10, 52, 28, 934, DateTimeKind.Utc).AddTicks(3914),
+                            CreatedAt = new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8229),
                             Name = "Bay B2 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -1091,54 +1750,6 @@ namespace Infrastructure.Migrations
                             Name = "VIP Detailing",
                             Price = 200000m
                         });
-                });
-
-            modelBuilder.Entity("LoyaltyTransaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("BalanceAfter")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("BookingId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Points")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("RewardId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BookingId");
-
-                    b.HasIndex("RewardId");
-
-                    b.HasIndex("CustomerId", "CreatedAt");
-
-                    b.ToTable("LoyaltyTransactions");
                 });
 
             modelBuilder.Entity("TimeSlot", b =>
@@ -1288,6 +1899,25 @@ namespace Infrastructure.Migrations
                     b.Navigation("WashPackage");
                 });
 
+            modelBuilder.Entity("Domain.Entities.BookingAddOn", b =>
+                {
+                    b.HasOne("Domain.Entities.AddOn", "AddOn")
+                        .WithMany("BookingAddOns")
+                        .HasForeignKey("AddOnId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Booking", "Booking")
+                        .WithMany("BookingAddOns")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AddOn");
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("Domain.Entities.Customer", b =>
                 {
                     b.HasOne("Domain.Entities.Tier", "Tier")
@@ -1337,10 +1967,57 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("Domain.Entities.Booking", "Booking")
+                        .WithMany("Payments")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Point", b =>
+                {
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Point", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PointHistory", b =>
+                {
+                    b.HasOne("Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Entities.Point", "Point")
+                        .WithMany("Histories")
+                        .HasForeignKey("PointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Reward", "Reward")
+                        .WithMany()
+                        .HasForeignKey("RewardId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Point");
+
+                    b.Navigation("Reward");
+                });
+
             modelBuilder.Entity("Domain.Entities.PromotionBranch", b =>
                 {
                     b.HasOne("Domain.Entities.Branch", "Branch")
-                        .WithMany()
+                        .WithMany("PromotionBranches")
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1358,6 +2035,11 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.RewardRedemption", b =>
                 {
+                    b.HasOne("Domain.Entities.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Domain.Entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
@@ -1369,6 +2051,8 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("RewardId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Booking");
 
                     b.Navigation("Customer");
 
@@ -1397,13 +2081,13 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Entities.TierPromotion", b =>
                 {
                     b.HasOne("Domain.Entities.Promotion", "Promotion")
-                        .WithMany()
+                        .WithMany("TierPromotions")
                         .HasForeignKey("PromotionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.Tier", "Tier")
-                        .WithMany()
+                        .WithMany("TierPromotions")
                         .HasForeignKey("TierId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1446,44 +2130,30 @@ namespace Infrastructure.Migrations
                     b.Navigation("Branch");
                 });
 
-            modelBuilder.Entity("LoyaltyTransaction", b =>
-                {
-                    b.HasOne("Domain.Entities.Booking", "Booking")
-                        .WithMany()
-                        .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Domain.Entities.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.Reward", "Reward")
-                        .WithMany()
-                        .HasForeignKey("RewardId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Booking");
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Reward");
-                });
-
             modelBuilder.Entity("BranchTimeSlot", b =>
                 {
                     b.Navigation("Bookings");
                 });
 
+            modelBuilder.Entity("Domain.Entities.AddOn", b =>
+                {
+                    b.Navigation("BookingAddOns");
+                });
+
             modelBuilder.Entity("Domain.Entities.Booking", b =>
                 {
+                    b.Navigation("BookingAddOns");
+
+                    b.Navigation("Payments");
+
                     b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Branch", b =>
                 {
                     b.Navigation("BranchTimeSlots");
+
+                    b.Navigation("PromotionBranches");
 
                     b.Navigation("Staffs");
 
@@ -1497,9 +2167,16 @@ namespace Infrastructure.Migrations
                     b.Navigation("Vehicles");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Point", b =>
+                {
+                    b.Navigation("Histories");
+                });
+
             modelBuilder.Entity("Domain.Entities.Promotion", b =>
                 {
                     b.Navigation("PromotionBranches");
+
+                    b.Navigation("TierPromotions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Reward", b =>
@@ -1517,6 +2194,8 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Entities.Tier", b =>
                 {
                     b.Navigation("Customers");
+
+                    b.Navigation("TierPromotions");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>

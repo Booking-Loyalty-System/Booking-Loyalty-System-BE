@@ -49,6 +49,18 @@ public class BookingService : IBookingService
         .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
         ?? throw new AppException("Wash package not found or inactive.", 404);
 
+    // Resolve optional add-ons. Every requested id must map to an active add-on.
+    var requestedAddOnIds = request.AddOnIds?.Distinct().ToList() ?? new List<Guid>();
+    var addOns = requestedAddOnIds.Count == 0
+        ? new List<AddOn>()
+        : await _context.AddOns
+            .Where(a => requestedAddOnIds.Contains(a.Id) && a.IsActive)
+            .ToListAsync();
+    if (addOns.Count != requestedAddOnIds.Count)
+        throw new AppException("One or more add-ons not found or inactive.", 400);
+
+    var addOnsTotal = addOns.Sum(a => a.Price);
+
     var branch = await _context.Branches
         .FirstOrDefaultAsync(b => b.Id == request.BranchId)
         ?? throw new AppException("Branch not found.", 404);
@@ -117,13 +129,34 @@ public class BookingService : IBookingService
     var totalPrice = washPackage.Price;
     var discountAmount = 0m;
     Guid? promotionId = null;
-    
+    Guid? rewardId = null;
+    string? voucherName = null;
+    RewardRedemption? appliedRedemption = null;
+
     if (!string.IsNullOrWhiteSpace(request.PromotionCode))
     {
+        // Priority 1: explicit promotion code (percentage discount on the wash package).
         var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
         promotionId = pid;
         discountAmount = discount;
         totalPrice = washPackage.Price - discount;
+    }
+    else if (request.RewardRedemptionId.HasValue)
+    {
+        // Priority 2: a voucher the customer redeemed with loyalty points (fixed-amount off).
+        appliedRedemption = await _context.RewardRedemptions
+            .Include(r => r.Reward)
+            .FirstOrDefaultAsync(r => r.Id == request.RewardRedemptionId.Value
+                && r.CustomerId == customer.Id
+                && r.Status == RedemptionStatus.Pending
+                && (r.ExpiryDate == null || r.ExpiryDate > DateTime.UtcNow))
+            ?? throw new AppException("Voucher not found, already used, or expired.", 400);
+
+        var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, washPackage.Price);
+        discountAmount = voucherDiscount;
+        totalPrice = washPackage.Price - voucherDiscount;
+        rewardId = appliedRedemption.RewardId;
+        voucherName = appliedRedemption.Reward.Name;
     }
 
     // 7. Khởi tạo và lưu Booking mới vào DB (ĐÃ ĐỒI THEO DB MỚI)
@@ -139,7 +172,9 @@ public class BookingService : IBookingService
         BayId = null,                
         QrData = qrDataBase64,
         PromotionId = promotionId,
-        TotalPrice = totalPrice,
+        RewardId = rewardId,
+        // Vouchers/promotions discount the wash package only; add-ons are added on top.
+        TotalPrice = totalPrice + addOnsTotal,
         StartTime = branchTimeSlot.TimeSlot.StartTime,
         DiscountAmount = discountAmount,
         Status = BookingStatus.Pending,
@@ -147,6 +182,28 @@ public class BookingService : IBookingService
     };
 
     _context.Bookings.Add(booking);
+
+    // Consume the voucher: mark its redemption fulfilled and link it to this booking.
+    if (appliedRedemption != null)
+    {
+        appliedRedemption.Status = RedemptionStatus.Fulfilled;
+        appliedRedemption.FulfilledAt = DateTime.UtcNow;
+        appliedRedemption.BookingId = booking.Id;
+    }
+
+    // Snapshot the chosen add-ons onto the booking (price frozen at booking time).
+    var bookingAddOns = addOns.Select(a => new BookingAddOn
+    {
+        Id = Guid.NewGuid(),
+        BookingId = booking.Id,
+        AddOnId = a.Id,
+        Price = a.Price,
+        DurationMinutes = a.DurationMinutes,
+        CreatedAt = DateTime.UtcNow
+    }).ToList();
+    if (bookingAddOns.Count > 0)
+        _context.BookingAddOns.AddRange(bookingAddOns);
+
     await _context.SaveChangesAsync();
     
     // Commit transaction an toàn
@@ -172,11 +229,14 @@ public class BookingService : IBookingService
     }
     
     // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
-    var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null);
-    
+    var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
+    response.AddOns = addOns
+        .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
+        .ToList();
+
     await _hubContext.Clients.Group(branchTimeSlot.BranchId.ToString())
         .SendAsync("ReceiveBookingCreated", response);
-        
+
     return response;
 }
 
@@ -444,7 +504,7 @@ public class BookingService : IBookingService
     }
     
     private static BookingResponse MapToResponse(
-        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot timeSlot, Branch branch, WashBay? washBay)
+        Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot timeSlot, Branch branch, WashBay? washBay, string? voucherName = null)
     {
         return new BookingResponse
         {
@@ -452,13 +512,15 @@ public class BookingService : IBookingService
             BookingCode = booking.BookingCode,
             WashPackageName = washPackage.Name,
             DurationMinutes = washPackage.DurationMinutes,
-            BookingDate = booking.BookingDate, // Lấy thẳng ngày từ Booking
-            StartTime = timeSlot.StartTime, 
-            EndTime = timeSlot.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes)), 
-            WashBayName = washBay?.Name ?? "Not Assigned Yet", // Bệ rửa nếu null sẽ báo chưa xếp bệ
+            BookingDate = booking.BookingDate,
+            StartTime = timeSlot.StartTime,
+            EndTime = timeSlot.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes)),
+            WashBayName = washBay?.Name ?? "Not Assigned Yet",
             VehiclePlate = vehicle.LicensePlate,
             VehicleName = vehicle.VehicleName,
             TotalPrice = booking.TotalPrice,
+            DiscountAmount = booking.DiscountAmount,
+            VoucherName = voucherName,
             Status = booking.Status.ToString(),
             QrData = booking.QrData,
             CreatedAt = booking.CreatedAt,

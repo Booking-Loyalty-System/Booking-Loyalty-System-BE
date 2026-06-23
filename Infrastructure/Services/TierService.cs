@@ -40,27 +40,30 @@ public class TierService : ITierService
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
+        var lifetimePoints = point?.TotalPoints ?? 0;
+
         // Find next tier
         var nextTier = await _context.Tiers
-            .Where(t => t.MinPointsRequired > customer.LifetimePoints)
+            .Where(t => t.MinPointsRequired > lifetimePoints)
             .OrderBy(t => t.MinPointsRequired)
             .FirstOrDefaultAsync();
 
         // Calculate maintenance: sum of Earn points in the last 90 days
         var windowStart = DateTime.UtcNow.AddDays(-90);
-        var recentPoints = await _context.LoyaltyTransactions
-            .Where(lt => lt.CustomerId == customer.Id
-                         && lt.Type == LoyaltyTransactionType.Earn
-                         && lt.CreatedAt >= windowStart)
-            .SumAsync(lt => lt.Points);
+        var recentPoints = point is null ? 0 : await _context.PointHistories
+            .Where(h => h.PointId == point.Id
+                         && h.TransactionType == LoyaltyTransactionType.Earn
+                         && h.CreatedAt >= windowStart)
+            .SumAsync(h => h.Amount);
 
         // Days remaining: how many days until the oldest transaction in the 90-day window falls off
-        var oldestInWindow = await _context.LoyaltyTransactions
-            .Where(lt => lt.CustomerId == customer.Id
-                         && lt.Type == LoyaltyTransactionType.Earn
-                         && lt.CreatedAt >= windowStart)
-            .OrderBy(lt => lt.CreatedAt)
-            .Select(lt => (DateTime?)lt.CreatedAt)
+        var oldestInWindow = point is null ? (DateTime?)null : await _context.PointHistories
+            .Where(h => h.PointId == point.Id
+                         && h.TransactionType == LoyaltyTransactionType.Earn
+                         && h.CreatedAt >= windowStart)
+            .OrderBy(h => h.CreatedAt)
+            .Select(h => (DateTime?)h.CreatedAt)
             .FirstOrDefaultAsync();
 
         var daysRemaining = oldestInWindow.HasValue
@@ -72,15 +75,15 @@ public class TierService : ITierService
         return new CustomerTierResponse
         {
             CurrentTier = MapToResponse(customer.Tier),
-            LifetimePoints = customer.LifetimePoints,
+            LifetimePoints = lifetimePoints,
             NextTier = nextTier != null
                 ? new NextTierInfo
                 {
                     TierName = nextTier.TierName,
                     MinPointsRequired = nextTier.MinPointsRequired,
-                    PointsNeeded = nextTier.MinPointsRequired - customer.LifetimePoints,
-                    ProgressPercent = nextTier.MinPointsRequired > 0 
-                        ? Math.Round((double)customer.LifetimePoints / nextTier.MinPointsRequired * 100, 1)
+                    PointsNeeded = nextTier.MinPointsRequired - lifetimePoints,
+                    ProgressPercent = nextTier.MinPointsRequired > 0
+                        ? Math.Round((double)lifetimePoints / nextTier.MinPointsRequired * 100, 1)
                         : 0
                 }
                 : null,

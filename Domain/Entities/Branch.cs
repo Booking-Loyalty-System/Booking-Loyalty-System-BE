@@ -15,4 +15,5 @@ public class Branch
     public ICollection<Staff> Staffs { get; set; } = new List<Staff>();
     public ICollection<WashBay> WashBays { get; set; } = new List<WashBay>();
     public ICollection<BranchTimeSlot> BranchTimeSlots { get; set; } = new List<BranchTimeSlot>();
+    public ICollection<PromotionBranch> PromotionBranches { get; set; } = new List<PromotionBranch>();
 }

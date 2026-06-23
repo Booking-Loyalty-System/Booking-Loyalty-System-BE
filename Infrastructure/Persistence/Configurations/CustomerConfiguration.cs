@@ -36,17 +36,51 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.HasData(
             new Customer
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                 UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                FullName = "Customer User",
+                FullName = "Customer Bronze Tier",
                 PhoneNumber = "0901234569",
                 TierId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                 TotalSpent = 0m,
                 TotalWashes = 0,
-                TotalPoints = 0,
-                LifetimePoints = 0,
                 IsPhoneNumberVerified = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new Customer
+            {
+                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccd"),
+                FullName = "Customer Silver Tier",
+                PhoneNumber = "0901234568",
+                TierId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                TotalSpent = 500m, // Giả định đã tiêu một ít
+                TotalWashes = 5,
+                IsPhoneNumberVerified = true,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new Customer
+            {
+                Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccce"),
+                FullName = "Customer Gold Tier",
+                PhoneNumber = "0901234567",
+                TierId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                TotalSpent = 2500m,
+                TotalWashes = 15,
+                IsPhoneNumberVerified = true,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new Customer
+            {
+                Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                UserId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"),
+                FullName = "Customer Diamond Tier",
+                PhoneNumber = "0901234566",
+                TierId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                TotalSpent = 7000m,
+                TotalWashes = 40,
+                IsPhoneNumberVerified = true,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
         );
     }

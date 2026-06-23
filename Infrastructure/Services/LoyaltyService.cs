@@ -34,8 +34,8 @@ public class LoyaltyService : ILoyaltyService
             return; // Nothing to award; caller already validated existence in normal flow.
 
         // Idempotency: one Earn row per booking. If it already exists, this is a no-op.
-        var alreadyEarned = await _context.LoyaltyTransactions
-            .AnyAsync(lt => lt.BookingId == bookingId && lt.Type == LoyaltyTransactionType.Earn, cancellationToken);
+        var alreadyEarned = await _context.PointHistories
+            .AnyAsync(h => h.BookingId == bookingId && h.TransactionType == LoyaltyTransactionType.Earn, cancellationToken);
         if (alreadyEarned)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -54,14 +54,18 @@ public class LoyaltyService : ILoyaltyService
         var points = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
         var now = DateTime.UtcNow;
 
-        // Update the customer's running CRM totals (points, lifetime, visits, spend).
-        customer.TotalPoints += points;
-        customer.LifetimePoints += points;
+        var point = await GetOrCreatePointAsync(customer.UserId, now, cancellationToken);
+
+        // Update the point balance (spendable + lifetime) and the customer's CRM stats.
+        point.AvailablePoints += points;
+        point.TotalPoints += points; // Tổng điểm lũy kế trọn đời nằm ở đây!
+        point.UpdatedAt = now;
         customer.TotalWashes += 1;
         customer.TotalSpent += booking.TotalPrice;
 
+        // SỬA TẠI ĐÂY: Dùng point.TotalPoints thay vì customer.TotalPoints
         var eligibleTier = await _context.Tiers
-            .Where(t => t.MinPointsRequired <= customer.TotalPoints)
+            .Where(t => t.MinPointsRequired <= point.TotalPoints)
             .OrderByDescending(t => t.MinPointsRequired)
             .FirstOrDefaultAsync(cancellationToken);
         
@@ -75,26 +79,28 @@ public class LoyaltyService : ILoyaltyService
             isUpgraded = true;
         }
         
-        var earn = new LoyaltyTransaction
+        // SỬA TẠI ĐÂY: Xóa bỏ dòng thừa 'var earn = new LoyaltyTransaction' gây lỗi compile
+        var earn = new PointHistory
         {
             Id = Guid.NewGuid(),
-            CustomerId = customer.Id,
-            Type = LoyaltyTransactionType.Earn,
-            Points = points,
-            BalanceAfter = customer.TotalPoints,
+            PointId = point.Id,
+            TransactionType = LoyaltyTransactionType.Earn,
+            Amount = points,
+            BalanceAfter = point.AvailablePoints,
             BookingId = booking.Id,
             Description = $"Earned from booking {booking.BookingCode}",
             CreatedAt = now,
-            ExpiresAt = now.AddMonths(_options.PointLifetimeMonths)
+            ExpiryDate = now.AddMonths(_options.PointLifetimeMonths)
         };
 
-        _context.LoyaltyTransactions.Add(earn);
+        _context.PointHistories.Add(earn);
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
+        // SỬA TẠI ĐÂY: Dùng point.TotalPoints để gửi email thông báo
         if (isUpgraded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
-            await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, customer.TotalPoints);
+            await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, point.TotalPoints);
         }
     }
 
@@ -120,10 +126,12 @@ public class LoyaltyService : ILoyaltyService
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
+
         return new LoyaltyBalanceResponse
         {
-            TotalPoints = customer.TotalPoints,
-            LifetimePoints = customer.LifetimePoints,
+            TotalPoints = point?.AvailablePoints ?? 0,
+            LifetimePoints = point?.TotalPoints ?? 0,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,
             Tier = customer.Tier?.TierName ?? string.Empty
@@ -132,24 +140,43 @@ public class LoyaltyService : ILoyaltyService
 
     public async Task<List<LoyaltyTransactionResponse>> GetHistoryAsync(Guid userId)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.UserId == userId)
-            ?? throw new AppException("Customer profile not found.", 404);
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
+        if (point is null)
+            return new List<LoyaltyTransactionResponse>();
 
-        return await _context.LoyaltyTransactions
-            .Where(lt => lt.CustomerId == customer.Id)
-            .OrderByDescending(lt => lt.CreatedAt)
-            .Select(lt => new LoyaltyTransactionResponse
+        return await _context.PointHistories
+            .Where(h => h.PointId == point.Id)
+            .OrderByDescending(h => h.CreatedAt)
+            .Select(h => new LoyaltyTransactionResponse
             {
-                Id = lt.Id,
-                Type = lt.Type.ToString(),
-                Points = lt.Points,
-                BalanceAfter = lt.BalanceAfter,
-                BookingId = lt.BookingId,
-                Description = lt.Description,
-                CreatedAt = lt.CreatedAt,
-                ExpiresAt = lt.ExpiresAt
+                Id = h.Id,
+                Type = h.TransactionType.ToString(),
+                Points = h.Amount,
+                BalanceAfter = h.BalanceAfter,
+                BookingId = h.BookingId,
+                Description = h.Description,
+                CreatedAt = h.CreatedAt,
+                ExpiresAt = h.ExpiryDate
             })
             .ToListAsync();
+    }
+
+    /// <summary>Loads the user's Point balance row, creating it on first use.</summary>
+    private async Task<Point> GetOrCreatePointAsync(Guid userId, DateTime now, CancellationToken ct)
+    {
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (point is not null)
+            return point;
+
+        point = new Point
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            AvailablePoints = 0,
+            TotalPoints = 0,
+            UpdatedAt = now
+        };
+        _context.Points.Add(point);
+        return point;
     }
 }
