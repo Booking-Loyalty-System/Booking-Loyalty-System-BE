@@ -104,6 +104,76 @@ public class LoyaltyService : ILoyaltyService
         }
     }
 
+    public async Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    {
+        var penalty = _options.NoShowPenaltyPoints;
+        if (penalty <= 0)
+            return; // Penalty disabled via config.
+
+        // Serializable so a duplicated trigger (auto sweeper + manual staff action) cannot
+        // both pass the idempotency check and double-penalize.
+        await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
+
+        var booking = await _context.Bookings
+            .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+        // Only penalize a booking that is actually a no-show.
+        if (booking is null || booking.Status != BookingStatus.NoShow)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        // Idempotency: one Penalty ledger row per booking.
+        var alreadyPenalized = await _context.PointHistories
+            .AnyAsync(h => h.BookingId == bookingId && h.TransactionType == LoyaltyTransactionType.Penalty, cancellationToken);
+        if (alreadyPenalized)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.Id == booking.CustomerId, cancellationToken);
+        if (customer is null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        var point = await _context.Points
+            .FirstOrDefaultAsync(p => p.UserId == customer.UserId, cancellationToken);
+
+        // Nothing to deduct if the customer has no balance row or zero spendable points.
+        var available = point?.AvailablePoints ?? 0;
+        if (point is null || available <= 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var deduct = Math.Min(penalty, available); // Clamp at 0 — balance never goes negative.
+        point.AvailablePoints -= deduct;
+        point.UpdatedAt = now;
+        // TotalPoints (lifetime) is intentionally untouched so the customer's tier is unaffected.
+
+        var ledger = new PointHistory
+        {
+            Id = Guid.NewGuid(),
+            PointId = point.Id,
+            TransactionType = LoyaltyTransactionType.Penalty,
+            Amount = -deduct,
+            BalanceAfter = point.AvailablePoints,
+            BookingId = booking.Id,
+            Description = $"No-show penalty for booking {booking.BookingCode}",
+            CreatedAt = now
+        };
+
+        _context.PointHistories.Add(ledger);
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     private async Task SendUpgradeEmailSafeAsync(string toEmail, string oldTier, string newTier, int currentPoints)
     {
             string subject = "🎉 Chúc mừng bạn đã thăng hạng thành viên!";

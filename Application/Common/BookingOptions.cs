@@ -14,4 +14,10 @@ public class BookingOptions
 
     /// <summary>Latest end time the shop accepts (inclusive).</summary>
     public TimeOnly CloseTime { get; set; } = new(20, 0);
+
+    /// <summary>
+    /// Minutes after a booking's start time before an un-started Confirmed/CheckedIn
+    /// booking is auto-marked NoShow by the background sweeper.
+    /// </summary>
+    public int NoShowGraceMinutes { get; set; } = 30;
 }

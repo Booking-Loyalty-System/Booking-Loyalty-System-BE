@@ -254,10 +254,14 @@ public class StaffBookingService : IStaffBookingService
         booking.UpdatedAt = DateTime.UtcNow;
 
         await CheckAndReleaseWashBayAsync(booking.BayId, booking.Id);
-        
+
         await _context.SaveChangesAsync();
+
+        // Deduct the no-show penalty (spendable points, clamped at 0). Idempotent.
+        await _loyaltyService.ApplyNoShowPenaltyAsync(booking.Id);
+
         await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
-        
+
         return await BuildResponseAsync(booking);
     }
 

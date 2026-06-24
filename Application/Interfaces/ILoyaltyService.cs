@@ -10,6 +10,12 @@ public interface ILoyaltyService
     /// </summary>
     Task AwardPointsForBookingAsync(Guid bookingId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Deducts the configured no-show penalty (spendable points only, clamped at 0) for a
+    /// booking that was marked NoShow. Idempotent: one Penalty ledger row per booking.
+    /// </summary>
+    Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default);
+
     Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId);
 
     Task<List<LoyaltyTransactionResponse>> GetHistoryAsync(Guid userId);
