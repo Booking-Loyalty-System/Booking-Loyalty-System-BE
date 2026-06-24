@@ -19,4 +19,15 @@ public interface IRewardService
 
     /// <summary>Staff marks a pending redemption as handed over to the customer.</summary>
     Task<RedemptionResponse> FulfillAsync(Guid redemptionId);
+
+    // ----- Voucher contract (loyalty FE) -----
+
+    /// <summary>The customer's personal vouchers (redeemed rewards), Active first then by expiry.</summary>
+    Task<List<VoucherResponse>> GetMyVouchersAsync(Guid userId);
+
+    /// <summary>Spends points to redeem a reward and returns the resulting voucher.</summary>
+    Task<VoucherResponse> RedeemVoucherAsync(Guid userId, Guid rewardId);
+
+    /// <summary>Marks the customer's own voucher as used (consumed).</summary>
+    Task UseVoucherAsync(Guid userId, Guid voucherId);
 }
