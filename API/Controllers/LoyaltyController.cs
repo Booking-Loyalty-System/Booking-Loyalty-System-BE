@@ -37,11 +37,14 @@ public class LoyaltyController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    /// <summary>The current user's personal vouchers (redeemed rewards). Active first, then by expiry.</summary>
+    /// <summary>
+    /// The current user's personal vouchers (redeemed rewards). Active first, then by expiry.
+    /// Pass <c>?activeOnly=true</c> to get only still-usable vouchers (hides Used/Expired).
+    /// </summary>
     [HttpGet("my-vouchers")]
-    public async Task<IActionResult> GetMyVouchers()
+    public async Task<IActionResult> GetMyVouchers([FromQuery] bool activeOnly = false)
     {
-        var result = await _rewardService.GetMyVouchersAsync(GetUserId());
+        var result = await _rewardService.GetMyVouchersAsync(GetUserId(), activeOnly);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 

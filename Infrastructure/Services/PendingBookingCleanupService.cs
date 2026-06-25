@@ -1,19 +1,19 @@
-using Application.Common;
 using Application.Interfaces;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
 /// <summary>
-/// Background worker that cancels bookings left unpaid past the VNPay payment window,
-/// releasing their reserved bay/time slot back to the pool. A booking stays Pending
-/// from creation until a successful VNPay IPN flips it to Confirmed; anything still
-/// Pending after PaymentTimeoutMinutes is treated as abandoned.
+/// Background worker that releases slots held by bookings that were never confirmed.
+/// In this shop's flow a booking has NO online payment: the customer books, staff later
+/// calls and flips it Pending -> Confirmed. So a Pending booking is a legitimate hold that
+/// must survive until its appointment time — it is only cancelled once its start time has
+/// passed and staff still never confirmed it, freeing the slot back to the pool.
+/// (Confirmed/CheckedIn no-shows are handled separately by AutoNoShowService.)
 /// </summary>
 public class PendingBookingCleanupService : BackgroundService
 {
@@ -21,16 +21,16 @@ public class PendingBookingCleanupService : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PendingBookingCleanupService> _logger;
-    private readonly int _timeoutMinutes;
+    private readonly TimeZoneInfo _shopTimeZone;
 
     public PendingBookingCleanupService(
         IServiceScopeFactory scopeFactory,
         ILogger<PendingBookingCleanupService> logger,
-        IOptions<VnPayOptions> options)
+        TimeZoneInfo shopTimeZone)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
-        _timeoutMinutes = options.Value.PaymentTimeoutMinutes;
+        _shopTimeZone = shopTimeZone;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -63,25 +63,55 @@ public class PendingBookingCleanupService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
 
-        var cutoff = DateTime.UtcNow.AddMinutes(-_timeoutMinutes);
+        var nowUtc = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(nowUtc, _shopTimeZone));
 
-        var expired = await context.Bookings
-            .Where(b => b.Status == BookingStatus.Pending && b.CreatedAt < cutoff)
+        // Candidates: still Pending and on/before today. The exact "start time passed" check
+        // needs a timezone conversion of BookingDate + StartTime, done in memory below.
+        var candidates = await context.Bookings
+            .Where(b => b.Status == BookingStatus.Pending && b.BookingDate <= today)
             .ToListAsync(ct);
 
-        if (expired.Count == 0)
+        if (candidates.Count == 0)
             return;
 
-        foreach (var booking in expired)
+        var expiredBookingIds = new List<Guid>();
+        foreach (var booking in candidates)
         {
+            // Interpret BookingDate + StartTime in the shop's local timezone, compare in UTC.
+            var localStart = booking.BookingDate.ToDateTime(booking.StartTime); // DateTimeKind.Unspecified
+            var startUtc = TimeZoneInfo.ConvertTimeToUtc(localStart, _shopTimeZone);
+
+            if (nowUtc < startUtc)
+                continue; // Appointment time not reached yet — keep holding the slot.
+
             booking.Status = BookingStatus.Cancelled;
-            booking.CancellationReason = "Payment was not completed within the allowed time.";
-            booking.UpdatedAt = DateTime.UtcNow;
+            booking.CancellationReason = "Booking was not confirmed by staff before the appointment time.";
+            booking.UpdatedAt = nowUtc;
             // Capacity-based slots: a Cancelled booking no longer counts toward
             // BranchTimeSlot.MaxCapacity, so the slot frees up automatically.
+            expiredBookingIds.Add(booking.Id);
+        }
+
+        if (expiredBookingIds.Count == 0)
+            return;
+
+        // Nhả lại voucher đã áp cho các booking bị tự hủy (Fulfilled -> Pending) để khách dùng lại.
+        var redemptions = await context.RewardRedemptions
+            .Where(r => r.BookingId != null
+                && expiredBookingIds.Contains(r.BookingId.Value)
+                && r.Status == RedemptionStatus.Fulfilled)
+            .ToListAsync(ct);
+        foreach (var redemption in redemptions)
+        {
+            redemption.Status = RedemptionStatus.Pending;
+            redemption.FulfilledAt = null;
+            redemption.BookingId = null;
         }
 
         await context.SaveChangesAsync(ct);
-        _logger.LogInformation("Cancelled {Count} unpaid booking(s) past the payment window.", expired.Count);
+        _logger.LogInformation(
+            "Cancelled {Count} unconfirmed booking(s) past their appointment time; released {Vouchers} voucher(s).",
+            expiredBookingIds.Count, redemptions.Count);
     }
 }
