@@ -337,14 +337,36 @@ public class BookingService : IBookingService
 
         // Chỉ cần đổi status, Capacity sẽ tự động nới lỏng ra nhờ câu lệnh CountAsync không đếm Cancelled.
 
+        // Hủy booking thì nhả voucher đã áp về Pending để khách dùng lại (voucher bị "tiêu"
+        // ngay lúc tạo booking Pending; nếu không hoàn thì hủy là mất oan).
+        await ReleaseVoucherForBookingAsync(booking.Id);
+
         await _context.SaveChangesAsync();
 
         var response = MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
         
         await _hubContext.Clients.Group(booking.BranchTimeSlot.BranchId.ToString())
             .SendAsync("ReceiveBookingCancelled", new { BookingId = booking.Id, Reason = reason });
-            
+
         return response;
+    }
+
+    /// <summary>
+    /// Returns a voucher that was applied to a now-cancelled booking back to the customer's
+    /// wallet (Fulfilled -> Pending), so it becomes usable again. No-op if the booking had no
+    /// voucher. The caller is responsible for SaveChanges. Not used for No-show (forfeited).
+    /// </summary>
+    private async Task ReleaseVoucherForBookingAsync(Guid bookingId)
+    {
+        var redemption = await _context.RewardRedemptions
+            .FirstOrDefaultAsync(r => r.BookingId == bookingId
+                && r.Status == RedemptionStatus.Fulfilled);
+        if (redemption == null)
+            return;
+
+        redemption.Status = RedemptionStatus.Pending;
+        redemption.FulfilledAt = null;
+        redemption.BookingId = null;
     }
 
     public async Task<BookingResponse> UpdateBookingAsync(Guid userId, Guid bookingId, UpdateBookingRequest request)

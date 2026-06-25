@@ -75,7 +75,7 @@ public class PendingBookingCleanupService : BackgroundService
         if (candidates.Count == 0)
             return;
 
-        var expiredCount = 0;
+        var expiredBookingIds = new List<Guid>();
         foreach (var booking in candidates)
         {
             // Interpret BookingDate + StartTime in the shop's local timezone, compare in UTC.
@@ -90,13 +90,28 @@ public class PendingBookingCleanupService : BackgroundService
             booking.UpdatedAt = nowUtc;
             // Capacity-based slots: a Cancelled booking no longer counts toward
             // BranchTimeSlot.MaxCapacity, so the slot frees up automatically.
-            expiredCount++;
+            expiredBookingIds.Add(booking.Id);
         }
 
-        if (expiredCount == 0)
+        if (expiredBookingIds.Count == 0)
             return;
 
+        // Nhả lại voucher đã áp cho các booking bị tự hủy (Fulfilled -> Pending) để khách dùng lại.
+        var redemptions = await context.RewardRedemptions
+            .Where(r => r.BookingId != null
+                && expiredBookingIds.Contains(r.BookingId.Value)
+                && r.Status == RedemptionStatus.Fulfilled)
+            .ToListAsync(ct);
+        foreach (var redemption in redemptions)
+        {
+            redemption.Status = RedemptionStatus.Pending;
+            redemption.FulfilledAt = null;
+            redemption.BookingId = null;
+        }
+
         await context.SaveChangesAsync(ct);
-        _logger.LogInformation("Cancelled {Count} unconfirmed booking(s) past their appointment time.", expiredCount);
+        _logger.LogInformation(
+            "Cancelled {Count} unconfirmed booking(s) past their appointment time; released {Vouchers} voucher(s).",
+            expiredBookingIds.Count, redemptions.Count);
     }
 }
