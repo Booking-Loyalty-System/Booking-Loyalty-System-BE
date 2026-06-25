@@ -236,7 +236,17 @@ public class StaffBookingService : IStaffBookingService
         booking.UpdatedAt = DateTime.UtcNow;
 
         await CheckAndReleaseWashBayAsync(booking.BayId, booking.Id);
-        
+
+        // Staff hủy thì nhả voucher đã áp về Pending để khách dùng lại (No-show thì KHÔNG nhả).
+        var redemption = await _context.RewardRedemptions
+            .FirstOrDefaultAsync(r => r.BookingId == booking.Id && r.Status == RedemptionStatus.Fulfilled);
+        if (redemption != null)
+        {
+            redemption.Status = RedemptionStatus.Pending;
+            redemption.FulfilledAt = null;
+            redemption.BookingId = null;
+        }
+
         await _context.SaveChangesAsync();
         await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
 
