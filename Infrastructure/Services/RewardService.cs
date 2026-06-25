@@ -158,7 +158,7 @@ public class RewardService : IRewardService
 
     // ----- Voucher contract (loyalty FE) -----
 
-    public async Task<List<VoucherResponse>> GetMyVouchersAsync(Guid userId)
+    public async Task<List<VoucherResponse>> GetMyVouchersAsync(Guid userId, bool activeOnly = false)
     {
         var customer = await _context.Customers
             .FirstOrDefaultAsync(c => c.UserId == userId)
@@ -169,9 +169,14 @@ public class RewardService : IRewardService
             .Where(rr => rr.CustomerId == customer.Id)
             .ToListAsync();
 
+        var vouchers = redemptions.Select(rr => MapVoucher(rr, rr.Reward));
+
+        // activeOnly: chỉ trả voucher còn dùng được, để FE không render nhầm voucher đã dùng/hết hạn.
+        if (activeOnly)
+            vouchers = vouchers.Where(v => v.Status == "Active");
+
         // Active first, then by soonest expiry.
-        return redemptions
-            .Select(rr => MapVoucher(rr, rr.Reward))
+        return vouchers
             .OrderBy(v => v.Status == "Active" ? 0 : 1)
             .ThenBy(v => v.ExpiryDate ?? DateTime.MaxValue)
             .ToList();

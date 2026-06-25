@@ -22,8 +22,12 @@ public interface IRewardService
 
     // ----- Voucher contract (loyalty FE) -----
 
-    /// <summary>The customer's personal vouchers (redeemed rewards), Active first then by expiry.</summary>
-    Task<List<VoucherResponse>> GetMyVouchersAsync(Guid userId);
+    /// <summary>
+    /// The customer's personal vouchers (redeemed rewards), Active first then by expiry.
+    /// When <paramref name="activeOnly"/> is true, only still-usable (Active) vouchers are
+    /// returned so the FE wallet cannot render an already-used/expired voucher as usable.
+    /// </summary>
+    Task<List<VoucherResponse>> GetMyVouchersAsync(Guid userId, bool activeOnly = false);
 
     /// <summary>Spends points to redeem a reward and returns the resulting voucher.</summary>
     Task<VoucherResponse> RedeemVoucherAsync(Guid userId, Guid rewardId);
