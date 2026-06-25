@@ -8,6 +8,7 @@ using Infrastructure.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using QRCoder;
 
 namespace Infrastructure.Services;
@@ -99,7 +100,20 @@ public class BookingService : IBookingService
     if (!branchTimeSlot.IsActive)
         throw new AppException("This time slot is currently locked or inactive at this branch.", 400);
 
-    // 4. Chặn trùng lịch của chiếc xe này trong cùng khung giờ
+    // 4. Chống ôm slot: giới hạn số booking Pending (chưa được staff xác nhận) mỗi khách.
+    //    Không có rào thanh toán nên đây là biện pháp thay cho "đặt cọc" để chặn giữ chỗ tràn lan.
+    var activePending = await _context.Bookings
+        .CountAsync(b => b.CustomerId == customer.Id && b.Status == BookingStatus.Pending);
+    if (activePending >= _options.MaxActivePendingBookings)
+        throw new AppException(
+            $"You already have {activePending} booking(s) awaiting staff confirmation. " +
+            "Please wait until they are confirmed before booking more.", 409);
+
+    // 5. Mở TRANSACTION (Serializable) chống Race Condition khi đặt chỗ cùng giây.
+    //    Cả check trùng xe lẫn đếm capacity đều nằm TRONG transaction để không lọt khi đặt đồng thời.
+    await using var transaction = await _context.BeginTransactionAsync();
+
+    // 5a. Chặn trùng lịch của chiếc xe này trong cùng khung giờ.
     var vehicleConflict = await _context.Bookings.AnyAsync(b =>
         b.VehicleId == vehicle.Id &&
         b.BookingDate == request.BookingDate &&
@@ -109,13 +123,10 @@ public class BookingService : IBookingService
     if (vehicleConflict)
         throw new AppException("This vehicle already has a booking that overlaps the selected time.", 409);
 
-    // 5. Mở TRANSACTION chống Race Condition khi đặt chỗ cùng giây
-    await using var transaction = await _context.BeginTransactionAsync();
-
-    // Đã sửa: Tính toán những xe đang chiếm chỗ (Bỏ Cancelled và NoShow)
+    // 5b. Đếm số xe đang chiếm chỗ (Bỏ Cancelled và NoShow).
     var currentBookingsCount = await _context.Bookings
-        .CountAsync(b => b.BranchTimeSlotId == branchTimeSlot.Id 
-                      && b.BookingDate == request.BookingDate 
+        .CountAsync(b => b.BranchTimeSlotId == branchTimeSlot.Id
+                      && b.BookingDate == request.BookingDate
                       && b.Status != BookingStatus.Cancelled
                       && b.Status != BookingStatus.NoShow);
 
@@ -204,10 +215,17 @@ public class BookingService : IBookingService
     if (bookingAddOns.Count > 0)
         _context.BookingAddOns.AddRange(bookingAddOns);
 
-    await _context.SaveChangesAsync();
-    
-    // Commit transaction an toàn
-    await transaction.CommitAsync();
+    try
+    {
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+    catch (Exception ex) when (IsSerializationConflict(ex))
+    {
+        // Hai khách giành suất cuối cùng cùng lúc: transaction Serializable thua bị DB từ chối (40001).
+        // Trả 409 sạch thay vì để lỗi nổ thành 500; `await using` sẽ tự rollback khi thoát method.
+        throw new AppException("This time slot was just taken by another customer. Please try again.", 409);
+    }
 
     try 
     {
@@ -239,6 +257,18 @@ public class BookingService : IBookingService
 
     return response;
 }
+
+    /// <summary>
+    /// True if the exception (or an inner one) is a PostgreSQL serialization/deadlock failure
+    /// (SQLSTATE 40001 / 40P01) — i.e. two concurrent bookings raced for the same last slot.
+    /// </summary>
+    private static bool IsSerializationConflict(Exception? ex)
+    {
+        for (var e = ex; e != null; e = e.InnerException)
+            if (e is PostgresException pg && (pg.SqlState == "40001" || pg.SqlState == "40P01"))
+                return true;
+        return false;
+    }
 
     public async Task<BookingResponse> GetBookingByIdAsync(Guid userId, Guid bookingId)
     {
