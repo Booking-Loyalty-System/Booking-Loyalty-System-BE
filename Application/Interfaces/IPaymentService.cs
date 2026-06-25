@@ -1,4 +1,5 @@
 using Application.DTOs.Payment;
+using PayOS.Models.Webhooks;
 
 namespace Application.Interfaces;
 
@@ -16,4 +17,8 @@ public interface IPaymentService
 
     /// <summary>Verifies the browser return URL and maps it to a display result (no DB writes).</summary>
     Task<PaymentResultResponse> ProcessReturnAsync(IDictionary<string, string> query);
+
+    Task<PaymentResponse> CreatePayOSPaymentAsync(Guid userId, Guid bookingId);
+    Task HandlePayOsWebhookAsync(WebhookData data);
+    Task<bool> ProcessPayOsReturnAsync(long orderCode, string status, string code);
 }
