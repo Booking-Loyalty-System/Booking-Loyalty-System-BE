@@ -67,7 +67,7 @@ public static class DependencyInjection
         services.Configure<BookingOptions>(configuration.GetSection("Booking"));
         services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
         services.Configure<VnPayOptions>(configuration.GetSection("VnPay"));
-
+        services.Configure<PayOsOptions>(configuration.GetSection("PayOS"));
         services.AddScoped(provider =>
             provider.GetRequiredService<IOptions<BookingOptions>>().Value);
         services.AddSingleton<TimeZoneInfo>(provider => 

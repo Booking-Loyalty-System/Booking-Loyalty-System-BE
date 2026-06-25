@@ -16,6 +16,7 @@ public class CustomerService : ICustomerService
 
     public async Task<CustomerProfileResponse> GetProfileAsync(Guid userId)
     {
+        Console.WriteLine(userId);
         var customer = await _context.Customers
             .Include(c => c.User)
             .Include(c => c.Tier)
@@ -53,7 +54,7 @@ public class CustomerService : ICustomerService
             PhoneNumber = customer.PhoneNumber,
             DateOfBirth = customer.DateOfBirth,
             Tier = customer.Tier.TierName,
-            TotalPoints = availablePoints,
+            AvailablePoint = availablePoints,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,
             CreatedAt = customer.CreatedAt

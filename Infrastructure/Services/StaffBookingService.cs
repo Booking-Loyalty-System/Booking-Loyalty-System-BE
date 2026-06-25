@@ -89,7 +89,7 @@ public class StaffBookingService : IStaffBookingService
         booking.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-        await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
+       // await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
 
         return await BuildResponseAsync(booking);
     }

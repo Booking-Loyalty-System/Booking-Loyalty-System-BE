@@ -104,26 +104,23 @@ public class LoyaltyService : ILoyaltyService
         }
     }
 
-    public async Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default)
+  public async Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default)
     {
-        var penalty = _options.NoShowPenaltyPoints;
-        if (penalty <= 0)
-            return; // Penalty disabled via config.
-
-        // Serializable so a duplicated trigger (auto sweeper + manual staff action) cannot
-        // both pass the idempotency check and double-penalize.
+        // Mở transaction để đảm bảo tính đồng bộ cô lập (Idempotency)
         await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
 
+        // 1. Tìm thông tin Booking
         var booking = await _context.Bookings
             .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
-        // Only penalize a booking that is actually a no-show.
+            
+        // Chỉ phạt nếu lịch đặt thực sự tồn tại và ở trạng thái NoShow
         if (booking is null || booking.Status != BookingStatus.NoShow)
         {
             await transaction.CommitAsync(cancellationToken);
             return;
         }
 
-        // Idempotency: one Penalty ledger row per booking.
+        // 2. Kiểm tra chống phạt trùng (Idempotency) trước khi gọi tiếp DB để tối ưu hiệu năng
         var alreadyPenalized = await _context.PointHistories
             .AnyAsync(h => h.BookingId == bookingId && h.TransactionType == LoyaltyTransactionType.Penalty, cancellationToken);
         if (alreadyPenalized)
@@ -132,18 +129,33 @@ public class LoyaltyService : ILoyaltyService
             return;
         }
 
+        // 3. Tìm Customer kèm thông tin Tier để lấy PointRate (Hệ số nhân theo hạng thẻ)
         var customer = await _context.Customers
+            .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.Id == booking.CustomerId, cancellationToken);
-        if (customer is null)
+            
+        if (customer is null || customer.Tier is null)
         {
             await transaction.CommitAsync(cancellationToken);
             return;
         }
 
+        // 4. TÍNH ĐIỂM PHẠT: Gấp đôi số điểm đáng lẽ nhận được (Bê nguyên công thức từ hàm Award sang)
+        var expectedPoints = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
+        var penalty = expectedPoints * 2; 
+        
+        // Nếu số điểm phạt tính ra <= 0 (Do đơn hàng 0đ hoặc hệ số lỗi) thì bỏ qua
+        if (penalty <= 0)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return; 
+        }
+
+        // 5. Lấy ví điểm hiện tại của khách
         var point = await _context.Points
             .FirstOrDefaultAsync(p => p.UserId == customer.UserId, cancellationToken);
 
-        // Nothing to deduct if the customer has no balance row or zero spendable points.
+        // Khách không có ví điểm hoặc điểm hiện tại đang bằng 0 thì không có gì để trừ
         var available = point?.AvailablePoints ?? 0;
         if (point is null || available <= 0)
         {
@@ -152,11 +164,15 @@ public class LoyaltyService : ILoyaltyService
         }
 
         var now = DateTime.UtcNow;
-        var deduct = Math.Min(penalty, available); // Clamp at 0 — balance never goes negative.
+        
+        // 6. XỬ LÝ TRỪ ĐIỂM VÀ GIỚI HẠN VỀ 0:
+        // Math.Min sẽ chọn số nhỏ hơn. Nếu Điểm phạt lớn hơn Điểm hiện có, 
+        // nó lấy luôn Điểm hiện có để trừ, đưa ví về bằng đúng 0 (không bị âm).
+        var deduct = Math.Min(penalty, available); 
         point.AvailablePoints -= deduct;
         point.UpdatedAt = now;
-        // TotalPoints (lifetime) is intentionally untouched so the customer's tier is unaffected.
 
+        // Ghi nhận lịch sử ví điểm (Ledger)
         var ledger = new PointHistory
         {
             Id = Guid.NewGuid(),
@@ -165,7 +181,7 @@ public class LoyaltyService : ILoyaltyService
             Amount = -deduct,
             BalanceAfter = point.AvailablePoints,
             BookingId = booking.Id,
-            Description = $"No-show penalty for booking {booking.BookingCode}",
+            Description = $"No-show penalty (Double expected points: {penalty}) for booking {booking.BookingCode}",
             CreatedAt = now
         };
 

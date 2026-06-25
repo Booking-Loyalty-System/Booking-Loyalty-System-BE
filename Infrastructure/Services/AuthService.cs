@@ -59,7 +59,14 @@ public class AuthService : IAuthService
             TierId = tier.Id,
             CreatedAt = DateTime.UtcNow
         };
-
+        var point = new Point()
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TotalPoints = 0,
+            AvailablePoints = 0
+        };
+        
         // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
@@ -69,6 +76,7 @@ public class AuthService : IAuthService
 
         _context.Users.Add(user);
         _context.Customers.Add(customer);
+        _context.Points.Add(point);
         await _context.SaveChangesAsync();
 
         return ApiResponse<TokenResponse>.SuccessResponse(new TokenResponse
