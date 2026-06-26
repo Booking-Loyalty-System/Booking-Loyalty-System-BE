@@ -7,5 +7,6 @@ public class MeResponse
     public string Role { get; set; } = null!;
     public string? Tier { get; set; }
     public int? TotalPoints { get; set; }
+    public int? AvailablePoints { get; set; }
     public int? TotalWashes { get; set; }
 }
