@@ -14,16 +14,19 @@ public class LoyaltyService : ILoyaltyService
     private readonly IApplicationDbContext _context;
     private readonly LoyaltyOptions _options;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
 
-    public LoyaltyService(IApplicationDbContext context, IOptions<LoyaltyOptions> options, IEmailService emailService)
+    public LoyaltyService(IApplicationDbContext context, LoyaltyOptions options, IEmailService emailService, INotificationService notificationService)
     {
         _context = context;
-        _options = options.Value;
+        _options = options;
         _emailService = emailService;
+        _notificationService = notificationService;
     }
 
     public async Task AwardPointsForBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
     {
+        var freeWashRewardId = Guid.Parse("10000000-0000-0000-0000-000000000099");
         // Serializable so two concurrent completions of the same booking cannot both
         // pass the "already earned?" check and double-award.
         await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -94,6 +97,30 @@ public class LoyaltyService : ILoyaltyService
         };
 
         _context.PointHistories.Add(earn);
+        bool isFreeWashAwarded = false;
+        if (customer.TotalWashes > 0 && customer.TotalWashes % 7 == 0)
+        {
+            // Kiểm tra xem phần thưởng này có đang active trong DB không
+            var rewardExists = await _context.Rewards
+                .AnyAsync(r => r.Id == freeWashRewardId && r.IsActive, cancellationToken);
+
+            if (rewardExists)
+            {
+                // Tạo bản ghi quy đổi phần thưởng cho khách hàng (Tặng Voucher)
+                var redemption = new RewardRedemption
+                {
+                    Id = Guid.NewGuid(),
+                    CustomerId = customer.Id,
+                    RewardId = freeWashRewardId,
+                    CreatedAt = now,
+                    Status = RedemptionStatus.Pending,
+                    // Điền thêm các trường bắt buộc khác của class RewardRedemption nếu có ở đây...
+                };
+
+                _context.RewardRedemptions.Add(redemption);
+                isFreeWashAwarded = true;
+            }
+        }
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -101,6 +128,17 @@ public class LoyaltyService : ILoyaltyService
         if (isUpgraded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
             await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, point.TotalPoints);
+        }
+        
+        if (isFreeWashAwarded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+        {
+            await _notificationService.SendNotificationToCustomerAsync(
+                customer.Id,
+                "Quà tặng tri ân độc quyền! 🎉",
+                "Bạn đã hoàn thành mốc 7 lượt dịch vụ. Hệ thống đã gửi tặng bạn 1 Voucher Rửa xe miễn phí vào kho quà!",
+                freeWashRewardId,
+                "Loyalty"
+            );
         }
     }
 

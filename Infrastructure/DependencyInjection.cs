@@ -70,6 +70,14 @@ public static class DependencyInjection
         services.Configure<PayOsOptions>(configuration.GetSection("PayOS"));
         services.AddScoped(provider =>
             provider.GetRequiredService<IOptions<BookingOptions>>().Value);
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<LoyaltyOptions>>().Value); 
+
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<VnPayOptions>>().Value); 
+
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<PayOsOptions>>().Value);
         services.AddSingleton<TimeZoneInfo>(provider => 
         {
             try
