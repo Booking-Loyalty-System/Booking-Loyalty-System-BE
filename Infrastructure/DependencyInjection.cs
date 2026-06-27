@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
 
@@ -17,12 +18,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
-        // services.AddDbContext<ApplicationDbContext>(options =>
-        //     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
-
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-        
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
         
@@ -69,23 +66,60 @@ public static class DependencyInjection
 
         services.Configure<BookingOptions>(configuration.GetSection("Booking"));
         services.Configure<LoyaltyOptions>(configuration.GetSection("Loyalty"));
+        services.Configure<VnPayOptions>(configuration.GetSection("VnPay"));
+        services.Configure<PayOsOptions>(configuration.GetSection("PayOS"));
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<BookingOptions>>().Value);
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<LoyaltyOptions>>().Value); 
 
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<VnPayOptions>>().Value); 
+
+        services.AddScoped(provider =>
+            provider.GetRequiredService<IOptions<PayOsOptions>>().Value);
+        services.AddSingleton<TimeZoneInfo>(provider => 
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
+            }
+        });
         services.AddMemoryCache();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ILoyaltyService, LoyaltyService>();
+        services.AddScoped<IRewardService, RewardService>();
+        services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IStaffBookingService, StaffBookingService>();
         services.AddScoped<IWashPackageService, WashPackageService>();
         services.AddScoped<IWashBayService, WashBayService>();
         services.AddScoped<IBranchService, BranchService>();
+        services.AddScoped<IAddOnService, AddOnService>();
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IVehicleService, VehicleService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
         services.AddScoped<ISmsService, SmsService>();
         services.AddScoped<ITierService, TierService>();
         services.AddScoped<ITimeSlotService, TimeSlotService>();
+        services.AddScoped<IStaffService, StaffService>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddHostedService<NotificationWorker>();
+
+        // Cancels unpaid bookings past the VNPay payment window, releasing their slots.
+        services.AddHostedService<PendingBookingCleanupService>();
+
+        // Auto-marks Confirmed/CheckedIn bookings as NoShow once the booked time + grace passes.
+        services.AddHostedService<BackgroundServices.AutoNoShowService>();
+
         return services;
     }
 }

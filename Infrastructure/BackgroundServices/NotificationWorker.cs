@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Infrastructure.Persistence;
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.BackgroundServices;
@@ -30,29 +31,28 @@ public class NotificationWorker : BackgroundService
                 {
                     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                    var expiringRewards = await dbContext.CustomerPromotions
-                        .Include(ur => ur.Promotion)
-                        .Include(ur => ur.Customer)
-                        .Where(ur => !ur.IsUsed 
-                                  && ur.ExpiryDate <= DateTime.UtcNow.AddDays(3) 
-                                  && ur.ExpiryDate > DateTime.UtcNow)
+                    var expiringRewards = await dbContext.RewardRedemptions
+                        .Include(rr => rr.Customer)
+                        .Where(rr => rr.Status == RedemptionStatus.Pending
+                                  && rr.ExpiryDate != null
+                                  && rr.ExpiryDate <= DateTime.UtcNow.AddDays(3)
+                                  && rr.ExpiryDate > DateTime.UtcNow)
                         .ToListAsync(stoppingToken);
 
-                    foreach (var ur in expiringRewards)
+                    foreach (var rr in expiringRewards)
                     {
-                        // 2. Kiểm tra xem đã gửi thông báo cho cái quà cụ thể này chưa
-                        var exists = await dbContext.Notifications.AnyAsync(n => 
-                            n.ReferenceId == ur.Id && n.Type == "RewardExpiry", stoppingToken);
-                        
+                        // 2. Kiểm tra xem đã gửi thông báo cho voucher cụ thể này chưa
+                        var exists = await dbContext.Notifications.AnyAsync(n =>
+                            n.ReferenceId == rr.Id && n.Type == "RewardExpiry", stoppingToken);
+
                         if (!exists)
                         {
                             var notification = new Notification
                             {
                                 Title = "Quà tặng sắp hết hạn!",
-                                Message = $"Mã quà {ur.Promotion.Name} của bạn chỉ còn hiệu lực đến ngày {ur.ExpiryDate:dd/MM/yyyy}.",
                                 Type = "RewardExpiry",
-                                ReferenceId = ur.Id,
-                                UserId = ur.Customer.UserId   
+                                ReferenceId = rr.Id,
+                                UserId = rr.Customer.UserId
                             };
                             dbContext.Notifications.Add(notification);
                         }

@@ -9,8 +9,5 @@ public interface IBookingService
     Task<List<BookingResponse>> GetMyBookingsAsync(Guid userId);
     Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason);
     Task<BookingResponse> UpdateBookingAsync(Guid userId, Guid bookingId, UpdateBookingRequest request);
-    /// <summary>
-    /// Admin action: marks a booking Completed and awards loyalty points.
-    /// </summary>
     Task<BookingResponse> CompleteBookingAsync(Guid bookingId);
 }

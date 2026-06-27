@@ -5,5 +5,6 @@ public enum LoyaltyTransactionType
     Earn,
     Redeem,
     Expire,
-    Adjust
+    Adjust,
+    Penalty
 }

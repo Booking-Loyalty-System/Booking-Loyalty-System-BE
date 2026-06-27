@@ -8,8 +8,9 @@ public class CustomerProfileResponse
     public string PhoneNumber { get; set; } = null!;
     public DateTime? DateOfBirth { get; set; }
     public string Tier { get; set; } = null!;
-    public int TotalPoints { get; set; }
+    public int AvailablePoint { get; set; }
     public int TotalWashes { get; set; }
+    public int TotalPoint { get; set; }
     public decimal TotalSpent { get; set; }
     public DateTime CreatedAt { get; set; }
 }

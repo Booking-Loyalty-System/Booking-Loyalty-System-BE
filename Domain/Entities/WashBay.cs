@@ -13,5 +13,5 @@ public class WashBay
 
     public Branch Branch { get; set; } = null!;
     // Navigation
-    public ICollection<WashBayTimeSlot> WashBayTimeSlots { get; set; } = new List<WashBayTimeSlot>();
+    public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }

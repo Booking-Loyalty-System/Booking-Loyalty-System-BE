@@ -11,10 +11,9 @@ public class Customer
     public bool IsPhoneNumberVerified { get; set; } = false;
     public DateTime? DateOfBirth { get; set; }
     public Guid TierId { get; set; }
-    public int TotalPoints { get; set; }
-    public int LifetimePoints { get; set; }
     public int TotalWashes { get; set; }
     public decimal TotalSpent { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public User User { get; set; } = null!;
     public Tier Tier { get; set; } = null!;

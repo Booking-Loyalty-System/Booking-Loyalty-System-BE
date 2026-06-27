@@ -14,4 +14,17 @@ public class BookingOptions
 
     /// <summary>Latest end time the shop accepts (inclusive).</summary>
     public TimeOnly CloseTime { get; set; } = new(20, 0);
+
+    /// <summary>
+    /// Minutes after a booking's start time before an un-started Confirmed/CheckedIn
+    /// booking is auto-marked NoShow by the background sweeper.
+    /// </summary>
+    public int NoShowGraceMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Max number of unconfirmed (Pending) bookings a single customer may hold at once.
+    /// In the no-prepayment flow there is no deposit to deter slot hoarding, so this caps
+    /// how many slots one customer can hold while waiting for staff to call and confirm.
+    /// </summary>
+    public int MaxActivePendingBookings { get; set; } = 5;
 }

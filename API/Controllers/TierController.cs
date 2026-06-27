@@ -22,14 +22,14 @@ public class TierController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllTiers()
     {
-        var result = await _tierService.GetAllTiersAsync();
+        var result = await _tierService.GetAllAsync();
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetTierById(Guid id)
     {
-        var result = await _tierService.GetTierByIdAsync(id);
+        var result = await _tierService.GetByIdAsync(id);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
@@ -43,7 +43,7 @@ public class TierController : ControllerBase
             return BadRequest(ApiResponse<object>.FailResponse(
                 string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
 
-        var result = await _tierService.CreateTierAsync(request);
+        var result = await _tierService.CreateAsync(request);
         
         // Trả về mã 201 Created cùng với location để lấy chi tiết Tier vừa tạo
         return CreatedAtAction(nameof(GetTierById), new { id = result.Id }, ApiResponse<object>.SuccessResponse(result, "Tier created successfully."));
@@ -60,14 +60,14 @@ public class TierController : ControllerBase
             return BadRequest(ApiResponse<object>.FailResponse(
                 string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
 
-        var result = await _tierService.UpdateTierAsync(id, request);
+        var result = await _tierService.UpdateAsync(id, request);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Tier updated successfully."));
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteTier(Guid id)
     {
-        await _tierService.DeleteTierAsync(id);
+        await _tierService.DeleteAsync(id);
         return Ok(ApiResponse<object>.SuccessResponse(null, "Tier deleted successfully."));
     }
 }
