@@ -254,7 +254,9 @@ public class LoyaltyService : ILoyaltyService
 
         return new LoyaltyBalanceResponse
         {
+            // TotalPoints giữ = AvailablePoints để FE cũ không vỡ; FE mới đọc AvailablePoints.
             TotalPoints = point?.AvailablePoints ?? 0,
+            AvailablePoints = point?.AvailablePoints ?? 0,
             LifetimePoints = point?.TotalPoints ?? 0,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,
