@@ -187,8 +187,9 @@ public class AuthService : IAuthService
             Email = user.Email,
             Role = user.Role.ToString(),
             Tier = user.Customer?.Tier?.TierName, // Sửa lại lấy đúng thuộc tính tên Hạng (ví dụ TierName)
-            AvailablePoints = point?.AvailablePoints,
-            TotalWashes = user.Customer?.TotalWashes
+            TotalPoints = point?.TotalPoints,
+            TotalWashes = user.Customer?.TotalWashes,
+            AvailablePoints = point?.AvailablePoints
         };
 
         return ApiResponse<MeResponse>.SuccessResponse(response);

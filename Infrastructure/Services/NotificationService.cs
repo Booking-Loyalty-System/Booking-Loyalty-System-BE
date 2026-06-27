@@ -101,4 +101,34 @@ public class NotificationService : INotificationService
                 .SendAsync("ReceiveNotification", new { title, message, relatedId, type });
         }
     }
+    
+    public async Task SendNotificationToCustomerAsync(Guid customerId, string title, string message, Guid? relatedId, string type)
+    {
+        // 1. Tìm thông tin Customer để lấy ra UserId phục vụ cho SignalR và lưu bảng Notification
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.Id == customerId);
+            
+        if (customer == null) return;
+
+        // 2. Tạo thực thể thông báo mới
+        var notification = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = customer.UserId, 
+            Title = title,
+            Message = message,
+            ReferenceId = relatedId, 
+            Type = type,        
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // 3. Lưu vào Database
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync();
+
+        // 4. Bắn SignalR Realtime đến client của Customer
+        await _hubContext.Clients.User(customer.UserId.ToString())
+            .SendAsync("ReceiveNotification", new { title, message, relatedId, type });
+    }
 }

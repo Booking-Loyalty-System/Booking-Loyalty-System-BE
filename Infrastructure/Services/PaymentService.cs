@@ -18,15 +18,18 @@ public class PaymentService : IPaymentService
     private readonly VnPayOptions _options;
     private readonly TimeZoneInfo _timeZone;
     private readonly PayOsOptions _payOSOptions;
-    public PaymentService(IApplicationDbContext context, IOptions<VnPayOptions> options, IOptions<PayOsOptions> payOSOptions)
+    private readonly ILoyaltyService _service;
+
+    public PaymentService(IApplicationDbContext context, VnPayOptions options, TimeZoneInfo timeZone, PayOsOptions payOsOptions, ILoyaltyService service)
     {
         _context = context;
-        _options = options.Value;
-        _timeZone = TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId);
-        _payOSOptions = payOSOptions.Value;
+        _options = options;
+        _timeZone = timeZone;
+        _payOSOptions = payOsOptions;
+        _service = service;
     }
 
-  public async Task<CreatePaymentResponse> CreatePaymentUrlAsync(Guid userId, Guid bookingId, string clientIp)
+    public async Task<CreatePaymentResponse> CreatePaymentUrlAsync(Guid userId, Guid bookingId, string clientIp)
     {
         // 1. TÌM BOOKING TRƯỚC BẰNG BOOKING ID
         var booking = await _context.Bookings
@@ -272,7 +275,7 @@ public class PaymentService : IPaymentService
 
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
-
+            
             // 8. Trả về CheckoutUrl 
             return new PaymentResponse
             {
@@ -338,7 +341,8 @@ public class PaymentService : IPaymentService
     public async Task<bool> ProcessPayOsReturnAsync(long orderCode, string status, string code)
     {
         await using var transaction = await _context.BeginTransactionAsync();
-
+        Guid? bookingIdToAward = null;
+        Guid? washBayIdToRelease = null;
         try
         {
             var payment = await _context.Payments
@@ -372,17 +376,53 @@ public class PaymentService : IPaymentService
             {
                 booking.Status = BookingStatus.CheckedOut;
                 booking.UpdatedAt = DateTime.UtcNow;
+                
+                bookingIdToAward = booking.Id;
+                washBayIdToRelease = booking.BayId;
             }
 
             _context.Payments.Update(payment);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-            return true;
         }
         catch
         {
             await transaction.RollbackAsync();
             throw;
+        }
+        
+        if (bookingIdToAward.HasValue)
+        {
+            await _service.AwardPointsForBookingAsync(bookingIdToAward.Value);
+        }
+        if (washBayIdToRelease.HasValue && bookingIdToAward.HasValue)
+        {
+            await CheckAndReleaseWashBayAsync(washBayIdToRelease.Value, bookingIdToAward.Value);
+            await _context.SaveChangesAsync(); 
+        }
+        return true;
+    }
+    
+    private async Task CheckAndReleaseWashBayAsync(Guid? washBayId, Guid currentBookingId)
+    {
+        if (!washBayId.HasValue) return;
+
+        // Một khoang vẫn Busy nếu còn xe CheckedIn, Queued hoặc InProgress (loại trừ xe hiện tại)
+        bool hasActiveBookings = await _context.Bookings
+            .AnyAsync(b => b.BayId == washBayId 
+                           && b.Id != currentBookingId 
+                           && (b.Status == BookingStatus.CheckedIn || 
+                               b.Status == BookingStatus.Queued || 
+                               b.Status == BookingStatus.InProgress));
+
+        if (!hasActiveBookings)
+        {
+            var washBay = await _context.WashBays.FindAsync(washBayId);
+            if (washBay != null)
+            {
+                washBay.Status = WashBayStatus.Available; 
+                _context.WashBays.Update(washBay);
+            }
         }
     }
 }

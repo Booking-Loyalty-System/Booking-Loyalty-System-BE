@@ -295,6 +295,7 @@ public class StaffBookingService : IStaffBookingService
             if (washBay != null)
             {
                 washBay.Status = WashBayStatus.Available; 
+                _context.WashBays.Update(washBay);
             }
         }
     }

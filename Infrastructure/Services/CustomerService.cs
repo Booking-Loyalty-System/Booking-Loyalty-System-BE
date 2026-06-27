@@ -24,7 +24,7 @@ public class CustomerService : ICustomerService
             ?? throw new AppException("Customer profile not found.", 404);
 
         var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
-        return MapToResponse(customer, point?.AvailablePoints ?? 0);
+        return MapToResponse(customer, point?.TotalPoints ?? 0, point?.AvailablePoints ?? 0);
     }
 
     public async Task<CustomerProfileResponse> UpdateProfileAsync(Guid userId, UpdateCustomerProfileRequest request)
@@ -41,10 +41,10 @@ public class CustomerService : ICustomerService
         await _context.SaveChangesAsync();
 
         var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
-        return MapToResponse(customer, point?.AvailablePoints ?? 0);
+        return MapToResponse(customer, point?.AvailablePoints ?? 0, point?.TotalPoints ?? 0);
     }
 
-    private static CustomerProfileResponse MapToResponse(Domain.Entities.Customer customer, int availablePoints)
+    private static CustomerProfileResponse MapToResponse(Domain.Entities.Customer customer, int availablePoints, int totalPoints)
     {
         return new CustomerProfileResponse
         {
@@ -55,6 +55,7 @@ public class CustomerService : ICustomerService
             DateOfBirth = customer.DateOfBirth,
             Tier = customer.Tier.TierName,
             AvailablePoint = availablePoints,
+            TotalPoint = totalPoints,
             TotalWashes = customer.TotalWashes,
             TotalSpent = customer.TotalSpent,
             CreatedAt = customer.CreatedAt
