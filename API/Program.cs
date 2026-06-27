@@ -90,8 +90,18 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-        policy.WithOrigins("http://localhost:5173")
-            .AllowCredentials().AllowAnyMethod().AllowAnyHeader());
+    {
+        if (builder.Environment.IsDevelopment())
+            // Dev: cho phep moi port localhost (vite co the nhay 5173->5174->5175 khi port ban),
+            // tranh loi "Network Error" do CORS khi FE khong o dung 5173.
+            policy.SetIsOriginAllowed(origin =>
+                    Uri.TryCreate(origin, UriKind.Absolute, out var u)
+                    && (u.Host == "localhost" || u.Host == "127.0.0.1"))
+                .AllowCredentials().AllowAnyMethod().AllowAnyHeader();
+        else
+            policy.WithOrigins("http://localhost:5173")
+                .AllowCredentials().AllowAnyMethod().AllowAnyHeader();
+    });
 });
 
 var app = builder.Build();

@@ -5,6 +5,7 @@ public class MeResponse
     public Guid UserId { get; set; }
     public string Email { get; set; } = null!;
     public string Role { get; set; } = null!;
+    public string? FullName { get; set; }
     public string? Tier { get; set; }
     public int? TotalPoints { get; set; }
     public int? AvailablePoints { get; set; }
