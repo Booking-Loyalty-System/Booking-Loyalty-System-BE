@@ -67,6 +67,9 @@ public class AuthService : IAuthService
             AvailablePoints = 0
         };
         
+        // Gán nav để token kèm được fullName (claim trong JWT).
+        user.Customer = customer;
+
         // Generate tokens
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
@@ -89,7 +92,10 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<TokenResponse>> LoginAsync(LoginRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _context.Users
+            .Include(u => u.Customer)
+            .Include(u => u.Staff)
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             throw new AppException("Invalid email or password.", 401);
@@ -116,7 +122,10 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<TokenResponse>> RefreshTokenAsync(RefreshTokenRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
+        var user = await _context.Users
+            .Include(u => u.Customer)
+            .Include(u => u.Staff)
+            .FirstOrDefaultAsync(u => u.RefreshToken == request.RefreshToken);
 
         if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
             throw new AppException("Invalid or expired refresh token.", 401);
@@ -176,6 +185,7 @@ public class AuthService : IAuthService
         var user = await _context.Users
             .Include(u => u.Customer)
                 .ThenInclude(c => c.Tier) // 🔥 FIX LỖI: Cần nạp bảng Tier để không bị NullReferenceException
+            .Include(u => u.Staff)
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new AppException("User not found.", 404);
 
@@ -186,6 +196,7 @@ public class AuthService : IAuthService
             UserId = user.Id,
             Email = user.Email,
             Role = user.Role.ToString(),
+            FullName = user.Customer?.FullName ?? user.Staff?.FullName,
             Tier = user.Customer?.Tier?.TierName, // Sửa lại lấy đúng thuộc tính tên Hạng (ví dụ TierName)
             TotalPoints = point?.AvailablePoints,
             TotalWashes = user.Customer?.TotalWashes
