@@ -1,7 +1,6 @@
-﻿using Application.Common;
-using Application.DTOs.Tier;
+using System.Security.Claims;
+using Application.Common;
 using Application.Interfaces;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,41 +32,17 @@ public class TierController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    [HttpPost]
-    public async Task<IActionResult> CreateTier(
-        [FromBody] CreateTierRequest request,
-        [FromServices] IValidator<CreateTierRequest> validator)
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMyTier()
     {
-        var validation = await validator.ValidateAsync(request);
-        if (!validation.IsValid)
-            return BadRequest(ApiResponse<object>.FailResponse(
-                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
-
-        var result = await _tierService.CreateAsync(request);
-        
-        // Trả về mã 201 Created cùng với location để lấy chi tiết Tier vừa tạo
-        return CreatedAtAction(nameof(GetTierById), new { id = result.Id }, ApiResponse<object>.SuccessResponse(result, "Tier created successfully."));
+        var userId = GetUserId();
+        var result = await _tierService.GetMyTierAsync(userId);
+        return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
-    [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateTier(
-        Guid id,
-        [FromBody] UpdateTierRequest request,
-        [FromServices] IValidator<UpdateTierRequest> validator)
+    private Guid GetUserId()
     {
-        var validation = await validator.ValidateAsync(request);
-        if (!validation.IsValid)
-            return BadRequest(ApiResponse<object>.FailResponse(
-                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
-
-        var result = await _tierService.UpdateAsync(id, request);
-        return Ok(ApiResponse<object>.SuccessResponse(result, "Tier updated successfully."));
-    }
-
-    [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> DeleteTier(Guid id)
-    {
-        await _tierService.DeleteAsync(id);
-        return Ok(ApiResponse<object>.SuccessResponse(null, "Tier deleted successfully."));
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.Parse(claim!);
     }
 }
