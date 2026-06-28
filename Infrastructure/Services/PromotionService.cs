@@ -27,6 +27,22 @@ public class PromotionService : IPromotionService
         return promotions.Select(MapToResponse).ToList();
     }
 
+    public async Task<List<PromotionResponse>> GetActiveAsync()
+    {
+        var now = DateTime.UtcNow;
+
+        var promotions = await _context.Promotions
+            .Where(p => p.IsActive
+                && p.StartDate <= now
+                && p.EndDate >= now
+                && (p.MaxUses == null || p.UsedCount < p.MaxUses))
+            .OrderByDescending(p => p.PriorityLevel)
+            .ThenByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        return promotions.Select(MapToResponse).ToList();
+    }
+
     public async Task<PromotionResponse?> GetByIdAsync(Guid id)
     {
         var promotion = await _context.Promotions.FindAsync(id);
@@ -162,6 +178,7 @@ public class PromotionService : IPromotionService
     {
         Id = p.Id,
         Code = p.Code,
+        Name = p.Name,
         Description = p.Description,
         DiscountType = p.DiscountType.ToString(),
         DiscountValue = p.DiscountValue,

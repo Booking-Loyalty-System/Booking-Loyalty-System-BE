@@ -6,6 +6,12 @@ public interface IPromotionService
 {
     // Catalog management
     Task<List<PromotionResponse>> GetAllAsync();
+
+    /// <summary>
+    /// Customer-facing list: only promotions that are active, currently within their
+    /// start/end window, and not yet exhausted. For the frontend to browse/show.
+    /// </summary>
+    Task<List<PromotionResponse>> GetActiveAsync();
     Task<PromotionResponse?> GetByIdAsync(Guid id);
     Task<PromotionResponse> CreateAsync(CreatePromotionRequest request);
     Task<PromotionResponse> UpdateAsync(Guid id, UpdatePromotionRequest request);
