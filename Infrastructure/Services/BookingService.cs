@@ -147,7 +147,8 @@ public class BookingService : IBookingService
     if (!string.IsNullOrWhiteSpace(request.PromotionCode))
     {
         // Priority 1: explicit promotion code (percentage discount on the wash package).
-        var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
+        // Truyền customer + branch để enforce điều kiện sinh nhật / hạng / chi nhánh (địa chỉ).
+        var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price, customer, request.BranchId);
         promotionId = pid;
         discountAmount = discount;
         totalPrice = washPackage.Price - discount;

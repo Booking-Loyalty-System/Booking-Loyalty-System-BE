@@ -57,6 +57,7 @@ public class CustomerService : ICustomerService
             AvailablePoint = availablePoints,
             TotalPoint = totalPoints,
             TotalWashes = customer.TotalWashes,
+            CurrentCycleWashes = customer.CurrentCycleWashes,
             TotalSpent = customer.TotalSpent,
             CreatedAt = customer.CreatedAt
         };

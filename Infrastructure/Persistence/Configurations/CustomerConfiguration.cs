@@ -23,6 +23,9 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.TotalSpent)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(c => c.CurrentCycleWashes)
+            .HasDefaultValue(0);
+
         builder.HasMany(c => c.Vehicles)
             .WithOne(v => v.Customer)
             .HasForeignKey(v => v.CustomerId)
