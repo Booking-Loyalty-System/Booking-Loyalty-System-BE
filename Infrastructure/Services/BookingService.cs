@@ -35,7 +35,6 @@ public class BookingService : IBookingService
     }
 
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
-<<<<<<< HEAD
     {
         // 1. Kiểm tra các thực thể cơ bản
         var customer = await _context.Customers
@@ -145,17 +144,20 @@ public class BookingService : IBookingService
         string? voucherName = null;
         RewardRedemption? appliedRedemption = null;
 
+        // Cho phép dùng ĐỒNG THỜI promotion + voucher: promotion (giảm %) tính TRƯỚC trên giá gói rửa,
+        // rồi voucher (giảm tiền cố định) trừ TIẾP trên phần còn lại. Giá sau giảm không bao giờ âm.
         if (!string.IsNullOrWhiteSpace(request.PromotionCode))
         {
-            // Priority 1: explicit promotion code (percentage discount on the wash package).
-            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price);
+            // Truyền customer + branch để enforce điều kiện sinh nhật / hạng / chi nhánh (địa chỉ).
+            var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price, customer, request.BranchId);
             promotionId = pid;
-            discountAmount = discount;
-            totalPrice = washPackage.Price - discount;
+            discountAmount += discount;
+            totalPrice -= discount;
         }
-        else if (request.RewardRedemptionId.HasValue)
+
+        if (request.RewardRedemptionId.HasValue)
         {
-            // Priority 2: a voucher the customer redeemed with loyalty points (fixed-amount off).
+            // Voucher đổi bằng điểm (giảm số tiền cố định) — trừ trên phần GIÁ CÒN LẠI sau promotion.
             appliedRedemption = await _context.RewardRedemptions
                 .Include(r => r.Reward)
                 .FirstOrDefaultAsync(r => r.Id == request.RewardRedemptionId.Value
@@ -164,9 +166,9 @@ public class BookingService : IBookingService
                     && (r.ExpiryDate == null || r.ExpiryDate > DateTime.UtcNow))
                 ?? throw new AppException("Voucher not found, already used, or expired.", 400);
 
-            var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, washPackage.Price);
-            discountAmount = voucherDiscount;
-            totalPrice = washPackage.Price - voucherDiscount;
+            var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, totalPrice);
+            discountAmount += voucherDiscount;
+            totalPrice -= voucherDiscount;
             rewardId = appliedRedemption.RewardId;
             voucherName = appliedRedemption.Reward.Name;
         }
@@ -258,233 +260,6 @@ public class BookingService : IBookingService
 
         return response;
     }
-=======
-{
-    // 1. Kiểm tra các thực thể cơ bản
-    var customer = await _context.Customers
-        .Include(c => c.Tier)
-        .FirstOrDefaultAsync(c => c.UserId == userId)
-        ?? throw new AppException("Customer profile not found.", 404);
-
-    var vehicle = await _context.Vehicles
-        .FirstOrDefaultAsync(v => v.Id == request.VehicleId && v.CustomerId == customer.Id && !v.IsDeleted)
-        ?? throw new AppException("Vehicle not found or does not belong to you.", 404);
-
-    var washPackage = await _context.WashPackages
-        .FirstOrDefaultAsync(wp => wp.Id == request.WashPackageId && wp.IsActive)
-        ?? throw new AppException("Wash package not found or inactive.", 404);
-
-    // Resolve optional add-ons. Every requested id must map to an active add-on.
-    var requestedAddOnIds = request.AddOnIds?.Distinct().ToList() ?? new List<Guid>();
-    var addOns = requestedAddOnIds.Count == 0
-        ? new List<AddOn>()
-        : await _context.AddOns
-            .Where(a => requestedAddOnIds.Contains(a.Id) && a.IsActive)
-            .ToListAsync();
-    if (addOns.Count != requestedAddOnIds.Count)
-        throw new AppException("One or more add-ons not found or inactive.", 400);
-
-    var addOnsTotal = addOns.Sum(a => a.Price);
-
-    var branch = await _context.Branches
-        .FirstOrDefaultAsync(b => b.Id == request.BranchId)
-        ?? throw new AppException("Branch not found.", 404);
-
-    if (branch.Status != BranchStatus.Active)
-        throw new AppException("The selected branch is not currently open for booking.", 400);
-
-    // 2. Kiểm tra thời gian thực tại địa phương của Shop
-    var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone);
-    var today = DateOnly.FromDateTime(nowLocal);
-    var nowTime = TimeOnly.FromDateTime(nowLocal);
-
-    if (request.BookingDate < today)
-        throw new AppException("Booking date cannot be in the past.", 400);
-
-    if (request.BookingDate == today && request.StartTime <= nowTime)
-        throw new AppException("Start time cannot be in the past.", 400);
-
-    var maxDays = customer.Tier.BookingWindow;
-    var maxDate = today.AddDays(maxDays);
-    if (request.BookingDate > maxDate)
-        throw new AppException($"Your {customer.Tier.TierName} tier allows booking up to {maxDays} days in advance.", 400);
-
-    if (request.StartTime < _options.OpenTime || request.StartTime >= _options.CloseTime)
-        throw new AppException($"Booking time must be within business hours ({_options.OpenTime:HH\\:mm}–{_options.CloseTime:HH\\:mm}).", 400);
-
-    // 3. Tìm cấu hình Khung Giờ gốc và bảng trung gian BranchTimeSlot
-    var timeSlot = await _context.TimeSlots
-        .FirstOrDefaultAsync(t => t.StartTime == request.StartTime)
-        ?? throw new AppException("Invalid start time. Time slot not found.", 400);
-
-    var branchTimeSlot = await _context.BranchTimeSlots
-        .FirstOrDefaultAsync(bts => bts.BranchId == branch.Id && bts.TimeSlotId == timeSlot.Id)
-        ?? throw new AppException("This time slot is not available for the selected branch.", 400);
-
-    if (!branchTimeSlot.IsActive)
-        throw new AppException("This time slot is currently locked or inactive at this branch.", 400);
-
-    // 4. Chống ôm slot: giới hạn số booking Pending (chưa được staff xác nhận) mỗi khách.
-    //    Không có rào thanh toán nên đây là biện pháp thay cho "đặt cọc" để chặn giữ chỗ tràn lan.
-    var activePending = await _context.Bookings
-        .CountAsync(b => b.CustomerId == customer.Id && b.Status == BookingStatus.Pending);
-    if (activePending >= _options.MaxActivePendingBookings)
-        throw new AppException(
-            $"You already have {activePending} booking(s) awaiting staff confirmation. " +
-            "Please wait until they are confirmed before booking more.", 409);
-
-    // 5. Mở TRANSACTION (Serializable) chống Race Condition khi đặt chỗ cùng giây.
-    //    Cả check trùng xe lẫn đếm capacity đều nằm TRONG transaction để không lọt khi đặt đồng thời.
-    await using var transaction = await _context.BeginTransactionAsync();
-
-    // 5a. Chặn trùng lịch của chiếc xe này trong cùng khung giờ.
-    var vehicleConflict = await _context.Bookings.AnyAsync(b =>
-        b.VehicleId == vehicle.Id &&
-        b.BookingDate == request.BookingDate &&
-        b.BranchTimeSlot.TimeSlotId == timeSlot.Id &&
-        (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress));
-
-    if (vehicleConflict)
-        throw new AppException("This vehicle already has a booking that overlaps the selected time.", 409);
-
-    // 5b. Đếm số xe đang chiếm chỗ (Bỏ Cancelled và NoShow).
-    var currentBookingsCount = await _context.Bookings
-        .CountAsync(b => b.BranchTimeSlotId == branchTimeSlot.Id
-                      && b.BookingDate == request.BookingDate
-                      && b.Status != BookingStatus.Cancelled
-                      && b.Status != BookingStatus.NoShow);
-
-    if (currentBookingsCount >= branchTimeSlot.MaxCapacity)
-        throw new AppException("This time slot is fully booked. Please select another time or branch.", 409);
-
-    // 6. Xử lý mã Code, QR và Promotion
-    var bookingCode = await GenerateUniqueBookingCodeAsync();
-    var qrDataBase64 = GenerateQrCodeBase64(bookingCode);
-    
-    var totalPrice = washPackage.Price;
-    var discountAmount = 0m;
-    Guid? promotionId = null;
-    Guid? rewardId = null;
-    string? voucherName = null;
-    RewardRedemption? appliedRedemption = null;
-
-    // Cho phép dùng ĐỒNG THỜI promotion + voucher: promotion (giảm %) tính TRƯỚC trên giá gói rửa,
-    // rồi voucher (giảm tiền cố định) trừ TIẾP trên phần còn lại. Giá sau giảm không bao giờ âm.
-    if (!string.IsNullOrWhiteSpace(request.PromotionCode))
-    {
-        // Truyền customer + branch để enforce điều kiện sinh nhật / hạng / chi nhánh (địa chỉ).
-        var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price, customer, request.BranchId);
-        promotionId = pid;
-        discountAmount += discount;
-        totalPrice -= discount;
-    }
-
-    if (request.RewardRedemptionId.HasValue)
-    {
-        // Voucher đổi bằng điểm (giảm số tiền cố định) — trừ trên phần GIÁ CÒN LẠI sau promotion.
-        appliedRedemption = await _context.RewardRedemptions
-            .Include(r => r.Reward)
-            .FirstOrDefaultAsync(r => r.Id == request.RewardRedemptionId.Value
-                && r.CustomerId == customer.Id
-                && r.Status == RedemptionStatus.Pending
-                && (r.ExpiryDate == null || r.ExpiryDate > DateTime.UtcNow))
-            ?? throw new AppException("Voucher not found, already used, or expired.", 400);
-
-        var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, totalPrice);
-        discountAmount += voucherDiscount;
-        totalPrice -= voucherDiscount;
-        rewardId = appliedRedemption.RewardId;
-        voucherName = appliedRedemption.Reward.Name;
-    }
-
-    // 7. Khởi tạo và lưu Booking mới vào DB (ĐÃ ĐỒI THEO DB MỚI)
-    var booking = new Booking
-    {
-        Id = Guid.NewGuid(),
-        BookingCode = bookingCode,
-        CustomerId = customer.Id,
-        VehicleId = vehicle.Id,
-        WashPackageId = washPackage.Id,
-        BranchTimeSlotId = branchTimeSlot.Id, 
-        BookingDate = request.BookingDate,   
-        BayId = null,                
-        QrData = qrDataBase64,
-        PromotionId = promotionId,
-        RewardId = rewardId,
-        // Vouchers/promotions discount the wash package only; add-ons are added on top.
-        TotalPrice = totalPrice + addOnsTotal,
-        StartTime = branchTimeSlot.TimeSlot.StartTime,
-        DiscountAmount = discountAmount,
-        Status = BookingStatus.Pending,
-        CreatedAt = DateTime.UtcNow
-    };
-
-    _context.Bookings.Add(booking);
-
-    // Consume the voucher: mark its redemption fulfilled and link it to this booking.
-    if (appliedRedemption != null)
-    {
-        appliedRedemption.Status = RedemptionStatus.Fulfilled;
-        appliedRedemption.FulfilledAt = DateTime.UtcNow;
-        appliedRedemption.BookingId = booking.Id;
-    }
-
-    // Snapshot the chosen add-ons onto the booking (price frozen at booking time).
-    var bookingAddOns = addOns.Select(a => new BookingAddOn
-    {
-        Id = Guid.NewGuid(),
-        BookingId = booking.Id,
-        AddOnId = a.Id,
-        Price = a.Price,
-        DurationMinutes = a.DurationMinutes,
-        CreatedAt = DateTime.UtcNow
-    }).ToList();
-    if (bookingAddOns.Count > 0)
-        _context.BookingAddOns.AddRange(bookingAddOns);
-
-    try
-    {
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-    }
-    catch (Exception ex) when (IsSerializationConflict(ex))
-    {
-        // Hai khách giành suất cuối cùng cùng lúc: transaction Serializable thua bị DB từ chối (40001).
-        // Trả 409 sạch thay vì để lỗi nổ thành 500; `await using` sẽ tự rollback khi thoát method.
-        throw new AppException("This time slot was just taken by another customer. Please try again.", 409);
-    }
-
-    try 
-    {
-        string message = $"Khách hàng mới đã đặt lịch: {booking.BookingCode} - Gói: {washPackage.Name} lúc {booking.StartTime}";
-        
-        // Gọi service gửi thông báo đến các nhân viên thuộc chi nhánh này
-        await _notificationService.SendNotificationToStaffAsync(
-            branchId: branch.Id, 
-            title: "Lịch hẹn mới", 
-            message: message,
-            relatedId: booking.Id,
-            type: "NewBooking"
-        );
-    }
-    catch (Exception ex)
-    {
-        // Log lỗi nếu gửi thông báo thất bại nhưng không làm gián đoạn luồng đặt lịch
-        Console.WriteLine($"Gửi thông báo thất bại: {ex.Message}");
-    }
-    
-    // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
-    var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
-    response.AddOns = addOns
-        .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
-        .ToList();
-
-    await _hubContext.Clients.Group(branchTimeSlot.BranchId.ToString())
-        .SendAsync("ReceiveBookingCreated", response);
-
-    return response;
-}
->>>>>>> 478c0cd43c6b8a4469ef918552aef438f20f958d
 
     /// <summary>
     /// True if the exception (or an inner one) is a PostgreSQL serialization/deadlock failure
