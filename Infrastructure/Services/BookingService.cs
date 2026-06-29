@@ -144,18 +144,20 @@ public class BookingService : IBookingService
     string? voucherName = null;
     RewardRedemption? appliedRedemption = null;
 
+    // Cho phép dùng ĐỒNG THỜI promotion + voucher: promotion (giảm %) tính TRƯỚC trên giá gói rửa,
+    // rồi voucher (giảm tiền cố định) trừ TIẾP trên phần còn lại. Giá sau giảm không bao giờ âm.
     if (!string.IsNullOrWhiteSpace(request.PromotionCode))
     {
-        // Priority 1: explicit promotion code (percentage discount on the wash package).
         // Truyền customer + branch để enforce điều kiện sinh nhật / hạng / chi nhánh (địa chỉ).
         var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price, customer, request.BranchId);
         promotionId = pid;
-        discountAmount = discount;
-        totalPrice = washPackage.Price - discount;
+        discountAmount += discount;
+        totalPrice -= discount;
     }
-    else if (request.RewardRedemptionId.HasValue)
+
+    if (request.RewardRedemptionId.HasValue)
     {
-        // Priority 2: a voucher the customer redeemed with loyalty points (fixed-amount off).
+        // Voucher đổi bằng điểm (giảm số tiền cố định) — trừ trên phần GIÁ CÒN LẠI sau promotion.
         appliedRedemption = await _context.RewardRedemptions
             .Include(r => r.Reward)
             .FirstOrDefaultAsync(r => r.Id == request.RewardRedemptionId.Value
@@ -164,9 +166,9 @@ public class BookingService : IBookingService
                 && (r.ExpiryDate == null || r.ExpiryDate > DateTime.UtcNow))
             ?? throw new AppException("Voucher not found, already used, or expired.", 400);
 
-        var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, washPackage.Price);
-        discountAmount = voucherDiscount;
-        totalPrice = washPackage.Price - voucherDiscount;
+        var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, totalPrice);
+        discountAmount += voucherDiscount;
+        totalPrice -= voucherDiscount;
         rewardId = appliedRedemption.RewardId;
         voucherName = appliedRedemption.Reward.Name;
     }
