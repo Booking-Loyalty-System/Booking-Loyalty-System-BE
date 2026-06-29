@@ -12,7 +12,7 @@ public interface IPromotionService
     /// Customer-facing list: only promotions that are active, currently within their
     /// start/end window, and not yet exhausted. When <paramref name="userId"/> is supplied,
     /// the list is further filtered to what THIS customer can actually use right now
-    /// (đúng hạng + đúng tháng sinh nhật). Điều kiện chi nhánh/địa chỉ chỉ kiểm tra lúc đặt
+    /// (đúng hạng + đang trong tuần sinh nhật ± 3 ngày). Điều kiện chi nhánh/địa chỉ chỉ kiểm tra lúc đặt
     /// (Preview/Apply) vì lúc duyệt list chưa biết khách chọn chi nhánh nào.
     /// </summary>
     Task<List<PromotionResponse>> GetActiveAsync(Guid? userId = null);

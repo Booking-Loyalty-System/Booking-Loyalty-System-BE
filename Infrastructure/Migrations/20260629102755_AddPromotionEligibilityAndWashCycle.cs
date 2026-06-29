@@ -25,33 +25,8 @@ namespace Infrastructure.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.UpdateData(
-                table: "Customers",
-                keyColumn: "Id",
-                keyValue: new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                table: "Customers",
-                keyColumn: "Id",
-                keyValue: new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                table: "Customers",
-                keyColumn: "Id",
-                keyValue: new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                columns: new string[0],
-                values: new object[0]);
-
-            migrationBuilder.UpdateData(
-                table: "Customers",
-                keyColumn: "Id",
-                keyValue: new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                columns: new string[0],
-                values: new object[0]);
+            // (Đã bỏ 4 UpdateData "Customers" cột rỗng do EF tự sinh khi thêm cột mới có default —
+            //  chúng tạo ra "UPDATE ... SET WHERE" sai cú pháp làm rollback cả migration.)
 
             migrationBuilder.UpdateData(
                 table: "Promotions",
