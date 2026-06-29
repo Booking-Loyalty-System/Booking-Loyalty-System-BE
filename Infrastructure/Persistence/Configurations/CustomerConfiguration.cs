@@ -23,6 +23,9 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.TotalSpent)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(c => c.CurrentCycleWashes)
+            .HasDefaultValue(0);
+
         builder.HasMany(c => c.Vehicles)
             .WithOne(v => v.Customer)
             .HasForeignKey(v => v.CustomerId)
@@ -42,7 +45,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 PhoneNumber = "0901234569",
                 TierId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
                 TotalSpent = 0m,
-                TotalWashes = 0,
+                TotalWashes = 6,
+                CurrentCycleWashes = 6, // Test: còn 1 lần nữa là nhận voucher rửa free (6/7)
                 IsPhoneNumberVerified = false,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -55,6 +59,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 TierId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                 TotalSpent = 500m, // Giả định đã tiêu một ít
                 TotalWashes = 5,
+                CurrentCycleWashes = 3, // Test: tiến độ giữa chu kỳ (3/7)
                 IsPhoneNumberVerified = true,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -67,6 +72,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 TierId = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                 TotalSpent = 2500m,
                 TotalWashes = 15,
+                CurrentCycleWashes = 5, // Test: tiến độ gần đủ (5/7)
                 IsPhoneNumberVerified = true,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             },
@@ -79,6 +85,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 TierId = Guid.Parse("44444444-4444-4444-4444-444444444444"),
                 TotalSpent = 7000m,
                 TotalWashes = 40,
+                CurrentCycleWashes = 2, // Test: mới bắt đầu chu kỳ (2/7)
                 IsPhoneNumberVerified = true,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }

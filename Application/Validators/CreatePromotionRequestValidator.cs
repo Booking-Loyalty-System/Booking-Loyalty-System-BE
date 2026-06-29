@@ -12,6 +12,10 @@ public class CreatePromotionRequestValidator : AbstractValidator<CreatePromotion
             .NotEmpty().WithMessage("Promotion code is required.")
             .MaximumLength(30).WithMessage("Promotion code must not exceed 30 characters.");
 
+        RuleFor(x => x.Name)
+            .NotEmpty().WithMessage("Promotion name is required.")
+            .MaximumLength(255).WithMessage("Promotion name must not exceed 255 characters.");
+
         RuleFor(x => x.DiscountType)
             .NotEmpty().WithMessage("Discount type is required.")
             .Must(v => Enum.TryParse<DiscountType>(v, out _))

@@ -64,6 +64,7 @@ public class LoyaltyService : ILoyaltyService
         point.TotalPoints += points; // Tổng điểm lũy kế trọn đời nằm ở đây!
         point.UpdatedAt = now;
         customer.TotalWashes += 1;
+        customer.CurrentCycleWashes += 1; // Thẻ tích rửa: cộng dồn trong chu kỳ hiện tại.
         customer.TotalSpent += booking.TotalPrice;
 
         // SỬA TẠI ĐÂY: Dùng point.TotalPoints thay vì customer.TotalPoints
@@ -98,7 +99,9 @@ public class LoyaltyService : ILoyaltyService
 
         _context.PointHistories.Add(earn);
         bool isFreeWashAwarded = false;
-        if (customer.TotalWashes > 0 && customer.TotalWashes % 7 == 0)
+        // Thẻ tích rửa: cứ đủ 7 lần trong chu kỳ thì tặng 1 voucher rửa free rồi trừ 7 (reset chu kỳ,
+        // giữ lại phần dư nếu vì lý do nào đó vượt 7). CurrentCycleWashes cho FE biết tiến độ "x/7".
+        if (customer.CurrentCycleWashes >= 7)
         {
             // Kiểm tra xem phần thưởng này có đang active trong DB không
             var rewardExists = await _context.Rewards
@@ -114,10 +117,11 @@ public class LoyaltyService : ILoyaltyService
                     RewardId = freeWashRewardId,
                     CreatedAt = now,
                     Status = RedemptionStatus.Pending,
-                    // Điền thêm các trường bắt buộc khác của class RewardRedemption nếu có ở đây...
+                    ExpiryDate = now.AddDays(30)
                 };
 
                 _context.RewardRedemptions.Add(redemption);
+                customer.CurrentCycleWashes -= 7; // Reset chu kỳ tích rửa.
                 isFreeWashAwarded = true;
             }
         }
@@ -259,6 +263,7 @@ public class LoyaltyService : ILoyaltyService
             AvailablePoints = point?.AvailablePoints ?? 0,
             LifetimePoints = point?.TotalPoints ?? 0,
             TotalWashes = customer.TotalWashes,
+            CurrentCycleWashes = customer.CurrentCycleWashes,
             TotalSpent = customer.TotalSpent,
             Tier = customer.Tier?.TierName ?? string.Empty
         };
