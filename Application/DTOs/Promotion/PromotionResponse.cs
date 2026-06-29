@@ -15,7 +15,7 @@ public class PromotionResponse
     public decimal? MinSpend { get; set; }
     public bool IsActive { get; set; }
 
-    /// <summary>True = chỉ dùng được trong tháng sinh nhật của khách.</summary>
+    /// <summary>True = chỉ dùng được trong tuần sinh nhật của khách (sinh nhật ± 3 ngày).</summary>
     public bool RequiresBirthday { get; set; }
 
     /// <summary>Hạng áp dụng: rỗng = mọi hạng; có phần tử = chỉ các hạng này.</summary>

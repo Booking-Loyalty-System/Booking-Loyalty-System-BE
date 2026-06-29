@@ -44,7 +44,7 @@ public class PromotionService : IPromotionService
             .ThenByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        // Khách đã đăng nhập: chỉ trả về các KM mà khách dùng được ngay (đúng hạng + đúng tháng sinh nhật).
+        // Khách đã đăng nhập: chỉ trả về các KM mà khách dùng được ngay (đúng hạng + đang trong tuần sinh nhật).
         // Điều kiện chi nhánh/địa chỉ kiểm tra lúc Preview/Apply vì list chưa biết khách chọn chi nhánh nào.
         if (userId is not null)
         {
@@ -69,10 +69,30 @@ public class PromotionService : IPromotionService
         => promo.TierPromotions.Count == 0
            || promo.TierPromotions.Any(tp => tp.TierId == customer.TierId);
 
-    /// <summary>Sinh nhật: nếu KM yêu cầu sinh nhật thì chỉ dùng trong THÁNG sinh của khách.</summary>
+    /// <summary>Sinh nhật: nếu KM yêu cầu sinh nhật thì chỉ dùng trong TUẦN sinh nhật (sinh nhật ± 3 ngày).</summary>
     private static bool IsBirthdayEligible(Promotion promo, Customer customer, DateTime now)
-        => !promo.RequiresBirthday
-           || (customer.DateOfBirth.HasValue && customer.DateOfBirth.Value.Month == now.Month);
+    {
+        if (!promo.RequiresBirthday) return true;
+        if (!customer.DateOfBirth.HasValue) return false;
+
+        var dob = customer.DateOfBirth.Value;
+        var today = now.Date;
+        // Xét sinh nhật ở năm trước/nay/sau để xử lý trường hợp vắt qua giao thừa
+        // (vd sinh 31/12, hôm nay 02/01 vẫn nằm trong cửa sổ ±3 ngày).
+        foreach (var year in new[] { today.Year - 1, today.Year, today.Year + 1 })
+        {
+            if (Math.Abs((today - BirthdayInYear(dob, year)).TotalDays) <= 3)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Quy ngày sinh về một năm cụ thể; sinh 29/02 vào năm không nhuận lùi về 28/02.</summary>
+    private static DateTime BirthdayInYear(DateTime dob, int year)
+    {
+        var day = (dob.Month == 2 && dob.Day == 29 && !DateTime.IsLeapYear(year)) ? 28 : dob.Day;
+        return new DateTime(year, dob.Month, day);
+    }
 
     /// <summary>Chi nhánh/địa chỉ: nếu KM có gắn PromotionBranch (active) thì khách phải đặt tại chi nhánh đó.</summary>
     private static bool IsBranchEligible(Promotion promo, Guid? branchId)
@@ -266,7 +286,7 @@ public class PromotionService : IPromotionService
             throw new AppException("Mã khuyến mãi này chỉ dành cho hạng thành viên khác.", 400);
 
         if (!IsBirthdayEligible(promotion, customer, now))
-            throw new AppException("Mã khuyến mãi này chỉ áp dụng trong tháng sinh nhật của bạn.", 400);
+            throw new AppException("Mã khuyến mãi này chỉ áp dụng trong tuần sinh nhật của bạn (sinh nhật ± 3 ngày).", 400);
 
         if (!IsBranchEligible(promotion, branchId))
             throw new AppException("Mã khuyến mãi này không áp dụng cho chi nhánh đã chọn.", 400);

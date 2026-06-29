@@ -34,8 +34,9 @@ public class Promotion
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// Khi true, khuyến mãi này chỉ dùng được trong THÁNG SINH NHẬT của khách (theo Customer.DateOfBirth).
-    /// Điều kiện hạng áp qua <see cref="TierPromotions"/>, điều kiện chi nhánh/địa chỉ qua <see cref="PromotionBranches"/>.
+    /// Khi true, khuyến mãi này chỉ dùng được trong TUẦN SINH NHẬT của khách — sinh nhật ± 3 ngày
+    /// (theo Customer.DateOfBirth). Điều kiện hạng áp qua <see cref="TierPromotions"/>,
+    /// điều kiện chi nhánh/địa chỉ qua <see cref="PromotionBranches"/>.
     /// </summary>
     public bool RequiresBirthday { get; set; }
 
