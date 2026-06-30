@@ -13,9 +13,13 @@ public class BookingResponse
     public string VehiclePlate { get; set; } = null!;
     public string? VehicleName { get; set; }
     public decimal TotalPrice { get; set; }
+    public string Features { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public string? VoucherName { get; set; }
     public Guid BranchId { get; set; }
     public string BranchName { get; set; }
     public string Status { get; set; } = null!;
     public string? QrData { get; set; }
+    public List<BookingAddOnResponse> AddOns { get; set; } = new();
     public DateTime CreatedAt { get; set; }
 }

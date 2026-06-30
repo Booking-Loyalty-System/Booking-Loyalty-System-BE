@@ -7,4 +7,5 @@ public class WashBayResponse
     public string Status { get; set; } = null!;
     public List<string> SupportedTypes { get; set; } = new();
     public DateTime CreatedAt { get; set; }
+    public Guid? BranchId { get; set; }
 }

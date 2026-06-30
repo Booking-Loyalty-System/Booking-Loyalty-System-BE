@@ -7,4 +7,6 @@ public class UpdateBranchRequest
     public string? Hotline { get; set; }
     public string? OperatingHours { get; set; }
     public string? Status { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 }

@@ -30,13 +30,19 @@ public class TokenService : ITokenService
             new(ClaimTypes.Role, user.Role.ToString())
         };
 
+        // Kèm tên hiển thị để FE lấy được ngay từ token, khỏi gọi thêm /me.
+        // Null-safe: chỉ thêm nếu nav Customer/Staff đã được load ở chỗ tạo token.
+        var fullName = user.Customer?.FullName ?? user.Staff?.FullName;
+        if (!string.IsNullOrEmpty(fullName))
+            claims.Add(new Claim("fullName", fullName));
+
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(60),
+            expires: DateTime.UtcNow.AddDays(60),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

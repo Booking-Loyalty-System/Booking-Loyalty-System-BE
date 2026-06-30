@@ -1,6 +1,4 @@
-﻿using Domain.Entities;
-using Domain.Enums;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Persistence;
@@ -12,54 +10,48 @@ public static class DbInitializer
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var daysToGenerate = 31; 
-        
-        // --- CHỖ SỬA 1: Tính ngày kết thúc để giới hạn vùng dữ liệu cần bốc lên RAM ---
-        var endDate = today.AddDays(daysToGenerate);
-
-        var allWashBayIds = await context.WashBays.Select(wb => wb.Id).ToListAsync();
+        // 1. Lấy danh sách Chi nhánh và Khung giờ
+        var branches = await context.Branches.ToListAsync();
         var masterTimeSlots = await context.TimeSlots.ToListAsync();
-        
-        // --- CHỖ SỬA 2: Bốc sạch lịch trong 31 ngày tới lên RAM biến thành chuỗi KeyUnique bỏ vào HashSet ---
-        var existingSlotsKeySet = (await context.WashBayTimeSlots
-            .Where(wbts => wbts.Date >= today && wbts.Date <= endDate)
-            .Select(wbts => $"{wbts.WashBayId}_{wbts.TimeSlotId}_{wbts.Date}")
+
+        // 2. Lấy danh sách các cấu hình đã tồn tại trên RAM để đối chiếu (tránh vả DB liên tục)
+        var existingBranchTimeSlotsKeySet = (await context.BranchTimeSlots
+            .Select(bts => $"{bts.BranchId}_{bts.TimeSlotId}")
             .ToListAsync())
             .ToHashSet();
 
-        var seedList = new List<WashBayTimeSlot>();
+        var seedList = new List<BranchTimeSlot>();
 
-        for (int i = 0; i < daysToGenerate; i++)
+        // 3. Quét từng chi nhánh và từng khung giờ để tạo cấu hình
+        foreach (var branch in branches)
         {
-            var currentDate = today.AddDays(i);
+            // Lấy số lượng WashBay thực tế của Chi nhánh để làm MaxCapacity mặc định
+            var washBayCount = await context.WashBays.CountAsync(wb => wb.BranchId == branch.Id);
+            var defaultCapacity = washBayCount > 0 ? washBayCount : 1; 
 
-            foreach (var bayId in allWashBayIds)
+            foreach (var masterSlot in masterTimeSlots)
             {
-                foreach (var masterSlot in masterTimeSlots)
-                {
-                    // --- CHỖ SỬA 3: Tạo chuỗi key định danh để so sánh đối chiếu ---
-                    var currentKey = $"{bayId}_{masterSlot.Id}_{currentDate}";
+                var currentKey = $"{branch.Id}_{masterSlot.Id}";
 
-                    // --- CHỖ SỬA 4: Thay thế câu lệnh AnyAsync (vả SQL liên tục) bằng lệnh Contains trên RAM ---
-                    if (!existingSlotsKeySet.Contains(currentKey))
+                // 4. Nếu Chi nhánh này chưa có cấu hình cho khung giờ này thì thêm mới
+                if (!existingBranchTimeSlotsKeySet.Contains(currentKey))
+                {
+                    seedList.Add(new BranchTimeSlot
                     {
-                        seedList.Add(new WashBayTimeSlot
-                        {
-                            Id = Guid.NewGuid(),
-                            WashBayId = bayId,
-                            TimeSlotId = masterSlot.Id,
-                            Date = currentDate,
-                            Status = TimeSlotStatus.Available
-                        });
-                    }
+                        Id = Guid.NewGuid(),
+                        BranchId = branch.Id,
+                        TimeSlotId = masterSlot.Id,
+                        MaxCapacity = defaultCapacity, // Sức chứa bằng số bệ rửa
+                        IsActive = true
+                    });
                 }
             }
         }
 
+        // 5. Lưu vào Database
         if (seedList.Any())
         {
-            await context.WashBayTimeSlots.AddRangeAsync(seedList);
+            await context.BranchTimeSlots.AddRangeAsync(seedList);
             await context.SaveChangesAsync();
         }
     }

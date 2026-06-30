@@ -14,4 +14,10 @@ public class LoyaltyOptions
 
     /// <summary>Months until earned points expire (brief: 12 months).</summary>
     public int PointLifetimeMonths { get; set; } = 12;
+
+    /// <summary>
+    /// Spendable points deducted from a customer when a booking is marked NoShow.
+    /// Only AvailablePoints is reduced (never TotalPoints), and the balance is clamped at 0.
+    /// </summary>
+    public int NoShowPenaltyPoints { get; set; } = 50;
 }

@@ -14,26 +14,38 @@ public class TimeSlotService : ITimeSlotService
         _context = context;
     }
 
-    public async Task<List<DailyTimeSlotsSummaryResponse>> GetWeeklySlotsSummaryAsync(Guid branchId, DateOnly startDate)
+   public async Task<List<DailyTimeSlotsSummaryResponse>> GetWeeklySlotsSummaryAsync(Guid branchId, DateOnly startDate)
     {
         var endDate = startDate.AddDays(6);
 
-        // 1. Lấy tổng số khoang rửa thực tế mà chi nhánh này đang sở hữu làm mốc tính toán gốc
-        int totalBaysInBranch = await _context.WashBays
-            .CountAsync(wb => wb.BranchId == branchId);
-
-        // 2. Lấy 11 mốc giờ master cố định (08h - 18h)
-        var masterTimeSlots = await _context.TimeSlots
-            .OrderBy(ts => ts.StartTime)
+        // 1. Lấy danh sách cấu hình khung giờ cố định của chi nhánh này
+        var branchTimeSlots = await _context.BranchTimeSlots
+            .Include(bts => bts.TimeSlot)
+            .Where(bts => bts.BranchId == branchId && bts.IsActive)
+            .OrderBy(bts => bts.TimeSlot.StartTime)
             .ToListAsync();
 
-        // 3. Lấy toàn bộ ô lịch gối đầu thuộc về riêng chi nhánh trong 7 ngày
-        var branchSlotsInWeek = await _context.WashBayTimeSlots
-            .Include(wbts => wbts.WashBay)
-            .Where(wbts => wbts.WashBay.BranchId == branchId 
-                        && wbts.Date >= startDate 
-                        && wbts.Date <= endDate)
+        // 2. FIX TẠI ĐÂY: Nhờ DATABASE đếm và gom nhóm hộ luôn, gọn nhẹ và chuẩn xác 100%
+        var bookedCounts = await _context.Bookings
+            .Where(b => b.BranchTimeSlot.BranchId == branchId 
+                     && b.BookingDate >= startDate 
+                     && b.BookingDate <= endDate 
+                     && b.Status != BookingStatus.Cancelled 
+                     && b.Status != BookingStatus.NoShow)
+            .GroupBy(b => new { b.BookingDate, b.BranchTimeSlotId })
+            .Select(g => new 
+            {
+                g.Key.BookingDate,
+                g.Key.BranchTimeSlotId,
+                Count = g.Count()
+            })
             .ToListAsync();
+
+        // 3. Biến dữ liệu đã đếm thành Dictionary dạng Tuple (Ngày, ID_Khung_Giờ) để tìm kiếm với tốc độ O(1)
+        var bookedDict = bookedCounts.ToDictionary(
+            x => (x.BookingDate, x.BranchTimeSlotId), 
+            x => x.Count
+        );
 
         var weeklySummary = new List<DailyTimeSlotsSummaryResponse>();
 
@@ -41,36 +53,22 @@ public class TimeSlotService : ITimeSlotService
         {
             var currentDate = startDate.AddDays(i);
 
-            // Lọc dữ liệu thuộc ngày hiện tại trong vòng lặp
-            var slotsInCurrentDay = branchSlotsInWeek.Where(wbts => wbts.Date == currentDate).ToList();
-
-            var dailySlots = masterTimeSlots.Select(ts =>
+            var dailySlots = branchTimeSlots.Select(bts =>
             {
-                // Tìm xem ca này trong DB đã được tạo lịch gối đầu chưa
-                var baysInThisSlot = slotsInCurrentDay.Where(wbts => wbts.TimeSlotId == ts.Id).ToList();
-
-                int availableBays = 0;
-
-                // 🔥 LOGIC VỆ SĨ ĐẬP TAN "FULL" ẢO:
-                // Nếu trong DB chưa có dòng dữ liệu gối đầu nào cho ca này (do lệch ngày hoặc chưa seed kịp)
-                // Thì mặc định số khoang trống PHẢI BẰNG tổng số khoang của chi nhánh (Hệ thống sạch, chưa ai đặt)
-                if (baysInThisSlot.Count == 0)
-                {
-                    availableBays = totalBaysInBranch;
-                }
-                else
-                {
-                    // Nếu đã có dữ liệu gối đầu, đếm chuẩn số lượng khoang đang rảnh (Available)
-                    availableBays = baysInThisSlot.Count(wbts => wbts.Status == TimeSlotStatus.Available);
-                }
+                // 4. Check xem trong từ điển hôm nay, khung giờ này có ai đặt chưa. Không có thì mặc định bằng 0.
+                int bookedCount = bookedDict.TryGetValue((currentDate, bts.Id), out var count) ? count : 0;
+                
+                // Toán học cơ bản: Số bệ trống = Sức chứa tối đa - Số xe đã đặt
+                int availableBays = bts.MaxCapacity - bookedCount;
+                if (availableBays < 0) availableBays = 0; 
 
                 bool isAvailable = availableBays > 0;
                 string slotRatio = isAvailable ? $"{availableBays} slots left" : "Full";
 
                 return new BranchTimeSlotGroupResponse
                 {
-                    TimeSlotId = ts.Id,
-                    StartTime = ts.StartTime,
+                    TimeSlotId = bts.TimeSlotId,
+                    StartTime = bts.TimeSlot.StartTime,
                     SlotRatio = slotRatio,
                     IsAvailable = isAvailable
                 };

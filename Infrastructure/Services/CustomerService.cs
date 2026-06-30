@@ -16,13 +16,15 @@ public class CustomerService : ICustomerService
 
     public async Task<CustomerProfileResponse> GetProfileAsync(Guid userId)
     {
+        Console.WriteLine(userId);
         var customer = await _context.Customers
             .Include(c => c.User)
             .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
-        return MapToResponse(customer);
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
+        return MapToResponse(customer, point?.AvailablePoints ?? 0, point?.TotalPoints ?? 0);
     }
 
     public async Task<CustomerProfileResponse> UpdateProfileAsync(Guid userId, UpdateCustomerProfileRequest request)
@@ -38,10 +40,11 @@ public class CustomerService : ICustomerService
 
         await _context.SaveChangesAsync();
 
-        return MapToResponse(customer);
+        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
+        return MapToResponse(customer, point?.AvailablePoints ?? 0, point?.TotalPoints ?? 0);
     }
 
-    private static CustomerProfileResponse MapToResponse(Domain.Entities.Customer customer)
+    private static CustomerProfileResponse MapToResponse(Domain.Entities.Customer customer, int availablePoints, int totalPoints)
     {
         return new CustomerProfileResponse
         {
@@ -51,8 +54,10 @@ public class CustomerService : ICustomerService
             PhoneNumber = customer.PhoneNumber,
             DateOfBirth = customer.DateOfBirth,
             Tier = customer.Tier.TierName,
-            TotalPoints = customer.TotalPoints,
+            AvailablePoint = availablePoints,
+            TotalPoint = totalPoints,
             TotalWashes = customer.TotalWashes,
+            CurrentCycleWashes = customer.CurrentCycleWashes,
             TotalSpent = customer.TotalSpent,
             CreatedAt = customer.CreatedAt
         };

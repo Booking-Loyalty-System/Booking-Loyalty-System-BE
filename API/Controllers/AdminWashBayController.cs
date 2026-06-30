@@ -8,7 +8,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/wash-bays")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Staff,Admin")]
 public class AdminWashBayController : ControllerBase
 {
     private readonly IWashBayService _washBayService;
@@ -25,6 +25,16 @@ public class AdminWashBayController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
+    [HttpGet("by-branch/{branchId}")]
+    public async Task<IActionResult> GetAll(Guid branchId)
+    {
+        var result = await _washBayService.GetAllAsync(branchId);
+        if (result == null)
+            return NotFound(ApiResponse<object>.FailResponse("Wash bay not found."));
+
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+    
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {

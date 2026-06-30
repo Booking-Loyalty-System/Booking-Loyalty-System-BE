@@ -101,6 +101,65 @@ public class VehicleService : IVehicleService
         await _context.SaveChangesAsync();
     }
 
+    public async Task<VehicleResponse> UpdateVehicleAsync(Guid userId, Guid vehicleId, UpdateVehicleRequest request)
+    {
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.UserId == userId)
+            ?? throw new AppException("Customer profile not found.", 404);
+
+        var vehicle = await _context.Vehicles
+            .FirstOrDefaultAsync(v => v.Id == vehicleId && v.CustomerId == customer.Id && !v.IsDeleted)
+            ?? throw new AppException("Vehicle not found.", 404);
+
+        // Check duplicate license plate if changing
+        if (request.LicensePlate != null && request.LicensePlate != vehicle.LicensePlate)
+        {
+            var existingPlate = await _context.Vehicles
+                .AnyAsync(v => v.LicensePlate == request.LicensePlate && !v.IsDeleted && v.Id != vehicleId);
+
+            if (existingPlate)
+                throw new AppException("A vehicle with this license plate already exists.", 409);
+
+            vehicle.LicensePlate = request.LicensePlate;
+        }
+
+        if (request.VehicleType != null)
+            vehicle.Type = Enum.Parse<VehicleType>(request.VehicleType);
+
+        if (request.VehicleName != null)
+            vehicle.VehicleName = request.VehicleName;
+
+        if (request.Brand != null)
+            vehicle.Brand = request.Brand;
+
+        if (request.Model != null)
+            vehicle.Model = request.Model;
+
+        if (request.Color != null)
+            vehicle.Color = request.Color;
+
+        // If setting as primary, unset other vehicles' primary
+        if (request.IsPrimary == true && !vehicle.IsPrimary)
+        {
+            var otherPrimary = await _context.Vehicles
+                .Where(v => v.CustomerId == customer.Id && v.IsPrimary && !v.IsDeleted && v.Id != vehicleId)
+                .ToListAsync();
+
+            foreach (var v in otherPrimary)
+                v.IsPrimary = false;
+
+            vehicle.IsPrimary = true;
+        }
+        else if (request.IsPrimary == false)
+        {
+            vehicle.IsPrimary = false;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return MapToResponse(vehicle);
+    }
+
     private static VehicleResponse MapToResponse(Vehicle vehicle)
     {
         return new VehicleResponse
