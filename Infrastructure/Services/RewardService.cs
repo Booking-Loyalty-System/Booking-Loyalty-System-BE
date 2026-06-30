@@ -122,6 +122,13 @@ public class RewardService : IRewardService
         point.AvailablePoints -= reward.PointsCost;
         point.UpdatedAt = now;
 
+        if (reward.IsFreeWash)
+        {
+            if (customer.CurrentCycleWashes < 1)
+                throw new AppException("Not enough cycle washes to redeem free wash.", 400);
+            customer.CurrentCycleWashes -= 1;
+        }
+
         // Redeeming a reward spends points and produces a voucher: a Redeem ledger row
         // carrying the RewardId and an expiry date (per ERD Point History).
         var ledger = new PointHistory

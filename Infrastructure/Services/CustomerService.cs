@@ -24,7 +24,7 @@ public class CustomerService : ICustomerService
             ?? throw new AppException("Customer profile not found.", 404);
 
         var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == userId);
-        return MapToResponse(customer, point?.TotalPoints ?? 0, point?.AvailablePoints ?? 0);
+        return MapToResponse(customer, point?.AvailablePoints ?? 0, point?.TotalPoints ?? 0);
     }
 
     public async Task<CustomerProfileResponse> UpdateProfileAsync(Guid userId, UpdateCustomerProfileRequest request)
