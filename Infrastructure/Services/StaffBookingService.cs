@@ -214,10 +214,7 @@ public class StaffBookingService : IStaffBookingService
         // Xử lý Loyalty & Hạng thành viên
         await _loyaltyService.AwardPointsForBookingAsync(bookingId);
 
-        var customer = await _context.Customers
-            .Include(c => c.Tier)
-            .FirstAsync(c => c.Id == booking.CustomerId);
-        await EvaluateTierAsync(customer);
+        // Hạng thành viên (nâng + hạ) đã được xử lý trọn vẹn trong AwardPointsForBookingAsync ở trên.
         
         await _context.SaveChangesAsync();
         await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
@@ -343,40 +340,6 @@ public class StaffBookingService : IStaffBookingService
             .FirstOrDefaultAsync();
 
         return MapToResponseData(booking, points);
-    }
-
-    private async Task EvaluateTierAsync(Customer customer)
-    {
-        var tiers = await _context.Tiers
-            .OrderByDescending(t => t.MinPointsRequired)
-            .ToListAsync();
-
-        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == customer.UserId);
-        var lifetimePoints = point?.TotalPoints ?? 0;
-
-        var qualifiedTier = tiers.FirstOrDefault(t => lifetimePoints >= t.MinPointsRequired);
-
-        if (qualifiedTier != null && qualifiedTier.MinPointsRequired > customer.Tier.MinPointsRequired)
-        {
-            customer.TierId = qualifiedTier.Id;
-            return;
-        }
-
-        var cutoff = DateTime.UtcNow.AddDays(-90);
-        var recentPoints = point is null ? 0 : await _context.PointHistories
-            .Where(h => h.PointId == point.Id
-                      && h.TransactionType == LoyaltyTransactionType.Earn
-                      && h.CreatedAt >= cutoff)
-            .SumAsync(h => h.Amount);
-
-        if (recentPoints < customer.Tier.MaintenancePoints)
-        {
-            var newTier = tiers.FirstOrDefault(t =>
-                lifetimePoints >= t.MinPointsRequired && recentPoints >= t.MaintenancePoints);
-
-            if (newTier != null && newTier.Id != customer.TierId)
-                customer.TierId = newTier.Id;
-        }
     }
 
     private static BookingResponseData MapToResponseData(Booking booking, int? pointsEarned)

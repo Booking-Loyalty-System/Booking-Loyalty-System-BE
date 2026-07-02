@@ -88,6 +88,19 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
                 CurrentCycleWashes = 2, // Test: mới bắt đầu chu kỳ (2/7)
                 IsPhoneNumberVerified = true,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            },
+            // DEMO XUỐNG HẠNG: đang Diamond, lũy kế cao (Point seed) nhưng tháng này chưa hoạt động.
+            new Customer
+            {
+                Id = Guid.Parse("eeeeeeee-1111-1111-1111-111111111111"),
+                UserId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                FullName = "Customer Downgrade Demo",
+                PhoneNumber = "0900000009",
+                TierId = Guid.Parse("44444444-4444-4444-4444-444444444444"), // Diamond
+                TotalSpent = 15000m,
+                TotalWashes = 50,
+                IsPhoneNumberVerified = true,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
         );
     }
