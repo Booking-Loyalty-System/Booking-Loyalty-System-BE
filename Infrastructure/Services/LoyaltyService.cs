@@ -67,11 +67,24 @@ public class LoyaltyService : ILoyaltyService
         customer.CurrentCycleWashes += 1; // Thẻ tích rửa: cộng dồn trong chu kỳ hiện tại.
         customer.TotalSpent += booking.TotalPrice;
 
-        // SỬA TẠI ĐÂY: Dùng point.TotalPoints thay vì customer.TotalPoints
-        var eligibleTier = await _context.Tiers
-            .Where(t => t.MinPointsRequired <= point.TotalPoints)
+        // === GỘP LOGIC HẠNG (nguồn duy nhất) ===
+        // Nâng hạng theo điểm lũy kế trọn đời; GIỮ/HẠ hạng theo SỐ BOOKING hoàn tất trong ~30 ngày gần nhất.
+        // Quy tắc thuần & idempotent (không dao động): hạng = hạng CAO NHẤT thỏa CẢ HAI điều kiện:
+        //   TotalPoints (lũy kế) >= MinPointsRequired  VÀ  số booking 30 ngày >= MaintenanceBookings.
+        var since = DateOnly.FromDateTime(now.AddDays(-30));
+        var otherDoneBookings = await _context.Bookings.CountAsync(b =>
+            b.CustomerId == customer.Id
+            && b.Id != booking.Id
+            && b.BookingDate >= since
+            && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.CheckedOut),
+            cancellationToken);
+        var recentBookings = otherDoneBookings + 1; // + chính lượt đang checkout
+
+        var oldTierMin = customer.Tier?.MinPointsRequired ?? 0;
+        var allTiers = await _context.Tiers
             .OrderByDescending(t => t.MinPointsRequired)
-            .FirstOrDefaultAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
+        var eligibleTier = PickTier(allTiers, point.TotalPoints, recentBookings);
         
         bool isUpgraded = false;
         string newTierName = string.Empty;
@@ -80,7 +93,7 @@ public class LoyaltyService : ILoyaltyService
         {
             customer.TierId = eligibleTier.Id;
             newTierName = eligibleTier.TierName;
-            isUpgraded = true;
+            isUpgraded = eligibleTier.MinPointsRequired > oldTierMin; // >: LÊN hạng (gửi email), <: XUỐNG hạng
         }
         
         // SỬA TẠI ĐÂY: Xóa bỏ dòng thừa 'var earn = new LoyaltyTransaction' gây lỗi compile
@@ -290,6 +303,56 @@ public class LoyaltyService : ILoyaltyService
                 ExpiresAt = h.ExpiryDate
             })
             .ToListAsync();
+    }
+
+    // Quy tắc hạng DÙNG CHUNG (checkout + worker nền):
+    // hạng CAO NHẤT thỏa cả điểm lũy kế (Min) lẫn số booking gần đây (MaintenanceBookings).
+    private static Tier? PickTier(List<Tier> tiersDesc, int lifetimePoints, int recentBookings)
+        => tiersDesc.FirstOrDefault(t => lifetimePoints >= t.MinPointsRequired
+                                      && recentBookings >= t.MaintenanceBookings)
+           ?? tiersDesc.LastOrDefault();
+
+    /// <summary>
+    /// Rà toàn bộ khách và cập nhật hạng theo SỐ BOOKING hoàn tất trong ~30 ngày gần nhất.
+    /// Dùng cho worker nền: HẠ hạng cả khách KHÔNG có booking nào trong kỳ (không cần checkout).
+    /// </summary>
+    public async Task ReevaluateAllTiersAsync(CancellationToken cancellationToken = default)
+    {
+        var since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
+
+        var tiersDesc = await _context.Tiers
+            .OrderByDescending(t => t.MinPointsRequired)
+            .ToListAsync(cancellationToken);
+        if (tiersDesc.Count == 0) return;
+
+        // Đếm booking hoàn tất 30 ngày cho TẤT CẢ khách trong 1 query.
+        var bookingCounts = await _context.Bookings
+            .Where(b => b.BookingDate >= since
+                     && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.CheckedOut))
+            .GroupBy(b => b.CustomerId)
+            .Select(g => new { CustomerId = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+        var countByCustomer = bookingCounts.ToDictionary(x => x.CustomerId, x => x.Count);
+
+        var pointsByUser = await _context.Points
+            .ToDictionaryAsync(p => p.UserId, p => p.TotalPoints, cancellationToken);
+
+        var customers = await _context.Customers.ToListAsync(cancellationToken);
+        int changed = 0;
+        foreach (var customer in customers)
+        {
+            var lifetime = pointsByUser.TryGetValue(customer.UserId, out var tp) ? tp : 0;
+            var recent = countByCustomer.TryGetValue(customer.Id, out var c) ? c : 0;
+            var target = PickTier(tiersDesc, lifetime, recent);
+            if (target != null && target.Id != customer.TierId)
+            {
+                customer.TierId = target.Id;
+                changed++;
+            }
+        }
+
+        if (changed > 0)
+            await _context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Loads the user's Point balance row, creating it on first use.</summary>

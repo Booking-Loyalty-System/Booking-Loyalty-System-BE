@@ -84,6 +84,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             },
             new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccd"), Email = "cus2@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
             new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccce"), Email = "cus3@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"), Email = "cus4@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow }      );
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"), Email = "cus4@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
+            // DEMO XUỐNG HẠNG: customer Diamond dành riêng để test hạ hạng
+            new User { Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), Email = "downgrade@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow }      );
     }
 }
