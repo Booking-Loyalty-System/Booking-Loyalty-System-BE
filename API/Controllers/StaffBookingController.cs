@@ -26,7 +26,7 @@ public class StaffBookingController : ControllerBase
         var result = await _staffBookingService.GetBookingByQrPayloadAsync(payload);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Quét mã QR thành công."));
     }
-    
+
     /// <summary>Lists the bookings for a given day. Defaults to today when no date is supplied.</summary>
     [HttpGet]
     [Authorize(Roles = "Staff")] // 🌟 Chỉ có nhân viên mới được xem danh sách lịch đặt xe
@@ -77,7 +77,7 @@ public class StaffBookingController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result, "Đã bắt đầu thực hiện dịch vụ."));
     }
 
-    [HttpPatch("{id:guid}/checkout")]   
+    [HttpPatch("{id:guid}/checkout")]
     [Authorize(Roles = "Staff")]
     public async Task<IActionResult> CheckOut(Guid id)
     {
@@ -100,7 +100,7 @@ public class StaffBookingController : ControllerBase
         var result = await _staffBookingService.NoShowAsync(id);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Đã đánh dấu khách không đến."));
     }
-    
+
     [HttpPatch("{id:guid}/completed")]
     [Authorize(Roles = "Staff,Customer")]
     public async Task<IActionResult> Completed(Guid id)
@@ -108,7 +108,7 @@ public class StaffBookingController : ControllerBase
         var result = await _staffBookingService.CompleteServiceAsync(id);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Hoàn thành dịch vụ."));
     }
-    
+
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

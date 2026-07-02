@@ -13,6 +13,7 @@ public class BookingResponse
     public string VehiclePlate { get; set; } = null!;
     public string? VehicleName { get; set; }
     public decimal TotalPrice { get; set; }
+    public string Features { get; set; }
     public decimal DiscountAmount { get; set; }
     public string? VoucherName { get; set; }
     public Guid BranchId { get; set; }

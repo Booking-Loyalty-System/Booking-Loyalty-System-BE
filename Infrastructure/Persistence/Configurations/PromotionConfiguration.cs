@@ -93,10 +93,10 @@ builder.HasData(
 
     // === NHÓM 2: DÀNH RIÊNG CHO HẠNG THÀNH VIÊN ===
     new Promotion { 
-        Id = Guid.Parse("c0000000-0000-0000-0000-000000000004"), Code = "BRONZE-10K", Name = "Ưu đãi hạng Bronze", Description = "Giảm 5% cho thành viên Đồng", DiscountType = DiscountType.FixedAmount, DiscountValue = 5.00m, PriorityLevel = 2, StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc), MaxUses = null, MinSpend = null, IsActive = true, CreatedAt = DateTime.UtcNow 
+        Id = Guid.Parse("c0000000-0000-0000-0000-000000000004"), Code = "BRONZE-10K", Name = "Ưu đãi hạng Bronze", Description = "Giảm 5% cho thành viên Đồng", DiscountType = DiscountType.Percentage, DiscountValue = 5.00m, PriorityLevel = 2, StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc), MaxUses = null, MinSpend = null, IsActive = true, CreatedAt = DateTime.UtcNow 
     },
     new Promotion { 
-        Id = Guid.Parse("c0000000-0000-0000-0000-000000000005"), Code = "SILVER-50K", Name = "Ưu đãi hạng Silver", Description = "Giảm 10% cho thành viên Bạc", DiscountType = DiscountType.FixedAmount, DiscountValue = 10.00m, PriorityLevel = 3, StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc), MaxUses = null, MinSpend = 150000, IsActive = true, CreatedAt = DateTime.UtcNow 
+        Id = Guid.Parse("c0000000-0000-0000-0000-000000000005"), Code = "SILVER-50K", Name = "Ưu đãi hạng Silver", Description = "Giảm 10% cho thành viên Bạc", DiscountType = DiscountType.Percentage, DiscountValue = 10.00m, PriorityLevel = 3, StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc), MaxUses = null, MinSpend = 150000, IsActive = true, CreatedAt = DateTime.UtcNow 
     },
     new Promotion { 
         Id = Guid.Parse("c0000000-0000-0000-0000-000000000006"), Code = "GOLD-15", Name = "Đặc quyền hạng Gold", Description = "Giảm 15% cho thành viên Vàng", DiscountType = DiscountType.Percentage, DiscountValue = 15.00m, PriorityLevel = 4, StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc), MaxUses = null, MinSpend = null, IsActive = true, CreatedAt = DateTime.UtcNow 

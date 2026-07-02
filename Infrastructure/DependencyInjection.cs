@@ -22,16 +22,16 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
-        
+
         string credentialPath = Path.Combine(environment.ContentRootPath, "firebase-admin-key.json");
-        
+
         // Kiểm tra xem file có tồn tại không để tránh crash app khi quên bỏ file key ở deploy
         var projectId = configuration["Firebase:ProjectId"];
         var privateKeyId = configuration["Firebase:PrivateKeyId"];
         var privateKey = configuration["Firebase:PrivateKey"];
         var clientEmail = configuration["Firebase:ClientEmail"];
 
-// 2. Kiểm tra xem đã điền đủ cấu hình ở appsettings chưa
+        // 2. Kiểm tra xem đã điền đủ cấu hình ở appsettings chưa
         if (!string.IsNullOrEmpty(projectId) && !string.IsNullOrEmpty(privateKey))
         {
             if (FirebaseApp.DefaultInstance == null)
@@ -71,14 +71,14 @@ public static class DependencyInjection
         services.AddScoped(provider =>
             provider.GetRequiredService<IOptions<BookingOptions>>().Value);
         services.AddScoped(provider =>
-            provider.GetRequiredService<IOptions<LoyaltyOptions>>().Value); 
+            provider.GetRequiredService<IOptions<LoyaltyOptions>>().Value);
 
         services.AddScoped(provider =>
-            provider.GetRequiredService<IOptions<VnPayOptions>>().Value); 
+            provider.GetRequiredService<IOptions<VnPayOptions>>().Value);
 
         services.AddScoped(provider =>
             provider.GetRequiredService<IOptions<PayOsOptions>>().Value);
-        services.AddSingleton<TimeZoneInfo>(provider => 
+        services.AddSingleton<TimeZoneInfo>(provider =>
         {
             try
             {
@@ -112,6 +112,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddHostedService<NotificationWorker>();
 
         // Cancels unpaid bookings past the VNPay payment window, releasing their slots.

@@ -29,12 +29,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne(c => c.User)
             .HasForeignKey<Customer>(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-        
+
         // Đặt đoạn này bên trong UserConfiguration nếu ông có file riêng, hoặc cấu hình trực tiếp bằng Fluent API
         builder.HasOne(u => u.Staff)
             .WithOne(s => s.User)
             .HasForeignKey<Staff>(s => s.UserId);
-        
+
+        builder.HasOne(u => u.Point)
+        .WithOne(p => p.User)
+        .HasForeignKey<Point>(p => p.UserId)
+        .OnDelete(DeleteBehavior.Cascade);
         builder.HasData(
             new User
             {
@@ -86,6 +90,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccce"), Email = "cus3@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
             new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"), Email = "cus4@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
             // DEMO XUỐNG HẠNG: customer Diamond dành riêng để test hạ hạng
-            new User { Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), Email = "downgrade@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow }      );
+            new User { Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), Email = "downgrade@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow });
     }
 }

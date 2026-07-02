@@ -16,5 +16,6 @@ public class User
     public string? GoogleId { get; set; }
     public Customer? Customer { get; set; }
     public Staff? Staff { get; set; }
+    public Point? Point { get; set; }
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }
