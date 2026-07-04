@@ -59,7 +59,8 @@ public class CustomerService : ICustomerService
             TotalWashes = customer.TotalWashes,
             CurrentCycleWashes = customer.CurrentCycleWashes,
             TotalSpent = customer.TotalSpent,
-            CreatedAt = customer.CreatedAt
+            CreatedAt = customer.CreatedAt,
+            BookingWindow = customer.Tier.BookingWindow
         };
     }
 }

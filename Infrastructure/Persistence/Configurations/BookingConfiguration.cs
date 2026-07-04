@@ -45,7 +45,7 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         // 2. Quan hệ tùy chọn (Nullable) với WashBay - Để Staff kéo thả xe vào bệ
         builder.HasOne(b => b.WashBay)
-            .WithMany(wb => wb.Bookings) 
+            .WithMany(wb => wb.Bookings)
             .HasForeignKey(b => b.BayId)
             .OnDelete(DeleteBehavior.SetNull); // Nếu WashBay bị xóa, Booking không bị xóa, chỉ rớt WashBayId về null
 
@@ -73,5 +73,10 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .WithMany()
             .HasForeignKey(b => b.PromotionId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(f => f.Feedback)
+                .WithOne(b => b.Booking)
+                .HasForeignKey<Feedback>(f => f.BookingId)
+                .OnDelete(DeleteBehavior.Cascade);
     }
 }

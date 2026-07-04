@@ -53,7 +53,7 @@ public class LoyaltyService : ILoyaltyService
 
         var oldTierId = customer.TierId;
         var oldTierName = customer.Tier?.TierName ?? "Thành viên mới";
-        
+
         var points = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
         var now = DateTime.UtcNow;
 
@@ -72,17 +72,17 @@ public class LoyaltyService : ILoyaltyService
             .Where(t => t.MinPointsRequired <= point.TotalPoints)
             .OrderByDescending(t => t.MinPointsRequired)
             .FirstOrDefaultAsync(cancellationToken);
-        
+
         bool isUpgraded = false;
         string newTierName = string.Empty;
-        
+
         if (eligibleTier != null && eligibleTier.Id != oldTierId)
         {
             customer.TierId = eligibleTier.Id;
             newTierName = eligibleTier.TierName;
             isUpgraded = true;
         }
-        
+
         // SỬA TẠI ĐÂY: Xóa bỏ dòng thừa 'var earn = new LoyaltyTransaction' gây lỗi compile
         var earn = new PointHistory
         {
@@ -133,7 +133,7 @@ public class LoyaltyService : ILoyaltyService
         {
             await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, point.TotalPoints);
         }
-        
+
         if (isFreeWashAwarded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
             await _notificationService.SendNotificationToCustomerAsync(
@@ -146,7 +146,7 @@ public class LoyaltyService : ILoyaltyService
         }
     }
 
-  public async Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    public async Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default)
     {
         // Mở transaction để đảm bảo tính đồng bộ cô lập (Idempotency)
         await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
@@ -154,7 +154,7 @@ public class LoyaltyService : ILoyaltyService
         // 1. Tìm thông tin Booking
         var booking = await _context.Bookings
             .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
-            
+
         // Chỉ phạt nếu lịch đặt thực sự tồn tại và ở trạng thái NoShow
         if (booking is null || booking.Status != BookingStatus.NoShow)
         {
@@ -175,7 +175,7 @@ public class LoyaltyService : ILoyaltyService
         var customer = await _context.Customers
             .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.Id == booking.CustomerId, cancellationToken);
-            
+
         if (customer is null || customer.Tier is null)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -184,13 +184,13 @@ public class LoyaltyService : ILoyaltyService
 
         // 4. TÍNH ĐIỂM PHẠT: Gấp đôi số điểm đáng lẽ nhận được (Bê nguyên công thức từ hàm Award sang)
         var expectedPoints = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
-        var penalty = expectedPoints * 2; 
-        
+        var penalty = expectedPoints * 2;
+
         // Nếu số điểm phạt tính ra <= 0 (Do đơn hàng 0đ hoặc hệ số lỗi) thì bỏ qua
         if (penalty <= 0)
         {
             await transaction.CommitAsync(cancellationToken);
-            return; 
+            return;
         }
 
         // 5. Lấy ví điểm hiện tại của khách
@@ -206,15 +206,11 @@ public class LoyaltyService : ILoyaltyService
         }
 
         var now = DateTime.UtcNow;
-        
-        // 6. XỬ LÝ TRỪ ĐIỂM VÀ GIỚI HẠN VỀ 0:
-        // Math.Min sẽ chọn số nhỏ hơn. Nếu Điểm phạt lớn hơn Điểm hiện có, 
-        // nó lấy luôn Điểm hiện có để trừ, đưa ví về bằng đúng 0 (không bị âm).
-        var deduct = Math.Min(penalty, available); 
+
+        var deduct = Math.Min(penalty, available);
         point.AvailablePoints -= deduct;
         point.UpdatedAt = now;
 
-        // Ghi nhận lịch sử ví điểm (Ledger)
         var ledger = new PointHistory
         {
             Id = Guid.NewGuid(),
@@ -234,8 +230,8 @@ public class LoyaltyService : ILoyaltyService
 
     private async Task SendUpgradeEmailSafeAsync(string toEmail, string oldTier, string newTier, int currentPoints)
     {
-            string subject = "🎉 Chúc mừng bạn đã thăng hạng thành viên!";
-            string body = $@"
+        string subject = "🎉 Chúc mừng bạn đã thăng hạng thành viên!";
+        string body = $@"
             <h2>Chào bạn,</h2>
             <p>Chúc mừng bạn đã tích luỹ đủ điểm và chính thức thăng hạng từ <b>{oldTier}</b> lên <b>{newTier}</b>!</p>
             <p>Số điểm hiện tại của bạn là: <b>{currentPoints} điểm</b>.</p>
@@ -244,9 +240,9 @@ public class LoyaltyService : ILoyaltyService
             <p>Cảm ơn bạn đã đồng hành cùng chúng tôi!</p>
         ";
 
-            await _emailService.SendEmailAsync(toEmail, subject, body);
+        await _emailService.SendEmailAsync(toEmail, subject, body);
     }
-    
+
     public async Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId)
     {
         var customer = await _context.Customers

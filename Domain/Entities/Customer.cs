@@ -21,11 +21,12 @@ public class Customer
     public int CurrentCycleWashes { get; set; }
 
     public decimal TotalSpent { get; set; }
-    
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public User User { get; set; } = null!;
     public Tier Tier { get; set; } = null!;
+    public ChatMessage? ChatMessage { get; set; }
     public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-    
+    public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

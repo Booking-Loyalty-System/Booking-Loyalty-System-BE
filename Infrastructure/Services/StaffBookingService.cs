@@ -37,14 +37,14 @@ public class StaffBookingService : IStaffBookingService
                           .Include(b => b.WashPackage)
                           .Include(b => b.BranchTimeSlot)
                           .ThenInclude(bts => bts.TimeSlot)
-                          .FirstOrDefaultAsync(b => 
-                              (isGuid && b.Id == bookingId) || 
+                          .FirstOrDefaultAsync(b =>
+                              (isGuid && b.Id == bookingId) ||
                               b.BookingCode == qrPayload)
                       ?? throw new AppException("Không tìm thấy lịch đặt từ mã QR này.", 404);
 
         return await BuildResponseAsync(booking);
     }
-    
+
     public async Task<List<BookingResponseData>> GetByDateAsync(Guid userId, DateOnly date)
     {
         // 1. Tìm thông tin Staff dựa vào userId để lấy BranchId
@@ -59,7 +59,7 @@ public class StaffBookingService : IStaffBookingService
             .Include(b => b.WashPackage)
             .Include(b => b.BranchTimeSlot)
             .ThenInclude(bts => bts.TimeSlot)
-            .OrderBy(b => b.BranchTimeSlot.TimeSlot.StartTime) 
+            .OrderBy(b => b.BranchTimeSlot.TimeSlot.StartTime)
             .ToListAsync();
 
         // 3. Gom danh sách ID để lấy điểm Loyalty (giữ nguyên logic cũ của bạn)
@@ -89,7 +89,7 @@ public class StaffBookingService : IStaffBookingService
         booking.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-       // await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
+        // await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
 
         return await BuildResponseAsync(booking);
     }
@@ -102,7 +102,7 @@ public class StaffBookingService : IStaffBookingService
 
         if (staffId == Guid.Empty)
             throw new AppException("staffId is required to check-in.", 400);
-        
+
         booking.StaffId = staffId;
         booking.Status = BookingStatus.CheckedIn;
         booking.UpdatedAt = DateTime.UtcNow;
@@ -145,13 +145,13 @@ public class StaffBookingService : IStaffBookingService
         if (bayId.HasValue && bayId != booking.BayId)
         {
             // 1. Giải phóng khoang cũ (nếu có)
-            if (booking.BayId.HasValue) 
+            if (booking.BayId.HasValue)
                 await CheckAndReleaseWashBayAsync(booking.BayId, booking.Id);
 
             // 2. Gán khoang mới
-            var washBay = await _context.WashBays.FindAsync(bayId.Value) 
+            var washBay = await _context.WashBays.FindAsync(bayId.Value)
                           ?? throw new AppException("Khoang rửa không tồn tại.", 404);
-        
+
             booking.BayId = bayId.Value;
             washBay.Status = WashBayStatus.InProgress;
         }
@@ -174,7 +174,7 @@ public class StaffBookingService : IStaffBookingService
         booking.UpdatedAt = DateTime.UtcNow;
 
         // 🌟 THÊM ĐOẠN NÀY: LOGIC TỰ ĐỘNG BẮT ĐẦU XE TIẾP THEO
-        if (booking.BayId.HasValue) 
+        if (booking.BayId.HasValue)
         {
             var nextBooking = await _context.Bookings
                 .Where(b => b.BayId == booking.BayId && b.Status == BookingStatus.Queued)
@@ -189,7 +189,7 @@ public class StaffBookingService : IStaffBookingService
                 await NotifyCustomerAsync(nextBooking.CustomerId, nextBooking.Id, nextBooking.Status);
             }
         }
-        
+
         await CheckAndReleaseWashBayAsync(booking.BayId, booking.Id);
 
         await _context.SaveChangesAsync();
@@ -217,8 +217,7 @@ public class StaffBookingService : IStaffBookingService
         var customer = await _context.Customers
             .Include(c => c.Tier)
             .FirstAsync(c => c.Id == booking.CustomerId);
-        await EvaluateTierAsync(customer);
-        
+
         await _context.SaveChangesAsync();
         await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
 
@@ -283,10 +282,10 @@ public class StaffBookingService : IStaffBookingService
 
         // Một khoang vẫn Busy nếu còn xe CheckedIn, Queued hoặc InProgress (loại trừ xe hiện tại)
         bool hasActiveBookings = await _context.Bookings
-            .AnyAsync(b => b.BayId == washBayId 
-                        && b.Id != currentBookingId 
-                        && (b.Status == BookingStatus.CheckedIn || 
-                            b.Status == BookingStatus.Queued || 
+            .AnyAsync(b => b.BayId == washBayId
+                        && b.Id != currentBookingId
+                        && (b.Status == BookingStatus.CheckedIn ||
+                            b.Status == BookingStatus.Queued ||
                             b.Status == BookingStatus.InProgress));
 
         if (!hasActiveBookings)
@@ -294,7 +293,7 @@ public class StaffBookingService : IStaffBookingService
             var washBay = await _context.WashBays.FindAsync(washBayId);
             if (washBay != null)
             {
-                washBay.Status = WashBayStatus.Available; 
+                washBay.Status = WashBayStatus.Available;
                 _context.WashBays.Update(washBay);
             }
         }
@@ -303,13 +302,13 @@ public class StaffBookingService : IStaffBookingService
     private async Task NotifyCustomerAsync(Guid customerId, Guid bookingId, BookingStatus status)
     {
         string title = "Cập nhật trạng thái lịch rửa xe";
-        string message = $"Lịch đặt {bookingId.ToString().Substring(0,8)} của bạn đã chuyển sang trạng thái: {status}";
+        string message = $"Lịch đặt {bookingId.ToString().Substring(0, 8)} của bạn đã chuyển sang trạng thái: {status}";
 
         // 1. Lưu vào Database để khách xem lại trong mục "Thông báo"
         await _notificationService.CreateNotificationAsync(customerId, title, message, "Booking");
 
         // 2. Gửi Real-time qua SignalR
-        await _hubContext.Clients.Group($"Customer_{customerId}").SendAsync("BookingStatusChanged", new 
+        await _hubContext.Clients.Group($"Customer_{customerId}").SendAsync("BookingStatusChanged", new
         {
             BookingId = bookingId,
             Status = status.ToString()
@@ -345,40 +344,6 @@ public class StaffBookingService : IStaffBookingService
         return MapToResponseData(booking, points);
     }
 
-    private async Task EvaluateTierAsync(Customer customer)
-    {
-        var tiers = await _context.Tiers
-            .OrderByDescending(t => t.MinPointsRequired)
-            .ToListAsync();
-
-        var point = await _context.Points.FirstOrDefaultAsync(p => p.UserId == customer.UserId);
-        var lifetimePoints = point?.TotalPoints ?? 0;
-
-        var qualifiedTier = tiers.FirstOrDefault(t => lifetimePoints >= t.MinPointsRequired);
-
-        if (qualifiedTier != null && qualifiedTier.MinPointsRequired > customer.Tier.MinPointsRequired)
-        {
-            customer.TierId = qualifiedTier.Id;
-            return;
-        }
-
-        var cutoff = DateTime.UtcNow.AddDays(-90);
-        var recentPoints = point is null ? 0 : await _context.PointHistories
-            .Where(h => h.PointId == point.Id
-                      && h.TransactionType == LoyaltyTransactionType.Earn
-                      && h.CreatedAt >= cutoff)
-            .SumAsync(h => h.Amount);
-
-        if (recentPoints < customer.Tier.MaintenancePoints)
-        {
-            var newTier = tiers.FirstOrDefault(t =>
-                lifetimePoints >= t.MinPointsRequired && recentPoints >= t.MaintenancePoints);
-
-            if (newTier != null && newTier.Id != customer.TierId)
-                customer.TierId = newTier.Id;
-        }
-    }
-
     private static BookingResponseData MapToResponseData(Booking booking, int? pointsEarned)
     {
         return new BookingResponseData
@@ -392,7 +357,7 @@ public class StaffBookingService : IStaffBookingService
             ServiceName = booking.WashPackage?.Name,
             BranchId = booking.BranchTimeSlot?.BranchId ?? Guid.Empty,
             BookingDate = booking.BookingDate.ToString("yyyy-MM-dd"),
-            StartTime = booking.BranchTimeSlot?.TimeSlot?.StartTime.ToString("HH\\:mm") ?? "00:00", 
+            StartTime = booking.BranchTimeSlot?.TimeSlot?.StartTime.ToString("HH\\:mm") ?? "00:00",
             Status = booking.Status.ToString(),
             TotalAmount = booking.TotalPrice,
             PointsEarned = pointsEarned,
