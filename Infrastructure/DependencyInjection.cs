@@ -125,6 +125,10 @@ public static class DependencyInjection
         // Auto-marks Confirmed/CheckedIn bookings as NoShow once the booked time + grace passes.
         services.AddHostedService<AutoNoShowService>();
         services.AddHttpClient();
+
+        // Rà hạng thành viên định kỳ: hạ hạng khách thiếu booking trong ~30 ngày (kể cả khách 0 booking).
+        services.AddHostedService<TierMaintenanceService>();
+
         return services;
     }
 }
