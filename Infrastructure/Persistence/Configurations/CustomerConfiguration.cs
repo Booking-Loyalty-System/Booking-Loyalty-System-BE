@@ -30,12 +30,17 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .WithOne(v => v.Customer)
             .HasForeignKey(v => v.CustomerId)
             .OnDelete(DeleteBehavior.Cascade);
-        
+
         builder.HasOne(c => c.Tier)
             .WithMany(t => t.Customers)
             .HasForeignKey(c => c.TierId)
             .OnDelete(DeleteBehavior.Restrict);
-        
+
+        builder.HasMany(c => c.Feedbacks)
+            .WithOne(v => v.Customer)
+            .HasForeignKey(v => v.CustomerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasData(
             new Customer
             {

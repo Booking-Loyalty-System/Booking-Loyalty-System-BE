@@ -2,8 +2,8 @@
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.SignalR; 
-using Infrastructure.Hubs;       
+using Microsoft.AspNetCore.SignalR;
+using Infrastructure.Hubs;
 namespace Infrastructure.Services;
 
 public class NotificationService : INotificationService
@@ -35,8 +35,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task CreateNotificationAsync(Guid userId, string title, string message, string type)
+    public async Task CreateNotificationAsync(Guid customerId, string title, string message, string type)
     {
+        var userId = await _context.Customers
+            .Where(c => c.Id == customerId)
+            .Select(c => c.UserId)
+            .FirstOrDefaultAsync();
+
         var notification = new Notification
         {
             Id = Guid.NewGuid(),
@@ -51,17 +56,17 @@ public class NotificationService : INotificationService
         _context.Notifications.Add(notification);
         await _context.SaveChangesAsync();
     }
-    
+
     public async Task<int> GetUnreadCountAsync(Guid userId)
     {
         return await _context.Notifications
             .CountAsync(n => n.UserId == userId && !n.IsRead);
     }
-    
+
     public async Task<(List<Notification> Items, int TotalCount)> GetNotificationsPagedAsync(Guid userId, int page, int pageSize)
     {
         var query = _context.Notifications.Where(n => n.UserId == userId);
-    
+
         int totalCount = await query.CountAsync();
         var items = await query
             .OrderByDescending(n => n.CreatedAt)
@@ -71,7 +76,7 @@ public class NotificationService : INotificationService
 
         return (items, totalCount);
     }
-    
+
     public async Task SendNotificationToStaffAsync(Guid branchId, string title, string message, Guid relatedId, string type)
     {
         // Kiểm tra xem Staff có tồn tại không
@@ -101,24 +106,24 @@ public class NotificationService : INotificationService
                 .SendAsync("ReceiveNotification", new { title, message, relatedId, type });
         }
     }
-    
+
     public async Task SendNotificationToCustomerAsync(Guid customerId, string title, string message, Guid? relatedId, string type)
     {
         // 1. Tìm thông tin Customer để lấy ra UserId phục vụ cho SignalR và lưu bảng Notification
         var customer = await _context.Customers
             .FirstOrDefaultAsync(c => c.Id == customerId);
-            
+
         if (customer == null) return;
 
         // 2. Tạo thực thể thông báo mới
         var notification = new Notification
         {
             Id = Guid.NewGuid(),
-            UserId = customer.UserId, 
+            UserId = customer.UserId,
             Title = title,
             Message = message,
-            ReferenceId = relatedId, 
-            Type = type,        
+            ReferenceId = relatedId,
+            Type = type,
             IsRead = false,
             CreatedAt = DateTime.UtcNow
         };

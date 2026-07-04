@@ -17,4 +17,5 @@ public class CustomerProfileResponse
     public int TotalPoint { get; set; }
     public decimal TotalSpent { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int BookingWindow { get; set; }
 }

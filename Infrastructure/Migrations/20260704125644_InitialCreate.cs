@@ -65,32 +65,12 @@ namespace Infrastructure.Migrations
                     UsedCount = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     MinSpend = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    RequiresBirthday = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Promotions", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Rewards",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    PointsRequired = table.Column<int>(type: "integer", nullable: false),
-                    DiscountAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    StartDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    EndDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    Status = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true),
-                    PointsCost = table.Column<int>(type: "integer", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Rewards", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -274,6 +254,7 @@ namespace Infrastructure.Migrations
                     DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     TierId = table.Column<Guid>(type: "uuid", nullable: false),
                     TotalWashes = table.Column<int>(type: "integer", nullable: false),
+                    CurrentCycleWashes = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     TotalSpent = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -368,6 +349,36 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Rewards",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    PointsRequired = table.Column<int>(type: "integer", nullable: false),
+                    DiscountAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    Status = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    PointsCost = table.Column<int>(type: "integer", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    IsFreeWash = table.Column<bool>(type: "boolean", nullable: false),
+                    WashPackageId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Rewards", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Rewards_WashPackages_WashPackageId",
+                        column: x => x.WashPackageId,
+                        principalTable: "WashPackages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CustomerPromotions",
                 columns: table => new
                 {
@@ -420,6 +431,34 @@ namespace Infrastructure.Migrations
                         principalTable: "Customers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ChatSessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StaffId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChatSessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ChatSessions_Customers_CustomerId",
+                        column: x => x.CustomerId,
+                        principalTable: "Customers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChatSessions_Staffs_StaffId",
+                        column: x => x.StaffId,
+                        principalTable: "Staffs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -500,6 +539,68 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ChatFeedbacks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ChatSessionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Rating = table.Column<int>(type: "integer", nullable: false),
+                    Comment = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChatFeedbacks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ChatFeedbacks_ChatSessions_ChatSessionId",
+                        column: x => x.ChatSessionId,
+                        principalTable: "ChatSessions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ChatMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ChatSessionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SenderType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    StaffId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Message = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CustomerId1 = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChatMessages", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_ChatSessions_ChatSessionId",
+                        column: x => x.ChatSessionId,
+                        principalTable: "ChatSessions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Customers_CustomerId",
+                        column: x => x.CustomerId,
+                        principalTable: "Customers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Customers_CustomerId1",
+                        column: x => x.CustomerId1,
+                        principalTable: "Customers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ChatMessages_Staffs_StaffId",
+                        column: x => x.StaffId,
+                        principalTable: "Staffs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "BookingAddOns",
                 columns: table => new
                 {
@@ -523,6 +624,36 @@ namespace Infrastructure.Migrations
                         name: "FK_BookingAddOns_Bookings_BookingId",
                         column: x => x.BookingId,
                         principalTable: "Bookings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Feedbacks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    BookingId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<Guid>(type: "uuid", nullable: false),
+                    StaffRating = table.Column<int>(type: "integer", nullable: false),
+                    ServiceRating = table.Column<int>(type: "integer", nullable: false),
+                    PriceRating = table.Column<int>(type: "integer", nullable: false),
+                    Comment = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Feedbacks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Feedbacks_Bookings_BookingId",
+                        column: x => x.BookingId,
+                        principalTable: "Bookings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Feedbacks_Customers_CustomerId",
+                        column: x => x.CustomerId,
+                        principalTable: "Customers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -676,33 +807,40 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountType", "DiscountValue", "EndDate", "IsActive", "MaxUses", "MinSpend", "Name", "PriorityLevel", "StartDate" },
                 values: new object[,]
                 {
-                    { new Guid("c0000000-0000-0000-0000-000000000001"), "TB-PERCENT", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4319), "Giảm 10% cho toàn bộ hóa đơn tại Tân Bình", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 100000m, "Ưu đãi Tân Bình", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000002"), "Q3-PERCENT", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4331), "Giảm 15% cho toàn bộ hóa đơn tại Quận 3", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 150000m, "Ưu đãi Quận 3", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000003"), "Q9-PERCENT", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4339), "Giảm 20% cho toàn bộ hóa đơn tại Quận 9", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 200000m, "Ưu đãi Quận 9", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000004"), "BRONZE-10K", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4346), "Giảm 5% cho thành viên Đồng", 1, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Ưu đãi hạng Bronze", 2, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000005"), "SILVER-50K", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4354), "Giảm 10% cho thành viên Bạc", 1, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 150000m, "Ưu đãi hạng Silver", 3, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000006"), "GOLD-15", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4361), "Giảm 15% cho thành viên Vàng", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đặc quyền hạng Gold", 4, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000007"), "DIAMOND-VIP", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4367), "Giảm 25% tối đa đặc quyền Kim Cương", 0, 25.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đẳng cấp Diamond", 5, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000008"), "BDAY-15", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4373), "Giảm 15% trong ngày sinh nhật của bạn", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 200000m, "Mừng Sinh Nhật 15%", 10, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000009"), "BDAY-HAPPY", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4380), "Giảm 5% cho hóa đơn đặt trước vào tuần sinh nhật", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 500000m, "Sinh Nhật Vui Vẻ 5%", 10, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000010"), "BDAY-MEGA", new DateTime(2026, 6, 23, 8, 22, 0, 232, DateTimeKind.Utc).AddTicks(4387), "Giảm tối đa 20% cho hóa đơn đặt tiệc sinh nhật lớn", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 1000000m, "Đại Tiệc Sinh Nhật 20%", 9, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
+                    { new Guid("c0000000-0000-0000-0000-000000000001"), "TB-PERCENT", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5162), "Giảm 10% cho toàn bộ hóa đơn tại Tân Bình", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 100000m, "Ưu đãi Tân Bình", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000002"), "Q3-PERCENT", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5170), "Giảm 15% cho toàn bộ hóa đơn tại Quận 3", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 150000m, "Ưu đãi Quận 3", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000003"), "Q9-PERCENT", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5178), "Giảm 20% cho toàn bộ hóa đơn tại Quận 9", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 200000m, "Ưu đãi Quận 9", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000004"), "BRONZE-10K", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5184), "Giảm 5% cho thành viên Đồng", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Ưu đãi hạng Bronze", 2, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000005"), "SILVER-50K", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5189), "Giảm 10% cho thành viên Bạc", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 150000m, "Ưu đãi hạng Silver", 3, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000006"), "GOLD-15", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5194), "Giảm 15% cho thành viên Vàng", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đặc quyền hạng Gold", 4, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000007"), "DIAMOND-VIP", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5198), "Giảm 25% tối đa đặc quyền Kim Cương", 0, 25.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đẳng cấp Diamond", 5, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Promotions",
+                columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountType", "DiscountValue", "EndDate", "IsActive", "MaxUses", "MinSpend", "Name", "PriorityLevel", "RequiresBirthday", "StartDate" },
+                values: new object[,]
+                {
+                    { new Guid("c0000000-0000-0000-0000-000000000008"), "BDAY-15", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5204), "Giảm 15% trong ngày sinh nhật của bạn", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 200000m, "Mừng Sinh Nhật 15%", 10, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000009"), "BDAY-HAPPY", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5210), "Giảm 5% cho hóa đơn đặt trước vào tuần sinh nhật", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 500000m, "Sinh Nhật Vui Vẻ 5%", 10, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000010"), "BDAY-MEGA", new DateTime(2026, 7, 4, 12, 56, 41, 978, DateTimeKind.Utc).AddTicks(5279), "Giảm tối đa 20% cho hóa đơn đặt tiệc sinh nhật lớn", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 1000000m, "Đại Tiệc Sinh Nhật 20%", 9, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
                 });
 
             migrationBuilder.InsertData(
                 table: "Rewards",
-                columns: new[] { "Id", "CreatedAt", "Description", "DiscountAmount", "EndDate", "IsActive", "Name", "PointsCost", "PointsRequired", "StartDate", "Status" },
+                columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountAmount", "EndDate", "IsActive", "IsFreeWash", "Name", "PointsCost", "PointsRequired", "StartDate", "Status", "WashPackageId" },
                 values: new object[,]
                 {
-                    { new Guid("10000000-0000-0000-0000-000000000001"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1685), "Giảm 10,000đ", 10.00m, new DateOnly(2026, 12, 31), true, "Voucher 10k", 50, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000002"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1738), "Giảm 20,000đ", 20.00m, new DateOnly(2026, 12, 31), true, "Voucher 20k", 100, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000003"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1744), "Giảm 50,000đ", 50.00m, new DateOnly(2026, 12, 31), true, "Voucher 50k", 250, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000004"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1748), "Giảm 100,000đ", 100.00m, new DateOnly(2026, 12, 31), true, "Voucher 100k", 500, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000005"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1751), "Giảm 150,000đ", 150.00m, new DateOnly(2026, 12, 31), true, "Voucher 150k", 750, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000006"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1756), "Giảm 200,000đ", 200.00m, new DateOnly(2026, 12, 31), true, "Voucher 200k", 1000, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000007"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1761), "Giảm 250,000đ", 250.00m, new DateOnly(2026, 12, 31), true, "Voucher 250k", 1250, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000008"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1764), "Giảm 300,000đ", 300.00m, new DateOnly(2026, 12, 31), true, "Voucher 300k", 1500, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000009"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1768), "Giảm 400,000đ", 400.00m, new DateOnly(2026, 12, 31), true, "Voucher 400k", 2000, 0, new DateOnly(2026, 1, 1), true },
-                    { new Guid("10000000-0000-0000-0000-000000000010"), new DateTime(2026, 6, 23, 8, 22, 0, 236, DateTimeKind.Utc).AddTicks(1772), "Giảm 500,000đ", 500.00m, new DateOnly(2026, 12, 31), true, "Voucher 500k", 2500, 0, new DateOnly(2026, 1, 1), true }
+                    { new Guid("10000000-0000-0000-0000-000000000001"), "VOUCHER_10K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3594), "Giảm 10,000đ", 10000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 10k", 50, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000002"), "VOUCHER_20K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3624), "Giảm 20,000đ", 20000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 20k", 100, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000003"), "VOUCHER_50K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3629), "Giảm 50,000đ", 50000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 50k", 250, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000004"), "VOUCHER_100K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3634), "Giảm 100,000đ", 100000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 100k", 500, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000005"), "VOUCHER_150K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3638), "Giảm 150,000đ", 150000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 150k", 750, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000006"), "VOUCHER_200K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3643), "Giảm 200,000đ", 200000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 200k", 1000, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000007"), "VOUCHER_250K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3646), "Giảm 250,000đ", 250000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 250k", 1250, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000008"), "VOUCHER_300K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3651), "Giảm 300,000đ", 300000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 300k", 1500, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000009"), "VOUCHER_400K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3655), "Giảm 400,000đ", 400000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 400k", 2000, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000010"), "VOUCHER_500K", new DateTime(2026, 7, 4, 12, 56, 41, 982, DateTimeKind.Utc).AddTicks(3658), "Giảm 500,000đ", 500000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 500k", 2500, 0, new DateOnly(2026, 1, 1), true, null }
                 });
 
             migrationBuilder.InsertData(
@@ -738,14 +876,14 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 6, 23, 8, 22, 0, 429, DateTimeKind.Utc).AddTicks(1604), "admin@system.com", null, true, "$2a$11$BdVSeDdRPBwuEpoFgIOl6uaJdfAScyVJKkZCAKmizhF0zTbzln7v6", null, null, "Admin", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 23, 8, 22, 0, 615, DateTimeKind.Utc).AddTicks(7337), "staff@system.com", null, true, "$2a$11$/qGSfGzw20ZdqEBurTe90Oeh99wTPokDBahL27dYPPGisTN6ioL.W", null, null, "Staff", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 6, 23, 8, 22, 0, 811, DateTimeKind.Utc).AddTicks(3091), "staff1@system.com", null, true, "$2a$11$Zqnb.F.hZPzDugqxtNSdg.Dc3TeWgKDrXwCmot4RNSuJmRn.ldF52", null, null, "Staff", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 6, 23, 8, 22, 0, 999, DateTimeKind.Utc).AddTicks(7281), "staff2@system.com", null, true, "$2a$11$GwMemSFZrN.h7g9se70ux.tChf7qMvRgybMzr5qOzx5GF.R74LrM2", null, null, "Staff", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 6, 23, 8, 22, 1, 182, DateTimeKind.Utc).AddTicks(1751), "customer@system.com", null, true, "$2a$11$apVO5ormGNb2eFVj1WuqUuhCS7w.wciZL1USP95N8lRXNkrc.Gnyq", null, null, "Customer", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd"), new DateTime(2026, 6, 23, 8, 22, 1, 369, DateTimeKind.Utc).AddTicks(7337), "cus2@system.com", null, true, "$2a$11$C1X2xnM38iycFQoUXFFH..XjW69m90Hs5xyhuW3RRzhlU.WLWjGAK", null, null, "Customer", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce"), new DateTime(2026, 6, 23, 8, 22, 1, 557, DateTimeKind.Utc).AddTicks(2570), "cus3@system.com", null, true, "$2a$11$AaZ0xLb1Tz2o7N2bjTiAhexcwlnOSrhaE/cOnAhY04ab6IpCpoJSO", null, null, "Customer", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf"), new DateTime(2026, 6, 23, 8, 22, 1, 750, DateTimeKind.Utc).AddTicks(5721), "cus4@system.com", null, true, "$2a$11$t0QGUk4gKjz6AeVII.Kbfe2OcTAazoYes/CK5ENMfuWnxNNdAZeOq", null, null, "Customer", null }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 7, 4, 12, 56, 42, 172, DateTimeKind.Utc).AddTicks(8209), "admin@system.com", null, true, "$2a$11$wQzVK1CuCbKW1kzn4mczle4QYO890Z9Tbl5zOrcQoMR1/GH4SYDl.", null, null, "Admin", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 4, 12, 56, 42, 355, DateTimeKind.Utc).AddTicks(7999), "staff@system.com", null, true, "$2a$11$.2nKt4HPHTO/Bj5T21UrzekT/hAb38g0.f5V5ZrwI/LNcbxKbSij2", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 7, 4, 12, 56, 42, 536, DateTimeKind.Utc).AddTicks(1707), "staff1@system.com", null, true, "$2a$11$Pt0MLZ2cUoDzWPQmmzV2I.7uEz/AgyQDb4SUw1RtvjB9jwahFrI2S", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 7, 4, 12, 56, 42, 722, DateTimeKind.Utc).AddTicks(3628), "staff2@system.com", null, true, "$2a$11$.Lh7UFaLPDrGAJFfLP7QIu.0vGuqk5qV.pZSe77THG..Vpy3hNBz2", null, null, "Staff", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 7, 4, 12, 56, 42, 902, DateTimeKind.Utc).AddTicks(5254), "customer@system.com", null, true, "$2a$11$5xmF1JzvyC6gdIhCNjwUPOIcuBIbK6TX4HyGH.unqRp8y4N.nVSiC", null, null, "Customer", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd"), new DateTime(2026, 7, 4, 12, 56, 43, 83, DateTimeKind.Utc).AddTicks(8213), "cus2@system.com", null, true, "$2a$11$/PapmuBUjtpyUyBlT3Mx9eLH2w9rzsvAIt9RfOYB.D44leS1eY9Di", null, null, "Customer", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce"), new DateTime(2026, 7, 4, 12, 56, 43, 265, DateTimeKind.Utc).AddTicks(5186), "cus3@system.com", null, true, "$2a$11$ZDoPR9XFfcD.Vn8r3Y.D2eOWTTrzXFcDFpoXZ1/NYh4BEj8v1vBUS", null, null, "Customer", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf"), new DateTime(2026, 7, 4, 12, 56, 43, 453, DateTimeKind.Utc).AddTicks(2033), "cus4@system.com", null, true, "$2a$11$lL67Lq4oDyM35dblVR79SeS9tmaDJ.pFqNs9FZqoSRcwRseQvP2QG", null, null, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -760,13 +898,13 @@ namespace Infrastructure.Migrations
 
             migrationBuilder.InsertData(
                 table: "Customers",
-                columns: new[] { "Id", "CreatedAt", "DateOfBirth", "FullName", "IsPhoneNumberVerified", "PhoneNumber", "TierId", "TotalSpent", "TotalWashes", "UserId" },
+                columns: new[] { "Id", "CreatedAt", "CurrentCycleWashes", "DateOfBirth", "FullName", "IsPhoneNumberVerified", "PhoneNumber", "TierId", "TotalSpent", "TotalWashes", "UserId" },
                 values: new object[,]
                 {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Customer Bronze Tier", false, "0901234569", new Guid("11111111-1111-1111-1111-111111111111"), 0m, 0, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Customer Silver Tier", true, "0901234568", new Guid("22222222-2222-2222-2222-222222222222"), 500m, 5, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd") },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Customer Gold Tier", true, "0901234567", new Guid("33333333-3333-3333-3333-333333333333"), 2500m, 15, new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce") },
-                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Customer Diamond Tier", true, "0901234566", new Guid("44444444-4444-4444-4444-444444444444"), 7000m, 40, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf") }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 6, null, "Customer Bronze Tier", false, "0901234569", new Guid("11111111-1111-1111-1111-111111111111"), 0m, 6, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc") },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 3, null, "Customer Silver Tier", true, "0901234568", new Guid("22222222-2222-2222-2222-222222222222"), 500m, 5, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd") },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 5, null, "Customer Gold Tier", true, "0901234567", new Guid("33333333-3333-3333-3333-333333333333"), 2500m, 15, new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce") },
+                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 2, null, "Customer Diamond Tier", true, "0901234566", new Guid("44444444-4444-4444-4444-444444444444"), 7000m, 40, new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf") }
                 });
 
             migrationBuilder.InsertData(
@@ -805,18 +943,18 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "BranchId", "CreatedAt", "Name", "Status", "SupportedTypes" },
                 values: new object[,]
                 {
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8185), "Bay A1 (Q9)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8200), "Bay A2 (Q9)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8203), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8206), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8220), "Bay A1 (TB)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8223), "Bay A2 (TB)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8226), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8229), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8209), "Bay A1 (Q3)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8212), "Bay A2 (Q3)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8215), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 6, 23, 8, 22, 1, 751, DateTimeKind.Utc).AddTicks(8218), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5140), "Bay A1 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5180), "Bay A2 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5183), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5186), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5200), "Bay A1 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5204), "Bay A2 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5207), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5210), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5188), "Bay A1 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5192), "Bay A2 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5194), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 4, 12, 56, 43, 454, DateTimeKind.Utc).AddTicks(5197), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -888,6 +1026,43 @@ namespace Infrastructure.Migrations
                 column: "TimeSlotId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ChatFeedbacks_ChatSessionId",
+                table: "ChatFeedbacks",
+                column: "ChatSessionId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatMessages_ChatSessionId",
+                table: "ChatMessages",
+                column: "ChatSessionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatMessages_CustomerId",
+                table: "ChatMessages",
+                column: "CustomerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatMessages_CustomerId1",
+                table: "ChatMessages",
+                column: "CustomerId1",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatMessages_StaffId",
+                table: "ChatMessages",
+                column: "StaffId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatSessions_CustomerId",
+                table: "ChatSessions",
+                column: "CustomerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChatSessions_StaffId",
+                table: "ChatSessions",
+                column: "StaffId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_CustomerPromotions_CustomerId",
                 table: "CustomerPromotions",
                 column: "CustomerId");
@@ -913,6 +1088,17 @@ namespace Infrastructure.Migrations
                 table: "Customers",
                 column: "UserId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Feedbacks_BookingId",
+                table: "Feedbacks",
+                column: "BookingId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Feedbacks_CustomerId",
+                table: "Feedbacks",
+                column: "CustomerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Notifications_UserId",
@@ -983,6 +1169,11 @@ namespace Infrastructure.Migrations
                 column: "RewardId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Rewards_WashPackageId",
+                table: "Rewards",
+                column: "WashPackageId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Staffs_BranchId",
                 table: "Staffs",
                 column: "BranchId");
@@ -1045,7 +1236,16 @@ namespace Infrastructure.Migrations
                 name: "BookingAddOns");
 
             migrationBuilder.DropTable(
+                name: "ChatFeedbacks");
+
+            migrationBuilder.DropTable(
+                name: "ChatMessages");
+
+            migrationBuilder.DropTable(
                 name: "CustomerPromotions");
+
+            migrationBuilder.DropTable(
+                name: "Feedbacks");
 
             migrationBuilder.DropTable(
                 name: "Notifications");
@@ -1072,6 +1272,9 @@ namespace Infrastructure.Migrations
                 name: "AddOns");
 
             migrationBuilder.DropTable(
+                name: "ChatSessions");
+
+            migrationBuilder.DropTable(
                 name: "Points");
 
             migrationBuilder.DropTable(
@@ -1096,10 +1299,10 @@ namespace Infrastructure.Migrations
                 name: "WashBays");
 
             migrationBuilder.DropTable(
-                name: "WashPackages");
+                name: "TimeSlots");
 
             migrationBuilder.DropTable(
-                name: "TimeSlots");
+                name: "WashPackages");
 
             migrationBuilder.DropTable(
                 name: "Customers");

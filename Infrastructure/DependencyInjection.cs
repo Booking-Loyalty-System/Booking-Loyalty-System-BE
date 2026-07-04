@@ -113,16 +113,21 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IAIService, AIService>();
+        services.AddScoped<IFeedbackService, FeedbackService>();
+        services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IChatFeedbackService, ChatFeedbackService>();
         services.AddHostedService<NotificationWorker>();
 
         // Cancels unpaid bookings past the VNPay payment window, releasing their slots.
         services.AddHostedService<PendingBookingCleanupService>();
 
         // Auto-marks Confirmed/CheckedIn bookings as NoShow once the booked time + grace passes.
-        services.AddHostedService<BackgroundServices.AutoNoShowService>();
+        services.AddHostedService<AutoNoShowService>();
+        services.AddHttpClient();
 
         // Rà hạng thành viên định kỳ: hạ hạng khách thiếu booking trong ~30 ngày (kể cả khách 0 booking).
-        services.AddHostedService<BackgroundServices.TierMaintenanceService>();
+        services.AddHostedService<TierMaintenanceService>();
 
         return services;
     }

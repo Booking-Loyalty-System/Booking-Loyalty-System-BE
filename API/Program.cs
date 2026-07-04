@@ -43,8 +43,8 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
 
             var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) && 
-                (path.StartsWithSegments("/hubs/booking")))
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/hubs/booking") || path.StartsWithSegments("/hubs/chat")))
             {
                 context.Token = accessToken;
             }
@@ -122,7 +122,7 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var logger = services.GetRequiredService<ILogger<Program>>();
-    
+
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
@@ -132,7 +132,7 @@ using (var scope = app.Services.CreateScope())
 
         logger.LogInformation("🌱 Đang tự động khởi tạo dữ liệu hệ thống (Seed Data)...");
         await DbInitializer.SeedDataAsync(services);
-        
+
         logger.LogInformation("✅ Hệ thống khởi tạo dữ liệu ban đầu hoàn tất và sạch sẽ!");
     }
     catch (Exception ex)
@@ -142,4 +142,5 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapHub<Infrastructure.Hubs.BookingHub>("/hubs/booking");
+app.MapHub<Infrastructure.Hubs.ChatHub>("/hubs/chat");
 app.Run();

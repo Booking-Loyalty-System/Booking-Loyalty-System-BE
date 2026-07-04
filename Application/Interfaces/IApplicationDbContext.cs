@@ -13,19 +13,19 @@ public interface IApplicationDbContext
     DbSet<Vehicle> Vehicles { get; }
     DbSet<WashBay> WashBays { get; }
     DbSet<WashPackage> WashPackages { get; }
-    DbSet<TimeSlot> TimeSlots { get; } 
+    DbSet<TimeSlot> TimeSlots { get; }
     DbSet<Staff> Staffs { get; }
     // ĐÂY RỒI: Khai báo bảng trung gian vào đây để BookingService bốc lịch gối đầu
-    DbSet<BranchTimeSlot> BranchTimeSlots { get; } 
+    DbSet<BranchTimeSlot> BranchTimeSlots { get; }
 
     // --- Hệ thống Đặt lịch & Giao dịch ---
     DbSet<Booking> Bookings { get; }
-    DbSet<Transaction> Transactions { get; } 
+    DbSet<Transaction> Transactions { get; }
     DbSet<Point> Points { get; }
     DbSet<PointHistory> PointHistories { get; }
     DbSet<CustomerPromotion> CustomerPromotions { get; }
     DbSet<PromotionBranch> PromotionBranches { get; }
-    DbSet<TierPromotion> TierPromotions { get; } 
+    DbSet<TierPromotion> TierPromotions { get; }
 
     // --- Tiện ích ---
     DbSet<Notification> Notifications { get; }
@@ -39,6 +39,10 @@ public interface IApplicationDbContext
     DbSet<AddOn> AddOns { get; }
     DbSet<BookingAddOn> BookingAddOns { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<Feedback> Feedbacks { get; }
+    DbSet<ChatSession> ChatSessions { get; }
+    DbSet<ChatMessage> ChatMessages { get; }
+    DbSet<ChatFeedback> ChatFeedbacks { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

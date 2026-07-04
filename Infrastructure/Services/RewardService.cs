@@ -261,7 +261,8 @@ public class RewardService : IRewardService
         PointsCost = reward.PointsCost,
         DiscountAmount = reward.DiscountAmount,
         IsActive = reward.IsActive,
-        CreatedAt = reward.CreatedAt
+        CreatedAt = reward.CreatedAt,
+        IsFreeWash = reward.IsFreeWash
     };
 
     /// <summary>Maps our internal redemption status onto the FE's Active/Used/Expired model.</summary>

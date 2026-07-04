@@ -100,8 +100,7 @@ public class BookingService : IBookingService
         if (!branchTimeSlot.IsActive)
             throw new AppException("This time slot is currently locked or inactive at this branch.", 400);
 
-        // 4. Chống ôm slot: giới hạn số booking Pending (chưa được staff xác nhận) mỗi khách.
-        //    Không có rào thanh toán nên đây là biện pháp thay cho "đặt cọc" để chặn giữ chỗ tràn lan.
+        // 4. Chống ôm slot
         var activePending = await _context.Bookings
             .CountAsync(b => b.CustomerId == customer.Id && b.Status == BookingStatus.Pending);
         if (activePending >= _options.MaxActivePendingBookings)
@@ -109,11 +108,10 @@ public class BookingService : IBookingService
                 $"You already have {activePending} booking(s) awaiting staff confirmation. " +
                 "Please wait until they are confirmed before booking more.", 409);
 
-        // 5. Mở TRANSACTION (Serializable) chống Race Condition khi đặt chỗ cùng giây.
-        //    Cả check trùng xe lẫn đếm capacity đều nằm TRONG transaction để không lọt khi đặt đồng thời.
+        // 5. Mở TRANSACTION (Serializable)
         await using var transaction = await _context.BeginTransactionAsync();
 
-        // 5a. Chặn trùng lịch của chiếc xe này trong cùng khung giờ.
+        // 5a. Chặn trùng lịch xe
         var vehicleConflict = await _context.Bookings.AnyAsync(b =>
             b.VehicleId == vehicle.Id &&
             b.BookingDate == request.BookingDate &&
@@ -123,7 +121,7 @@ public class BookingService : IBookingService
         if (vehicleConflict)
             throw new AppException("This vehicle already has a booking that overlaps the selected time.", 409);
 
-        // 5b. Đếm số xe đang chiếm chỗ (Bỏ Cancelled và NoShow).
+        // 5b. Đếm số xe đang chiếm chỗ
         var currentBookingsCount = await _context.Bookings
             .CountAsync(b => b.BranchTimeSlotId == branchTimeSlot.Id
                           && b.BookingDate == request.BookingDate
@@ -144,11 +142,9 @@ public class BookingService : IBookingService
         string? voucherName = null;
         RewardRedemption? appliedRedemption = null;
 
-        // Cho phép dùng ĐỒNG THỜI promotion + voucher: promotion (giảm %) tính TRƯỚC trên giá gói rửa,
-        // rồi voucher (giảm tiền cố định) trừ TIẾP trên phần còn lại. Giá sau giảm không bao giờ âm.
+        // Xử lý đồng thời Promotion + Voucher
         if (!string.IsNullOrWhiteSpace(request.PromotionCode))
         {
-            // Truyền customer + branch để enforce điều kiện sinh nhật / hạng / chi nhánh (địa chỉ).
             var (pid, discount) = await _promotionService.ApplyAsync(request.PromotionCode, washPackage.Price, customer, request.BranchId);
             promotionId = pid;
             discountAmount += discount;
@@ -157,7 +153,6 @@ public class BookingService : IBookingService
 
         if (request.RewardRedemptionId.HasValue)
         {
-            // Voucher đổi bằng điểm (giảm số tiền cố định) — trừ trên phần GIÁ CÒN LẠI sau promotion.
             appliedRedemption = await _context.RewardRedemptions
                 .Include(r => r.Reward)
                 .FirstOrDefaultAsync(r => r.Id == request.RewardRedemptionId.Value
@@ -173,7 +168,7 @@ public class BookingService : IBookingService
             voucherName = appliedRedemption.Reward.Name;
         }
 
-        // 7. Khởi tạo và lưu Booking mới vào DB (ĐÃ ĐỒI THEO DB MỚI)
+        // 7. Khởi tạo và lưu Booking
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
@@ -187,7 +182,6 @@ public class BookingService : IBookingService
             QrData = qrDataBase64,
             PromotionId = promotionId,
             RewardId = rewardId,
-            // Vouchers/promotions discount the wash package only; add-ons are added on top.
             TotalPrice = totalPrice + addOnsTotal,
             StartTime = branchTimeSlot.TimeSlot.StartTime,
             DiscountAmount = discountAmount,
@@ -197,7 +191,6 @@ public class BookingService : IBookingService
 
         _context.Bookings.Add(booking);
 
-        // Consume the voucher: mark its redemption fulfilled and link it to this booking.
         if (appliedRedemption != null)
         {
             appliedRedemption.Status = RedemptionStatus.Fulfilled;
@@ -205,7 +198,6 @@ public class BookingService : IBookingService
             appliedRedemption.BookingId = booking.Id;
         }
 
-        // Snapshot the chosen add-ons onto the booking (price frozen at booking time).
         var bookingAddOns = addOns.Select(a => new BookingAddOn
         {
             Id = Guid.NewGuid(),
@@ -225,31 +217,20 @@ public class BookingService : IBookingService
         }
         catch (Exception ex) when (IsSerializationConflict(ex))
         {
-            // Hai khách giành suất cuối cùng cùng lúc: transaction Serializable thua bị DB từ chối (40001).
-            // Trả 409 sạch thay vì để lỗi nổ thành 500; `await using` sẽ tự rollback khi thoát method.
             throw new AppException("This time slot was just taken by another customer. Please try again.", 409);
         }
 
         try
         {
             string message = $"Khách hàng mới đã đặt lịch: {booking.BookingCode} - Gói: {washPackage.Name} lúc {booking.StartTime}";
-
-            // Gọi service gửi thông báo đến các nhân viên thuộc chi nhánh này
-            await _notificationService.SendNotificationToStaffAsync(
-                branchId: branch.Id,
-                title: "Lịch hẹn mới",
-                message: message,
-                relatedId: booking.Id,
-                type: "NewBooking"
-            );
+            await _notificationService.SendNotificationToStaffAsync(branch.Id, "Lịch hẹn mới", message, booking.Id, "NewBooking");
         }
         catch (Exception ex)
         {
-            // Log lỗi nếu gửi thông báo thất bại nhưng không làm gián đoạn luồng đặt lịch
             Console.WriteLine($"Gửi thông báo thất bại: {ex.Message}");
         }
 
-        // 8. Trả kết quả map dữ liệu và bắn SignalR Realtime báo cho chi nhánh biết
+        // 8. Trả kết quả và bắn SignalR
         var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
         response.AddOns = addOns
             .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
