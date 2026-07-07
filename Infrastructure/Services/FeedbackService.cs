@@ -15,11 +15,15 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public async Task<FeedbackResponse> CustomerCreateFeedbackAsync(Guid customerId, FeedbackRequest request)
+        public async Task<FeedbackResponse> CustomerCreateFeedbackAsync(Guid userId, FeedbackRequest request)
         {
-            // 1. Kiểm tra đơn đặt lịch hợp lệ (Đổi dto thành request)
+            var customer = await _context.Customers.FirstOrDefaultAsync(x => x.UserId == userId);
+            if (customer == null)
+            {
+                throw new KeyNotFoundException("Customer not found ");
+            }
             var booking = await _context.Bookings
-                .FirstOrDefaultAsync(b => b.Id == request.BookingId && b.CustomerId == customerId);
+                .FirstOrDefaultAsync(b => b.Id == request.BookingId && b.CustomerId == customer.Id);
 
             if (booking == null)
                 throw new KeyNotFoundException("Không tìm thấy đơn đặt lịch hợp lệ của bạn.");
@@ -34,7 +38,7 @@ namespace Infrastructure.Services
             {
                 Id = Guid.NewGuid(),
                 BookingId = request.BookingId,
-                CustomerId = customerId,
+                CustomerId = customer.Id,
                 StaffRating = request.StaffRating,
                 ServiceRating = request.ServiceRating,
                 PriceRating = request.PriceRating,
@@ -47,7 +51,7 @@ namespace Infrastructure.Services
 
             // 4. Lấy thông tin hiển thị lên DTO phản hồi
             var customerName = await _context.Customers
-                .Where(c => c.Id == customerId)
+                .Where(c => c.Id == customer.Id)
                 .Select(c => c.FullName)
                 .FirstOrDefaultAsync() ?? "Khách hàng";
 
@@ -86,43 +90,84 @@ namespace Infrastructure.Services
            .ToListAsync();
         }
 
-        /*public async Task<FeedbackModerationResponse> StaffReplyFeedbackAsync(Guid userId, Guid feedbackId, ReplyFeedbackRequest request)
+        public async Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(bool isDescending = true)
         {
-            // 1. Tìm thông tin Staff dựa vào UserId của tài khoản đang đăng nhập
-            var staff = await _context.Staffs
-                .FirstOrDefaultAsync(s => s.UserId == userId)
-                ?? throw new AppException("Staff not found.", 404);
-
-            // 2. Tìm bản ghi Feedback cần trả lời
-            var feedback = await _context.Feedbacks
+            var query = _context.Feedbacks
                 .Include(f => f.Booking)
-                .Include(f => f.Customer)
-                .FirstOrDefaultAsync(f => f.Id == feedbackId)
-                ?? throw new KeyNotFoundException("Không tìm thấy bài đánh giá này.");
+                .AsNoTracking();
 
-            // 3. Cập nhật thông tin phản hồi (Giả định Entity Feedback của bạn có các trường này)
-            // Nếu Entity chưa có, Huy mở file Feedback.cs thêm: public string? StaffReply { get; set; } ...
-            feedback.StaffReply = request.Content; // Hoặc request.StaffReply tùy DTO của bạn
-            feedback.RepliedAt = DateTime.UtcNow;
-            feedback.RepliedByStaffId = staff.Id;
-
-            await _context.SaveChangesAsync();
-
-            // 4. Trả về đúng kiểu FeedbackModerationResponse
-            return new FeedbackModerationResponse
+            if (isDescending)
             {
-                BookingCode = feedback.Booking.BookingCode,
-                CustomerName = feedback.Customer.FullName,
-                StaffRating = feedback.StaffRating,
-                ServiceRating = feedback.ServiceRating,
-                PriceRating = feedback.PriceRating,
-                OverallRating = feedback.OverallRating,
-                Comment = feedback.Comment,
-                CreatedAt = feedback.CreatedAt
-                // Nếu FeedbackModerationResponse có chứa thông tin phản hồi, Huy gán thêm tại đây:
-                // StaffReply = feedback.StaffReply,
-                // StaffName = staff.FullName
-            };
-        }*/
+                query = query.OrderByDescending(f => (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0);
+            }
+            else
+            {
+                query = query.OrderBy(f => (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0);
+            }
+
+            return await query.Select(f => new FeedbackFilterResponse
+            {
+                Id = f.Id,
+                BookingCode = f.Booking.BookingCode,
+                OverallRating = (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0,
+                Comment = f.Comment,
+                CreatedAt = f.CreatedAt
+            }).ToListAsync();
+        }
+
+        public async Task<FeedbackStatisticsResponse> GetFeedbackStatisticsAsync(int topCount = 5)
+        {
+            var response = new FeedbackStatisticsResponse();
+
+            var staffRatings = await _context.Bookings
+                .Where(b => b.StaffId.HasValue && b.Feedback != null)
+                .GroupBy(b => new { b.StaffId, b.Staff!.FullName })
+                .Select(g => new StaffRatingResponse
+                {
+                    StaffId = g.Key.StaffId!.Value,
+                    StaffName = g.Key.FullName,
+                    AverageRating = g.Average(b => b.Feedback!.StaffRating),
+                    TotalFeedbacks = g.Count()
+                })
+                .ToListAsync();
+
+            response.TopStaffs = staffRatings.OrderByDescending(s => s.AverageRating).Take(topCount).ToList();
+            response.LowestStaffs = staffRatings.OrderBy(s => s.AverageRating).Take(topCount).ToList();
+
+            var serviceRatings = await _context.Bookings
+                .Where(b => b.Feedback != null)
+                .GroupBy(b => new { b.WashPackageId, b.WashPackage.Name }) // Dựa theo Booking trỏ đến WashPackage
+                .Select(g => new ServiceRatingResponse
+                {
+                    ServiceId = g.Key.WashPackageId,
+                    ServiceName = g.Key.Name,
+                    AverageRating = g.Average(b => b.Feedback!.ServiceRating),
+                    TotalFeedbacks = g.Count()
+                })
+                .ToListAsync();
+
+            response.TopServices = serviceRatings.OrderByDescending(s => s.AverageRating).Take(topCount).ToList();
+            response.LowestServices = serviceRatings.OrderBy(s => s.AverageRating).Take(topCount).ToList();
+
+            // 3. Thống kê Staff Chat Feedback
+            // Giả định ChatSession có thuộc tính StaffId và điều hướng tới Staff
+            var chatRatings = await _context.ChatFeedbacks
+                .Include(cf => cf.ChatSession)
+                .Where(cf => cf.ChatSession.StaffId.HasValue)
+                .GroupBy(cf => new { cf.ChatSession.StaffId, cf.ChatSession.Staff!.FullName })
+                .Select(g => new StaffRatingResponse
+                {
+                    StaffId = g.Key.StaffId!.Value,
+                    StaffName = g.Key.FullName,
+                    AverageRating = g.Average(cf => cf.Rating), // Dựa theo thuộc tính Rating của ChatFeedback
+                    TotalFeedbacks = g.Count()
+                })
+                .ToListAsync();
+
+            response.TopChatStaffs = chatRatings.OrderByDescending(s => s.AverageRating).Take(topCount).ToList();
+            response.LowestChatStaffs = chatRatings.OrderBy(s => s.AverageRating).Take(topCount).ToList();
+
+            return response;
+        }
     }
 }

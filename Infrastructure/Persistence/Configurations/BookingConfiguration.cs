@@ -1,6 +1,8 @@
 using Domain.Entities;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using QRCoder;
 
 namespace Infrastructure.Persistence.Configurations;
 

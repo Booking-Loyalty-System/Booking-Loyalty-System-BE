@@ -21,4 +21,7 @@ public interface IPaymentService
     Task<PaymentResponse> CreatePayOSPaymentAsync(Guid userId, Guid bookingId);
     Task HandlePayOsWebhookAsync(WebhookData data);
     Task<bool> ProcessPayOsReturnAsync(long orderCode, string status, string code);
+
+    // Admin audit
+    Task<PaymentAuditResponse> GetPaymentsAuditAsync(PaymentAuditRequest request);
 }

@@ -12,5 +12,12 @@ namespace Application.Interfaces
         Task<List<TopCustomerDto>> GetTopCustomersAsync(string timeFrame, int limit = 10);
         Task<List<TopBranchDto>> GetTopBranchesAsync(string timeFrame);
         Task<List<TopTimeSlotDto>> GetTopTimeSlotsAsync(string timeFrame, int limit = 5);
+
+        // New admin dashboard APIs
+        Task<DashboardStatsDto> GetDashboardStatsAsync();
+        Task<List<RevenueByDateDto>> GetDailyRevenueAsync(int month, int year);
+        Task<List<PackageAnalyticsDto>> GetPackageAnalyticsAsync(int top = 10);
+        Task<FeedbackSummaryDto> GetFeedbackSummaryAsync();
+        Task<RevenueComparisonDto> GetRevenueComparisonAsync(AdminDashboardDateFilterDto filter);
     }
 }

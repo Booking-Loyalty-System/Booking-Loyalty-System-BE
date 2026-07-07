@@ -13,6 +13,9 @@ public class BranchTimeSlot
     // Có thể thêm cờ để đóng/mở khung giờ này cho chi nhánh
     public bool IsActive { get; set; } = true;
 
+    // Audit
+    public DateTime CreatedAt { get; set; }
+
     // Navigations
     public Branch Branch { get; set; } = null!;
     public TimeSlot TimeSlot { get; set; } = null!;

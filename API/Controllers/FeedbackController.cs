@@ -1,4 +1,5 @@
-﻿using Application.DTOs.Feedback;
+﻿using Application.Common;
+using Application.DTOs.Feedback;
 using Application.Interfaces;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -35,22 +36,6 @@ namespace API.Controllers
             }
         }
 
-        /* [HttpPut("staff/reply/{feedbackId}")]
-         [Authorize(Roles = "Staff,Admin")]
-         public async Task<IActionResult> ReplyFeedback(Guid feedbackId, ReplyFeedbackRequest dto)
-         {
-             var userId = GetUserId();
-             try
-             {
-                 var result = await _service.StaffReplyFeedbackAsync(userId, feedbackId, dto);
-                 return Ok(new { success = true, message = "Phản hồi đánh giá thành công.", data = result });
-             }
-             catch (Exception ex)
-             {
-                 return BadRequest(new { success = false, message = ex.Message });
-             }
-         }*/
-
         [HttpGet("public/all")]
         public async Task<IActionResult> GetAllFeedbacks()
         {
@@ -58,6 +43,21 @@ namespace API.Controllers
             return Ok(new { success = true, data = result });
         }
 
+        [Authorize] // Hoặc [Authorize(Roles = "Admin,Manager")] tùy vào luồng phân quyền
+        [HttpGet("filter")]
+        public async Task<IActionResult> GetFilteredFeedbacks([FromQuery] bool isDescending = true)
+        {
+            var result = await _service.GetFeedbacksAsync(isDescending);
+            return Ok(ApiResponse<object>.SuccessResponse(result, "Lấy danh sách đánh giá thành công."));
+        }
+
+        [Authorize]
+        [HttpGet("statistics")]
+        public async Task<IActionResult> GetStatistics([FromQuery] int topCount = 5)
+        {
+            var result = await _service.GetFeedbackStatisticsAsync(topCount);
+            return Ok(ApiResponse<object>.SuccessResponse(result, "Lấy dữ liệu thống kê thành công."));
+        }
         private Guid GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

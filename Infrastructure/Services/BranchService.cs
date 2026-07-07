@@ -91,4 +91,37 @@ public class BranchService : IBranchService
             Longitude = branch.Longitude.Value,
         };
     }
+
+    public async Task SetupBranchTimeSlotsAsync(Guid branchId, List<Application.DTOs.TimeSlot.TimeSlotConfigDto> configs)
+    {
+        var branch = await _context.Branches.FindAsync(branchId)
+            ?? throw new AppException("Branch not found.", 404);
+
+        foreach (var cfg in configs)
+        {
+            var existing = await _context.BranchTimeSlots
+                .FirstOrDefaultAsync(bts => bts.BranchId == branchId && bts.TimeSlotId == cfg.TimeSlotId);
+
+            if (existing != null)
+            {
+                existing.MaxCapacity = cfg.MaxCapacity;
+                existing.IsActive = true;
+            }
+            else
+            {
+                var newBts = new BranchTimeSlot
+                {
+                    Id = Guid.NewGuid(),
+                    BranchId = branchId,
+                    TimeSlotId = cfg.TimeSlotId,
+                    MaxCapacity = cfg.MaxCapacity,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.BranchTimeSlots.Add(newBts);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
 }

@@ -117,6 +117,8 @@ public static class DependencyInjection
         services.AddScoped<IFeedbackService, FeedbackService>();
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IChatFeedbackService, ChatFeedbackService>();
+        services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IAdminAnalyticService, AdminAnalyticService>();
         services.AddHostedService<NotificationWorker>();
 
         // Cancels unpaid bookings past the VNPay payment window, releasing their slots.

@@ -227,4 +227,112 @@ public class AdminDashboardService : IAdminDashboardService
             _ => new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc)
         };
     }
+
+    // --- New implementations for requested dashboard APIs ---
+    public async Task<DashboardStatsDto> GetDashboardStatsAsync()
+    {
+        var totalRevenue = await _context.Payments
+            .Where(p => p.Status == PaymentStatus.Paid)
+            .SumAsync(p => p.Amount);
+
+        var totalCancelled = await _context.Bookings
+            .CountAsync(b => b.Status == BookingStatus.Cancelled);
+
+        var totalActiveCustomers = await _context.Customers
+            .Include(c => c.User)
+            .CountAsync(c => c.User != null && c.User.IsActive);
+
+        // Interpret "busy"/"occupied" as InProgress
+        var bayUsage = await _context.WashBays
+            .CountAsync(w => w.Status == WashBayStatus.InProgress);
+
+        return new DashboardStatsDto
+        {
+            TotalRevenue = totalRevenue,
+            TotalCancelledBookings = totalCancelled,
+            TotalActiveCustomers = totalActiveCustomers,
+            BayUsage = bayUsage
+        };
+    }
+
+    public async Task<List<RevenueByDateDto>> GetDailyRevenueAsync(int month, int year)
+    {
+        var payments = await _context.Payments
+            .Where(p => p.Status == PaymentStatus.Paid && p.PaidAt.HasValue && p.PaidAt.Value.Month == month && p.PaidAt.Value.Year == year)
+            .GroupBy(p => p.PaidAt!.Value.Date)
+            .Select(g => new { Date = g.Key, Total = g.Sum(x => x.Amount) })
+            .OrderBy(x => x.Date)
+            .ToListAsync();
+
+        return payments.Select(p => new RevenueByDateDto { Date = DateOnly.FromDateTime(p.Date), TotalAmount = p.Total }).ToList();
+    }
+
+    public async Task<List<PackageAnalyticsDto>> GetPackageAnalyticsAsync(int top = 10)
+    {
+        var data = await _context.Bookings
+            .Where(b => b.WashPackageId != null)
+            .GroupBy(b => new { b.WashPackageId, b.WashPackage!.Name, b.WashPackage.Price })
+            .Select(g => new PackageAnalyticsDto
+            {
+                PackageName = g.Key.Name,
+                TotalBookings = g.Count(),
+                TotalRevenue = g.Sum(b => b.TotalPrice),
+                Price = g.Key.Price
+            })
+            .OrderByDescending(x => x.TotalBookings)
+            .Take(top)
+            .ToListAsync();
+
+        return data;
+    }
+
+    public async Task<FeedbackSummaryDto> GetFeedbackSummaryAsync()
+    {
+        var overall = await _context.Feedbacks.AverageAsync(f => (double?)f.OverallRating) ?? 0.0;
+        var staff = await _context.Feedbacks.AverageAsync(f => (double?)f.StaffRating) ?? 0.0;
+        var service = await _context.Feedbacks.AverageAsync(f => (double?)f.ServiceRating) ?? 0.0;
+        var price = await _context.Feedbacks.AverageAsync(f => (double?)f.PriceRating) ?? 0.0;
+
+        return new FeedbackSummaryDto
+        {
+            OverallAverage = Math.Round(overall, 2),
+            StaffAverage = Math.Round(staff, 2),
+            ServiceAverage = Math.Round(service, 2),
+            PriceAverage = Math.Round(price, 2)
+        };
+    }
+
+    public async Task<RevenueComparisonDto> GetRevenueComparisonAsync(AdminDashboardDateFilterDto filter)
+    {
+        var currentRevenue = await _context.Bookings
+        .Where(b => b.BookingDate >= filter.FromDate && b.BookingDate <= filter.ToDate && b.Status == BookingStatus.CheckedOut)
+        .SumAsync(b => b.TotalPrice);
+
+        // 2. Tính doanh thu Kỳ trước
+        var previousRevenue = await _context.Bookings
+            .Where(b => b.BookingDate >= filter.CompareFromDate && b.BookingDate <= filter.CompareToDate && b.Status == BookingStatus.CheckedOut)
+            .SumAsync(b => b.TotalPrice);
+
+        // 3. Tính số tiền chênh lệch (Kỳ này - Kỳ trước)
+        var revenueDifference = currentRevenue - previousRevenue;
+
+        // 4. Tính % tăng trưởng (Growth Rate)
+        double growthRate = 0;
+        if (previousRevenue > 0)
+        {
+            growthRate = Math.Round(((double)(currentRevenue - previousRevenue) / (double)previousRevenue) * 100, 2);
+        }
+        else if (previousRevenue == 0 && currentRevenue > 0)
+        {
+            growthRate = 100;
+        }
+
+        return new RevenueComparisonDto
+        {
+            CurrentRevenue = currentRevenue,
+            PreviousRevenue = previousRevenue,
+            RevenueDifference = revenueDifference,
+            GrowthRate = growthRate
+        };
+    }
 }

@@ -227,6 +227,40 @@ public class RewardService : IRewardService
             .ToListAsync();
     }
 
+    public async Task<List<RedemptionResponse>> GetRedemptionsAsync(string? status = null, int pageIndex = 0, int pageSize = 20)
+    {
+        var query = _context.RewardRedemptions
+            .Include(rr => rr.Reward)
+            .Include(rr => rr.Customer)
+            .ThenInclude(c => c.User)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (Enum.TryParse<RedemptionStatus>(status, true, out var st))
+                query = query.Where(rr => rr.Status == st);
+        }
+
+        var items = await query
+            .OrderByDescending(rr => rr.CreatedAt)
+            .Skip(pageIndex * pageSize)
+            .Take(pageSize)
+            .Select(rr => new RedemptionResponse
+            {
+                Id = rr.Id,
+                RewardId = rr.RewardId,
+                RewardName = rr.Reward.Name,
+                PointsSpent = rr.PointsSpent,
+                Status = rr.Status.ToString(),
+                BalanceAfter = 0,
+                CreatedAt = rr.CreatedAt,
+                FulfilledAt = rr.FulfilledAt
+            })
+            .ToListAsync();
+
+        return items;
+    }
+
     public async Task<RedemptionResponse> FulfillAsync(Guid redemptionId)
     {
         var redemption = await _context.RewardRedemptions
@@ -244,6 +278,58 @@ public class RewardService : IRewardService
         return MapRedemption(redemption, redemption.Reward.Name, null);
     }
 
+    public async Task<VoucherResponse> GiftCompensationVoucherAsync(Guid customerId, Guid rewardId)
+    {
+        await using var transaction = await _context.BeginTransactionAsync();
+
+        var reward = await _context.Rewards
+            .FirstOrDefaultAsync(r => r.Id == rewardId)
+            ?? throw new AppException("Reward/Voucher type not found.", 404);
+
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.Id == customerId)
+            ?? throw new AppException("Customer profile not found.", 404);
+
+        var point = await _context.Points
+            .FirstOrDefaultAsync(p => p.UserId == customer.UserId);
+
+        var now = DateTime.UtcNow;
+
+        if (point is not null)
+        {
+            var ledger = new PointHistory
+            {
+                Id = Guid.NewGuid(),
+                PointId = point.Id,
+                TransactionType = LoyaltyTransactionType.Redeem,
+                Amount = 0,
+                BalanceAfter = point.AvailablePoints,
+                RewardId = reward.Id,
+                Description = $"[Admin Gift] Đền bù/Tặng Voucher: {reward.Name}",
+                CreatedAt = now,
+                ExpiryDate = now.AddDays(30)
+            };
+            _context.PointHistories.Add(ledger);
+        }
+
+        var redemption = new RewardRedemption
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = customer.Id,
+            RewardId = reward.Id,
+            PointsSpent = 0,
+            Status = RedemptionStatus.Pending,
+            CreatedAt = now,
+            IsGifted = true,
+            ExpiryDate = now.AddDays(30)
+        };
+
+        _context.RewardRedemptions.Add(redemption);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return MapVoucher(redemption, reward);
+    }
     // ----- Mapping -----
 
     private static RewardResponse MapToResponse(Reward reward) => new()

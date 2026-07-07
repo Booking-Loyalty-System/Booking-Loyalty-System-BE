@@ -10,4 +10,5 @@ public interface IBookingService
     Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason);
     Task<BookingResponse> UpdateBookingAsync(Guid userId, Guid bookingId, UpdateBookingRequest request);
     Task<BookingResponse> CompleteBookingAsync(Guid bookingId);
+    Task<byte[]> GenerateInvoiceBytesAsync(Guid bookingId);
 }

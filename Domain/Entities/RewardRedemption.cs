@@ -19,7 +19,7 @@ public class RewardRedemption
 
     /// <summary>When this redeemed voucher expires. Null = no expiry.</summary>
     public DateTime? ExpiryDate { get; set; }
-
+    public bool IsGifted { get; set; } = false;
     /// <summary>The booking this voucher was applied to, once consumed.</summary>
     public Guid? BookingId { get; set; }
 
