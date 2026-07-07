@@ -133,6 +133,14 @@ namespace Infrastructure.Services
             session.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            string safeGroupId = session.Id.ToString().ToLower().Trim();
+            await _hub.Clients.Group(safeGroupId).SendAsync("SessionClosed", new
+            {
+                chatSessionId = session.Id,
+                message = "Phiên hỗ trợ đã kết thúc"
+            });
+
             return true;
         }
 

@@ -1,5 +1,6 @@
 using Application.Common;
 using Application.DTOs.Booking;
+using Application.DTOs.Feedback;
 using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
@@ -22,8 +23,9 @@ public class BookingService : IBookingService
     private readonly TimeZoneInfo _shopTimeZone;
     private readonly IHubContext<BookingHub> _hubContext;
     private readonly INotificationService _notificationService;
+    private readonly IInvoiceService _invoiceService;
 
-    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext, INotificationService notificationService)
+    public BookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IPromotionService promotionService, BookingOptions options, TimeZoneInfo shopTimeZone, IHubContext<BookingHub> hubContext, INotificationService notificationService, IInvoiceService invoiceService)
     {
         _context = context;
         _loyaltyService = loyaltyService;
@@ -32,6 +34,94 @@ public class BookingService : IBookingService
         _shopTimeZone = shopTimeZone;
         _hubContext = hubContext;
         _notificationService = notificationService;
+        _invoiceService = invoiceService;
+    }
+
+    public async Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason)
+    {
+        var customer = await _context.Customers
+            .FirstOrDefaultAsync(c => c.UserId == userId)
+            ?? throw new AppException("Customer profile not found.", 404);
+
+        var booking = await _context.Bookings
+            .Include(b => b.WashPackage)
+            .Include(b => b.Vehicle)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.TimeSlot)
+            .Include(b => b.BranchTimeSlot)
+                .ThenInclude(bts => bts.Branch)
+            .Include(b => b.WashBay)
+            .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
+            ?? throw new AppException("Booking not found.", 404);
+
+        if (booking.Status == BookingStatus.Cancelled)
+            throw new AppException("Booking is already cancelled.", 400);
+
+        // Only allow customer to cancel pending or confirmed bookings
+        if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Confirmed)
+            throw new AppException("Only pending or confirmed bookings can be cancelled by customer.", 400);
+
+        await using var transaction = await _context.BeginTransactionAsync();
+
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancellationReason = reason;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        // Restore voucher if any
+        var redemption = await _context.RewardRedemptions
+            .FirstOrDefaultAsync(r => r.BookingId == booking.Id && r.Status == RedemptionStatus.Fulfilled);
+        if (redemption != null)
+        {
+            redemption.Status = RedemptionStatus.Pending;
+            redemption.FulfilledAt = null;
+            redemption.BookingId = null;
+        }
+
+        if (booking.PromotionId.HasValue)
+        {
+            var promo = await _context.Promotions.FirstOrDefaultAsync(p => p.Id == booking.PromotionId.Value);
+            if (promo != null && promo.UsedCount > 0) promo.UsedCount -= 1;
+        }
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        await _hubContext.Clients.Group(booking.BranchTimeSlot.BranchId.ToString())
+            .SendAsync("ReceiveBookingCancelled", new { BookingId = booking.Id, Reason = reason });
+
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
+    }
+
+    public async Task<byte[]> GenerateInvoiceBytesAsync(Guid bookingId)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.Customer)
+            .Include(b => b.Vehicle)
+            .Include(b => b.WashPackage)
+            .Include(b => b.BookingAddOns)
+                .ThenInclude(a => a.AddOn)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
+
+        if (booking == null)
+            throw new KeyNotFoundException("Không tìm thấy đơn đặt lịch.");
+
+        if (booking.Status != BookingStatus.Completed && booking.Status != BookingStatus.CheckedOut)
+        {
+            throw new InvalidOperationException("Đơn hàng chưa hoàn thành, không thể xuất hóa đơn.");
+        }
+
+        if (!booking.IsInvoiceIssued)
+        {
+            booking.IsInvoiceIssued = true;
+
+            booking.InvoiceUrl = $"/api/bookings/{booking.Id}/download-invoice";
+
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+        }
+
+        return await _invoiceService.GenerateInvoiceBytesAsync(booking);
     }
 
     public async Task<BookingResponse> CreateBookingAsync(Guid userId, CreateBookingRequest request)
@@ -231,7 +321,7 @@ public class BookingService : IBookingService
         }
 
         // 8. Trả kết quả và bắn SignalR
-        var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, voucherName);
+        var response = MapToResponse(booking, washPackage, vehicle, timeSlot, branch, null, null, voucherName);
         response.AddOns = addOns
             .Select(a => new BookingAddOnResponse { AddOnId = a.Id, Name = a.Name, Price = a.Price })
             .ToList();
@@ -282,6 +372,7 @@ public class BookingService : IBookingService
 
         var bookings = await _context.Bookings
             .Where(b => b.CustomerId == customer.Id)
+            .Include(b => b.Feedback)
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
             .Include(b => b.BranchTimeSlot)
@@ -292,15 +383,11 @@ public class BookingService : IBookingService
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
 
-        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.BranchTimeSlot.TimeSlot, b.BranchTimeSlot.Branch, b.WashBay)).ToList();
+        return bookings.Select(b => MapToResponse(b, b.WashPackage, b.Vehicle, b.BranchTimeSlot.TimeSlot, b.BranchTimeSlot.Branch, b.WashBay, b.Feedback, customer.FullName)).ToList();
     }
 
-    public async Task<BookingResponse> CancelBookingAsync(Guid userId, Guid bookingId, string? reason)
+    public async Task ForceCancelBookingAsync(Guid bookingId, string reason)
     {
-        var customer = await _context.Customers
-            .FirstOrDefaultAsync(c => c.UserId == userId)
-            ?? throw new AppException("Customer profile not found.", 404);
-
         var booking = await _context.Bookings
             .Include(b => b.WashPackage)
             .Include(b => b.Vehicle)
@@ -309,30 +396,40 @@ public class BookingService : IBookingService
             .Include(b => b.BranchTimeSlot)
                 .ThenInclude(bts => bts.Branch)
             .Include(b => b.WashBay)
-            .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
+            .FirstOrDefaultAsync(b => b.Id == bookingId)
             ?? throw new AppException("Booking not found.", 404);
 
-        if (booking.Status != BookingStatus.Pending && booking.Status != BookingStatus.Confirmed)
-            throw new AppException("Only Pending or Confirmed bookings can be cancelled.", 400);
+        if (booking.Status == BookingStatus.Cancelled)
+            throw new AppException("Booking is already cancelled.", 400);
+
+        await using var transaction = await _context.BeginTransactionAsync();
 
         booking.Status = BookingStatus.Cancelled;
         booking.CancellationReason = reason;
         booking.UpdatedAt = DateTime.UtcNow;
 
-        // Chỉ cần đổi status, Capacity sẽ tự động nới lỏng ra nhờ câu lệnh CountAsync không đếm Cancelled.
+        // If a voucher/reward was consumed at booking creation, restore it to Pending
+        var redemption = await _context.RewardRedemptions
+            .FirstOrDefaultAsync(r => r.BookingId == booking.Id && r.Status == RedemptionStatus.Fulfilled);
+        if (redemption != null)
+        {
+            redemption.Status = RedemptionStatus.Pending;
+            redemption.FulfilledAt = null;
+            redemption.BookingId = null;
+        }
 
-        // Hủy booking thì nhả voucher đã áp về Pending để khách dùng lại (voucher bị "tiêu"
-        // ngay lúc tạo booking Pending; nếu không hoàn thì hủy là mất oan).
-        await ReleaseVoucherForBookingAsync(booking.Id);
+        // Also, if a Promotion was reserved (UsedCount incremented during Apply), roll it back
+        if (booking.PromotionId.HasValue)
+        {
+            var promo = await _context.Promotions.FirstOrDefaultAsync(p => p.Id == booking.PromotionId.Value);
+            if (promo != null && promo.UsedCount > 0) promo.UsedCount -= 1;
+        }
 
         await _context.SaveChangesAsync();
-
-        var response = MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
+        await transaction.CommitAsync();
 
         await _hubContext.Clients.Group(booking.BranchTimeSlot.BranchId.ToString())
             .SendAsync("ReceiveBookingCancelled", new { BookingId = booking.Id, Reason = reason });
-
-        return response;
     }
 
     /// <summary>
@@ -474,14 +571,14 @@ public class BookingService : IBookingService
                 .Include(b => b.WashBay)
                 .FirstAsync(b => b.Id == booking.Id);
 
-            return MapToResponse(updatedBooking, updatedBooking.WashPackage, updatedBooking.Vehicle, updatedBooking.BranchTimeSlot.TimeSlot, updatedBooking.BranchTimeSlot.Branch, updatedBooking.WashBay);
+            return MapToResponse(updatedBooking, updatedBooking.WashPackage, updatedBooking.Vehicle, updatedBooking.BranchTimeSlot.TimeSlot, updatedBooking.BranchTimeSlot.Branch, updatedBooking.WashBay, null);
         }
 
         booking.UpdatedAt = DateTime.UtcNow;
         _context.Bookings.Update(booking);
         await _context.SaveChangesAsync();
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay, null);
     }
 
     public async Task<BookingResponse> CompleteBookingAsync(Guid bookingId)
@@ -509,7 +606,7 @@ public class BookingService : IBookingService
 
         await _loyaltyService.AwardPointsForBookingAsync(bookingId);
 
-        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay);
+        return MapToResponse(booking, booking.WashPackage, booking.Vehicle, booking.BranchTimeSlot.TimeSlot, booking.BranchTimeSlot.Branch, booking.WashBay, null);
     }
 
     private async Task<string> GenerateUniqueBookingCodeAsync()
@@ -562,7 +659,55 @@ public class BookingService : IBookingService
             CreatedAt = booking.CreatedAt,
             BranchId = branch.Id,
             BranchName = branch.BranchName,
-            Features = washPackage.Features
+            Features = washPackage.Features,
+        };
+    }
+
+    private static BookingResponse MapToResponse(
+         Booking booking,
+         WashPackage washPackage,
+         Vehicle vehicle,
+         TimeSlot timeSlot,
+         Branch branch,
+         WashBay? washBay,
+         Feedback? feedback,
+         string customerName,
+         string? voucherName = null)
+    {
+        return new BookingResponse
+        {
+            Id = booking.Id,
+            BookingCode = booking.BookingCode,
+            WashPackageName = washPackage.Name,
+            DurationMinutes = washPackage.DurationMinutes,
+            BookingDate = booking.BookingDate,
+            StartTime = timeSlot.StartTime,
+            EndTime = timeSlot.StartTime.Add(TimeSpan.FromMinutes(washPackage.DurationMinutes)),
+            WashBayName = washBay?.Name ?? "Not Assigned Yet",
+            VehiclePlate = vehicle.LicensePlate,
+            VehicleName = vehicle.VehicleName,
+            TotalPrice = booking.TotalPrice,
+            DiscountAmount = booking.DiscountAmount,
+            VoucherName = voucherName,
+            Status = booking.Status.ToString(),
+            QrData = booking.QrData,
+            CreatedAt = booking.CreatedAt,
+            BranchId = branch.Id,
+            BranchName = branch.BranchName,
+            Features = washPackage.Features,
+
+            // Map an toàn thực thể sang DTO để tránh bẻ gãy dữ liệu
+            FeedbackResponse = feedback == null ? null! : new FeedbackResponse
+            {
+                BookingCode = booking.BookingCode,
+                CustomerName = customerName,
+                StaffRating = feedback.StaffRating,
+                ServiceRating = feedback.ServiceRating,
+                PriceRating = feedback.PriceRating,
+                OverallRating = feedback.OverallRating,
+                Comment = feedback.Comment,
+                CreatedAt = feedback.CreatedAt
+            }
         };
     }
 }

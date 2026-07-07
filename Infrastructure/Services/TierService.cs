@@ -133,7 +133,7 @@ public class TierService : ITierService
             var nameExists = await _context.Tiers.AnyAsync(t => t.TierName == request.TierName);
             if (nameExists) 
                 throw new AppException("A tier with this name already exists.", 409);
-            
+
             tier.TierName = request.TierName;
         }
 
@@ -146,6 +146,24 @@ public class TierService : ITierService
         await _context.SaveChangesAsync();
 
         return MapToResponse(tier);
+    }
+
+    public async Task AssignPromotionToTierAsync(Guid tierId, Guid promotionId)
+    {
+        var tier = await _context.Tiers.FindAsync(tierId) ?? throw new AppException("Tier not found.", 404);
+        var promotion = await _context.Promotions.FindAsync(promotionId) ?? throw new AppException("Promotion not found.", 404);
+
+        var exists = await _context.TierPromotions.AnyAsync(tp => tp.TierId == tierId && tp.PromotionId == promotionId);
+        if (exists) throw new AppException("Promotion already assigned to tier.", 409);
+
+        _context.TierPromotions.Add(new Domain.Entities.TierPromotion
+        {
+            TierPromotionId = Guid.NewGuid(),
+            TierId = tierId,
+            PromotionId = promotionId
+        });
+
+        await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(Guid id)

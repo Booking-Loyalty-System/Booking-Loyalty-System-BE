@@ -24,6 +24,8 @@ public class Booking
 
     /// <summary>Amount discounted by an applied promotion (0 when none).</summary>
     public decimal DiscountAmount { get; set; }
+    public bool IsInvoiceIssued { get; set; } = false;
+    public string? InvoiceUrl { get; set; }
     public BookingStatus Status { get; set; }
     public string? QrData { get; set; }
     public string? CancellationReason { get; set; }

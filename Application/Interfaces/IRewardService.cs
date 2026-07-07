@@ -20,6 +20,9 @@ public interface IRewardService
     /// <summary>Staff marks a pending redemption as handed over to the customer.</summary>
     Task<RedemptionResponse> FulfillAsync(Guid redemptionId);
 
+    // Admin: paginated query for redemptions
+    Task<List<RedemptionResponse>> GetRedemptionsAsync(string? status = null, int pageIndex = 0, int pageSize = 20);
+
     // ----- Voucher contract (loyalty FE) -----
 
     /// <summary>
@@ -34,4 +37,5 @@ public interface IRewardService
 
     /// <summary>Marks the customer's own voucher as used (consumed).</summary>
     Task UseVoucherAsync(Guid userId, Guid voucherId);
+    Task<VoucherResponse> GiftCompensationVoucherAsync(Guid userId, Guid rewardId);
 }

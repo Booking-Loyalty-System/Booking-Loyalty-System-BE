@@ -36,5 +36,27 @@ namespace API.Controllers
 
             return Ok(new { message = "Gửi đánh giá cuộc trò chuyện thành công!" });
         }
+
+        [HttpGet("latest")]
+        public async Task<ActionResult<IEnumerable<ChatFeedbackResponse>>> GetLatestChatFeedbacks([FromQuery] int count = 10)
+        {
+            var result = await _chatFeedbackService.GetLatestChatFeedbacksAsync(count);
+            return Ok(result);
+        }
+
+        [HttpGet("staff-statistics")]
+        public async Task<ActionResult<ChatStaffStatisticResponse>> GetTopChatStaff([FromQuery] int topCount = 5)
+        {
+            var result = await _chatFeedbackService.GetTopChatStaffAsync(topCount);
+            return Ok(result);
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<ChatFeedbackDetailResponse>> GetChatFeedbackDetail(Guid id)
+        {
+            var result = await _chatFeedbackService.GetChatFeedbackDetailAsync(id);
+            return Ok(result);
+        }
+
     }
 }

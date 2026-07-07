@@ -391,6 +391,18 @@ public class PaymentService : IPaymentService
             _context.Payments.Update(payment);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            // Post-commit actions: award loyalty points and release wash bay if needed.
+            if (bookingIdToAward.HasValue)
+            {
+                await _service.AwardPointsForBookingAsync(bookingIdToAward.Value);
+            }
+
+            if (washBayIdToRelease.HasValue && bookingIdToAward.HasValue)
+            {
+                await CheckAndReleaseWashBayAsync(washBayIdToRelease.Value, bookingIdToAward.Value);
+                await _context.SaveChangesAsync();
+            }
         }
         catch
         {
@@ -398,17 +410,55 @@ public class PaymentService : IPaymentService
             throw;
         }
 
-        if (bookingIdToAward.HasValue)
-        {
-            await _service.AwardPointsForBookingAsync(bookingIdToAward.Value);
-        }
-        if (washBayIdToRelease.HasValue && bookingIdToAward.HasValue)
-        {
-            await CheckAndReleaseWashBayAsync(washBayIdToRelease.Value, bookingIdToAward.Value);
-            await _context.SaveChangesAsync();
-        }
         return true;
     }
+
+    // Admin: payments audit
+    public async Task<Application.DTOs.Payment.PaymentAuditResponse> GetPaymentsAuditAsync(Application.DTOs.Payment.PaymentAuditRequest request)
+    {
+        var query = _context.Payments.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            if (Enum.TryParse<PaymentStatus>(request.Status, true, out var st))
+                query = query.Where(p => p.Status == st);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var term = request.Search.Trim();
+            query = query.Where(p => p.TransactionRef.Contains(term) || p.TransactionNo != null && p.TransactionNo.Contains(term));
+        }
+
+        var total = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip(request.PageIndex * request.PageSize)
+            .Take(request.PageSize)
+            .Select(p => new Application.DTOs.Payment.PaymentAuditItem
+            {
+                Id = p.Id,
+                BookingId = p.BookingId,
+                Amount = p.Amount,
+                Method = p.Method,
+                Gateway = p.Gateway,
+                TransactionRef = p.TransactionRef,
+                TransactionNo = p.TransactionNo,
+                BankCode = p.BankCode,
+                Status = p.Status.ToString(),
+                CreatedAt = p.CreatedAt,
+                PaidAt = p.PaidAt
+            })
+            .ToListAsync();
+
+        return new Application.DTOs.Payment.PaymentAuditResponse
+        {
+            Items = items,
+            TotalCount = total
+        };
+    }
+
 
     private async Task CheckAndReleaseWashBayAsync(Guid? washBayId, Guid currentBookingId)
     {

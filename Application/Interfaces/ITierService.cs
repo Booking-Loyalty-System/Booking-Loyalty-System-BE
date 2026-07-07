@@ -10,4 +10,7 @@ public interface ITierService
     Task<TierResponse> CreateAsync(CreateTierRequest request);
     Task<TierResponse> UpdateAsync(Guid id, UpdateTierRequest request);
     Task DeleteAsync(Guid id);
+
+    // New: Assign a promotion to a tier
+    Task AssignPromotionToTierAsync(Guid tierId, Guid promotionId);
 }

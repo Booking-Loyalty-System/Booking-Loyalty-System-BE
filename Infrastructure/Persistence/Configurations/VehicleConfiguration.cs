@@ -32,22 +32,17 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
         builder.Property(v => v.Model)
             .HasMaxLength(50);
 
-        // DEMO XUỐNG HẠNG: xe sẵn cho customer Diamond (cus4@system.com) để đặt lịch test ngay.
-        builder.HasData(
-            new Vehicle
-            {
-                Id = Guid.Parse("99999999-1111-1111-1111-000000000005"),
-                CustomerId = Guid.Parse("eeeeeeee-1111-1111-1111-111111111111"), // Downgrade Demo customer
-                LicensePlate = "51D-99999",
-                Type = VehicleType.Medium,
-                IsPrimary = true,
-                VehicleName = "Demo Downgrade Car",
-                Brand = "Toyota",
-                Model = "2024",
-                Color = "White",
-                IsDeleted = false,
-                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            }
-        );
+        builder.HasData(new Vehicle
+        {
+            Id = Guid.Parse("fb9bd07a-5f09-43cc-9ae9-7d3d7d05e128"),
+            CustomerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            LicensePlate = "29A-88888",
+            Type = VehicleType.Small,
+            IsPrimary = true,
+            VehicleName = "Toyota Camry 2024",
+            Brand = "Toyota",
+            Model = "Camry",
+            Color = "Black",
+        });
     }
 }

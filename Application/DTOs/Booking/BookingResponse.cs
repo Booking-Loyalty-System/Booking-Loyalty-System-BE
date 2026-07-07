@@ -1,3 +1,5 @@
+using Application.DTOs.Feedback;
+
 namespace Application.DTOs.Booking;
 
 public class BookingResponse
@@ -22,4 +24,5 @@ public class BookingResponse
     public string? QrData { get; set; }
     public List<BookingAddOnResponse> AddOns { get; set; } = new();
     public DateTime CreatedAt { get; set; }
+    public FeedbackResponse FeedbackResponse { get; set; }
 }

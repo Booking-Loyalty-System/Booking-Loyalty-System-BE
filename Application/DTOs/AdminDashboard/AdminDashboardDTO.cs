@@ -75,3 +75,49 @@ public class TopTimeSlotDto
     public string TimeSlotDisplay { get; set; } = string.Empty;
     public int TotalBookings { get; set; }
 }
+
+public class DashboardStatsDto
+{
+    public decimal TotalRevenue { get; set; }
+    public int TotalCancelledBookings { get; set; }
+    public int TotalActiveCustomers { get; set; }
+    public int BayUsage { get; set; }
+}
+
+public class RevenueByDateDto
+{
+    public DateOnly Date { get; set; }
+    public decimal TotalAmount { get; set; }
+}
+
+public class PackageAnalyticsDto
+{
+    public string PackageName { get; set; } = string.Empty;
+    public int TotalBookings { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public decimal Price { get; set; }
+}
+
+public class FeedbackSummaryDto
+{
+    public double OverallAverage { get; set; }
+    public double StaffAverage { get; set; }
+    public double ServiceAverage { get; set; }
+    public double PriceAverage { get; set; }
+}
+
+public class RevenueComparisonDto
+{
+    public decimal CurrentRevenue { get; set; }
+    public decimal PreviousRevenue { get; set; }
+    public decimal RevenueDifference { get; set; }
+    public double GrowthRate { get; set; }
+}
+
+public class AdminDashboardDateFilterDto
+{
+    public DateOnly FromDate { get; set; }
+    public DateOnly ToDate { get; set; }
+    public DateOnly CompareFromDate { get; set; }
+    public DateOnly CompareToDate { get; set; }
+}

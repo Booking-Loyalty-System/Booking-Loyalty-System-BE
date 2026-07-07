@@ -76,5 +76,24 @@ namespace API.Controllers
             var result = await _dashboardService.GetTopTimeSlotsAsync(timeFrame, 10);
             return Ok(ApiResponse<List<TopTimeSlotDto>>.SuccessResponse(result));
         }
+
+        [HttpGet("revenue-comparison")]
+        public async Task<IActionResult> GetRevenueComparison([FromQuery] AdminDashboardDateFilterDto filter)
+        {
+            if (filter.FromDate > filter.ToDate)
+            {
+                return BadRequest(new { Message = "Kỳ hiện tại không hợp lệ: 'Từ ngày' không được lớn hơn 'Đến ngày'." });
+            }
+
+            if (filter.CompareFromDate > filter.CompareToDate)
+            {
+                return BadRequest(new { Message = "Kỳ đối chứng không hợp lệ: 'Từ ngày' không được lớn hơn 'Đến ngày'." });
+            }
+
+            // 2. Gọi Service xử lý tính toán dựa trên các mốc ngày tùy chọn
+            var result = await _dashboardService.GetRevenueComparisonAsync(filter);
+
+            return Ok(result);
+        }
     }
 }

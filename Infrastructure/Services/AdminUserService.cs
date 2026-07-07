@@ -84,4 +84,19 @@ public class AdminUserService : IAdminUserService
 
         await _context.SaveChangesAsync();
     }
+
+    public async Task ToggleUserActiveStatusAsync(Guid userId)
+    {
+        var user = await _context.Users.FindAsync(userId)
+            ?? throw new AppException("User not found.", 404);
+
+        if (user.Role == UserRole.Admin)
+            throw new AppException("Cannot change status of admin users.", 400);
+
+        user.IsActive = !user.IsActive;
+        // Optionally clear refresh token here if your User entity has one.
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
 }

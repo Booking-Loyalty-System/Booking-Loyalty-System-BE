@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Application.Common;
 using Application.Interfaces;
+using FirebaseAdmin.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,6 +37,13 @@ public class RewardController : ControllerBase
     public async Task<IActionResult> GetMyRedemptions()
     {
         var result = await _rewardService.GetMyRedemptionsAsync(GetUserId());
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
+    [HttpPatch("gift")]
+    public async Task<IActionResult> GiftVoucher(Guid customerId, Guid rewardId)
+    {
+        var result = await _rewardService.GiftCompensationVoucherAsync(customerId, rewardId);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
