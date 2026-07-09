@@ -27,6 +27,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<BranchTimeSlot> BranchTimeSlots => Set<BranchTimeSlot>();
 
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingImage> BookingImages => Set<BookingImage>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Point> Points => Set<Point>();
     public DbSet<PointHistory> PointHistories => Set<PointHistory>();
