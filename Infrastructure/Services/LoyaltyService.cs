@@ -83,8 +83,6 @@ public class LoyaltyService : ILoyaltyService
         var oldTierMin = customer.Tier?.MinPointsRequired ?? 0;
         var allTiers = await _context.Tiers
             .OrderByDescending(t => t.MinPointsRequired)
-            .FirstOrDefaultAsync(cancellationToken);
-
             .ToListAsync(cancellationToken);
         var eligibleTier = PickTier(allTiers, point.TotalPoints, recentBookings);
         

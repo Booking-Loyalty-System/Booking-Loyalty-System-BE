@@ -44,6 +44,7 @@ public class Booking
     public Reward? Reward { get; set; }
     public Promotion? Promotion { get; set; }
     public Feedback? Feedback { get; set; }
+    public ICollection<BookingImage> BookingImages { get; set; } = new List<BookingImage>();
     public ICollection<BookingAddOn> BookingAddOns { get; set; } = new List<BookingAddOn>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

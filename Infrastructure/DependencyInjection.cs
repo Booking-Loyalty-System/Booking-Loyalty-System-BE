@@ -96,6 +96,7 @@ public static class DependencyInjection
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IBookingService, BookingService>();
+        services.AddScoped<IBookingImageService, BookingImageService>();
         services.AddScoped<IStaffBookingService, StaffBookingService>();
         services.AddScoped<IWashPackageService, WashPackageService>();
         services.AddScoped<IWashBayService, WashBayService>();
