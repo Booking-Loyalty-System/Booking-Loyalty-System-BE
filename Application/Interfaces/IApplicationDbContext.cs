@@ -20,6 +20,7 @@ public interface IApplicationDbContext
 
     // --- Hệ thống Đặt lịch & Giao dịch ---
     DbSet<Booking> Bookings { get; }
+    DbSet<BookingImage> BookingImages { get; }
     DbSet<Transaction> Transactions { get; }
     DbSet<Point> Points { get; }
     DbSet<PointHistory> PointHistories { get; }

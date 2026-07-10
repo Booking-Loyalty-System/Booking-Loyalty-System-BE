@@ -23,6 +23,7 @@ public class BookingResponse
     public string Status { get; set; } = null!;
     public string? QrData { get; set; }
     public List<BookingAddOnResponse> AddOns { get; set; } = new();
+    public List<BookingImageResponse> Images { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public FeedbackResponse FeedbackResponse { get; set; }
 }

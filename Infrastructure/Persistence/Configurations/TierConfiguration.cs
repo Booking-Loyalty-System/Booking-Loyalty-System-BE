@@ -30,7 +30,8 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 BookingWindow = 7,
                 Level = PriorityLevel.Bronze,
                 MinPointsRequired = 0,
-                MaintenancePoints = 0
+                MaintenancePoints = 0,
+                MaintenanceBookings = 0
             },
             new Tier
             {
@@ -40,7 +41,8 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 BookingWindow = 14,
                 Level = PriorityLevel.Silver,
                 MinPointsRequired = 2000,
-                MaintenancePoints = 300
+                MaintenancePoints = 300,
+                MaintenanceBookings = 1
             },
             new Tier
             {
@@ -50,7 +52,8 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 BookingWindow = 21,
                 Level = PriorityLevel.Gold,
                 MinPointsRequired = 6000,
-                MaintenancePoints = 1000
+                MaintenancePoints = 1000,
+                MaintenanceBookings = 2
             },
             new Tier
             {
@@ -60,7 +63,8 @@ public class TierConfiguration : IEntityTypeConfiguration<Tier>
                 BookingWindow = 30,
                 Level = PriorityLevel.Diamond,
                 MinPointsRequired = 15000,
-                MaintenancePoints = 3000
+                MaintenancePoints = 3000,
+                MaintenanceBookings = 4
             }
         );
     }
