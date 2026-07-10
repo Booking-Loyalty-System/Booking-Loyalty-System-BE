@@ -358,6 +358,7 @@ public class BookingService : IBookingService
             .Include(b => b.BranchTimeSlot)
                 .ThenInclude(bts => bts.Branch)
             .Include(b => b.WashBay) // Lấy thông tin bệ rửa nếu đã được xếp
+            .Include(b => b.BookingImages) // Ảnh xe trước/sau khi rửa
             .FirstOrDefaultAsync(b => b.Id == bookingId && b.CustomerId == customer.Id)
             ?? throw new AppException("Booking not found.", 404);
 
@@ -636,6 +637,20 @@ public class BookingService : IBookingService
         return $"data:image/bmp;base64,{base64String}";
     }
 
+    // Ảnh xe trước/sau khi rửa. Trả rỗng nếu booking chưa Include(b => b.BookingImages).
+    private static List<BookingImageResponse> MapImages(Booking booking)
+        => booking.BookingImages
+            .OrderBy(i => i.CreatedAt)
+            .Select(i => new BookingImageResponse
+            {
+                Id = i.Id,
+                ImageUrl = i.ImageUrl,
+                Type = i.Type.ToString(),
+                Note = i.Note,
+                CreatedAt = i.CreatedAt
+            })
+            .ToList();
+
     private static BookingResponse MapToResponse(
         Booking booking, WashPackage washPackage, Vehicle vehicle, TimeSlot timeSlot, Branch branch, WashBay? washBay, string? voucherName = null)
     {
@@ -660,6 +675,7 @@ public class BookingService : IBookingService
             BranchId = branch.Id,
             BranchName = branch.BranchName,
             Features = washPackage.Features,
+            Images = MapImages(booking),
         };
     }
 
@@ -695,6 +711,7 @@ public class BookingService : IBookingService
             BranchId = branch.Id,
             BranchName = branch.BranchName,
             Features = washPackage.Features,
+            Images = MapImages(booking),
 
             // Map an toàn thực thể sang DTO để tránh bẻ gãy dữ liệu
             FeedbackResponse = feedback == null ? null! : new FeedbackResponse

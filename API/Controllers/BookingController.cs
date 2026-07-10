@@ -15,10 +15,12 @@ namespace API.Controllers;
 public class BookingController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IBookingImageService _bookingImageService;
 
-    public BookingController(IBookingService bookingService)
+    public BookingController(IBookingService bookingService, IBookingImageService bookingImageService)
     {
         _bookingService = bookingService;
+        _bookingImageService = bookingImageService;
     }
 
     [Authorize]
@@ -102,6 +104,38 @@ public class BookingController : ControllerBase
         {
             return StatusCode(500, ApiResponse<object>.FailResponse("Có lỗi xảy ra trong quá trình xuất hóa đơn: " + ex.Message));
         }
+    }
+
+    [Authorize(Roles = "Staff")]
+    [HttpPost("{id:guid}/images")]
+    public async Task<IActionResult> AddImage(
+        Guid id,
+        [FromBody] AddBookingImageRequest request,
+        [FromServices] IValidator<AddBookingImageRequest> validator)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(ApiResponse<object>.FailResponse(
+                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
+
+        var result = await _bookingImageService.AddAsync(GetUserId(), id, request);
+        return Ok(ApiResponse<object>.SuccessResponse(result, "Image added successfully."));
+    }
+
+    [Authorize]
+    [HttpGet("{id:guid}/images")]
+    public async Task<IActionResult> GetImages(Guid id)
+    {
+        var result = await _bookingImageService.GetByBookingAsync(id);
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
+    [Authorize(Roles = "Staff")]
+    [HttpDelete("{id:guid}/images/{imageId:guid}")]
+    public async Task<IActionResult> DeleteImage(Guid id, Guid imageId)
+    {
+        await _bookingImageService.DeleteAsync(id, imageId);
+        return Ok(ApiResponse<object>.SuccessResponse((object?)null, "Image deleted successfully."));
     }
 
     private Guid GetUserId()
