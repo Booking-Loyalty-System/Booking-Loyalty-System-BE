@@ -6,7 +6,9 @@ namespace Application.Interfaces
     {
         Task<FeedbackResponse> CustomerCreateFeedbackAsync(Guid customerId, FeedbackRequest request);
         Task<IEnumerable<FeedbackResponse>> GetAllFeedbacksAsync();
-        Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(bool isDescending = true);
+        Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(
+     string? sortBy = "newest", // newest, oldest, lowest-rating, highest-rating
+     bool? isGiftedFilter = null);
         Task<FeedbackStatisticsResponse> GetFeedbackStatisticsAsync(int topCount = 5);
     }
 }

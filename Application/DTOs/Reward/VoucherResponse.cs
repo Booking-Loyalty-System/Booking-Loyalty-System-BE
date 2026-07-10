@@ -19,5 +19,7 @@ public class VoucherResponse
     public string Status { get; set; } = null!;
     public DateTime? ExpiryDate { get; set; }
     public bool IsFreeWash { get; set; }
+    public bool IsGifted { get; set; }
+    public Guid? BookingId { get; set; }
     public Guid? WashPackageId { get; set; }
 }

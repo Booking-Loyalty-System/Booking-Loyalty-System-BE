@@ -91,21 +91,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        if (builder.Environment.IsDevelopment())
-            // Dev: cho phep moi port localhost (vite co the nhay 5173->5174->5175 khi port ban),
-            // tranh loi "Network Error" do CORS khi FE khong o dung 5173.
-            policy.SetIsOriginAllowed(origin =>
-                    Uri.TryCreate(origin, UriKind.Absolute, out var u)
-                    && (u.Host == "localhost" || u.Host == "127.0.0.1"))
-                .AllowCredentials().AllowAnyMethod().AllowAnyHeader();
-        else
-            policy.WithOrigins("http://localhost:5173")
-                .AllowCredentials().AllowAnyMethod().AllowAnyHeader();
+        policy.AllowAnyOrigin()   // Chấp nhận tất cả mọi Origin (bao gồm Vercel)
+              .AllowAnyMethod()   // Chấp nhận mọi Method (POST, GET, OPTIONS...)
+              .AllowAnyHeader();
+
     });
 });
 
 var app = builder.Build();
-
+app.UseCors("AllowAll");
 // Middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -113,7 +107,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

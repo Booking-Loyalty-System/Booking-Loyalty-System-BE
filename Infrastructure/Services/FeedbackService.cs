@@ -90,28 +90,67 @@ namespace Infrastructure.Services
            .ToListAsync();
         }
 
-        public async Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(bool isDescending = true)
+        public async Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(
+     string? sortBy = "newest", // newest, oldest, lowest-rating, highest-rating
+     bool? isGiftedFilter = null) // null: tất cả, true: đã đền bù, false: chưa đền bù
         {
+            // 1. Tạo query gốc, Include các bảng cần thiết để lấy dữ liệu map sang DTO
             var query = _context.Feedbacks
                 .Include(f => f.Booking)
                 .AsNoTracking();
 
-            if (isDescending)
+            // 2. FILTER: Lọc theo trạng thái đã đền bù hay chưa
+            // Điểm mấu chốt: Dựa vào logic Any() check BookingId và IsGifted ở bảng RewardRedemptions
+            if (isGiftedFilter.HasValue)
             {
-                query = query.OrderByDescending(f => (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0);
-            }
-            else
-            {
-                query = query.OrderBy(f => (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0);
+                if (isGiftedFilter.Value)
+                {
+                    // Chỉ lấy các feedback của Booking đã được đền bù
+                    query = query.Where(f => _context.RewardRedemptions
+                        .Any(r => r.BookingId == f.BookingId && r.IsGifted));
+                }
+                else
+                {
+                    // Chỉ lấy các feedback của Booking CHƯA được đền bù
+                    query = query.Where(f => !_context.RewardRedemptions
+                        .Any(r => r.BookingId == f.BookingId && r.IsGifted));
+                }
             }
 
+            // 3. SORTING: Sắp xếp theo các tiêu chí (Mới/Cũ, Tệ/Tốt)
+            query = sortBy?.ToLower() switch
+            {
+                "oldest" => query.OrderBy(f => f.CreatedAt),
+
+                // Tệ nhất lên trước (Lowest rating)
+                "lowest-rating" => query.OrderBy(f => (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0),
+
+                // Tốt nhất lên trước (Highest rating)
+                "highest-rating" => query.OrderByDescending(f => (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0),
+
+                // Mặc định là "newest" (Mới nhất lên trước)
+                _ => query.OrderByDescending(f => f.CreatedAt)
+            };
+
+            // 4. PROJECTION: Trả về dữ liệu map sang FeedbackFilterResponse
             return await query.Select(f => new FeedbackFilterResponse
             {
                 Id = f.Id,
                 BookingCode = f.Booking.BookingCode,
                 OverallRating = (f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0,
                 Comment = f.Comment,
-                CreatedAt = f.CreatedAt
+                CreatedAt = f.CreatedAt,
+                BookingId = f.BookingId,
+                CustomerId = f.CustomerId,
+                CustomerName = f.Booking.Customer.FullName,
+                StaffRating = f.StaffRating,
+                ServiceRating = f.ServiceRating,
+                PriceRating = f.PriceRating,
+
+                // Logic gán IsGifted hiển thị ra ngoài UI
+                IsGifted = _context.RewardRedemptions
+                    .Any(r => r.BookingId == f.BookingId && r.IsGifted)
+
             }).ToListAsync();
         }
 
@@ -148,24 +187,6 @@ namespace Infrastructure.Services
 
             response.TopServices = serviceRatings.OrderByDescending(s => s.AverageRating).Take(topCount).ToList();
             response.LowestServices = serviceRatings.OrderBy(s => s.AverageRating).Take(topCount).ToList();
-
-            // 3. Thống kê Staff Chat Feedback
-            // Giả định ChatSession có thuộc tính StaffId và điều hướng tới Staff
-            var chatRatings = await _context.ChatFeedbacks
-                .Include(cf => cf.ChatSession)
-                .Where(cf => cf.ChatSession.StaffId.HasValue)
-                .GroupBy(cf => new { cf.ChatSession.StaffId, cf.ChatSession.Staff!.FullName })
-                .Select(g => new StaffRatingResponse
-                {
-                    StaffId = g.Key.StaffId!.Value,
-                    StaffName = g.Key.FullName,
-                    AverageRating = g.Average(cf => cf.Rating), // Dựa theo thuộc tính Rating của ChatFeedback
-                    TotalFeedbacks = g.Count()
-                })
-                .ToListAsync();
-
-            response.TopChatStaffs = chatRatings.OrderByDescending(s => s.AverageRating).Take(topCount).ToList();
-            response.LowestChatStaffs = chatRatings.OrderBy(s => s.AverageRating).Take(topCount).ToList();
 
             return response;
         }

@@ -278,9 +278,18 @@ public class RewardService : IRewardService
         return MapRedemption(redemption, redemption.Reward.Name, null);
     }
 
-    public async Task<VoucherResponse> GiftCompensationVoucherAsync(Guid customerId, Guid rewardId)
+    public async Task<VoucherResponse> GiftCompensationVoucherAsync(Guid customerId, Guid rewardId, Guid? bookingId)
     {
         await using var transaction = await _context.BeginTransactionAsync();
+
+        if (bookingId.HasValue)
+        {
+            bool isAlreadyGifted = await _context.RewardRedemptions
+                .AnyAsync(r => r.BookingId == bookingId.Value && r.IsGifted);
+
+            if (isAlreadyGifted)
+                throw new AppException("Booking này đã được tặng voucher đền bù trước đó.", 400);
+        }
 
         var reward = await _context.Rewards
             .FirstOrDefaultAsync(r => r.Id == rewardId)
@@ -297,6 +306,10 @@ public class RewardService : IRewardService
 
         if (point is not null)
         {
+            string description = bookingId.HasValue
+            ? $"[Admin Gift] Đền bù Voucher cho Booking {bookingId.Value}: {reward.Name}"
+            : $"[Admin Gift] Đền bù Voucher qua Chat: {reward.Name}";
+
             var ledger = new PointHistory
             {
                 Id = Guid.NewGuid(),
@@ -305,7 +318,7 @@ public class RewardService : IRewardService
                 Amount = 0,
                 BalanceAfter = point.AvailablePoints,
                 RewardId = reward.Id,
-                Description = $"[Admin Gift] Đền bù/Tặng Voucher: {reward.Name}",
+                Description = description,
                 CreatedAt = now,
                 ExpiryDate = now.AddDays(30)
             };
@@ -321,7 +334,8 @@ public class RewardService : IRewardService
             Status = RedemptionStatus.Pending,
             CreatedAt = now,
             IsGifted = true,
-            ExpiryDate = now.AddDays(30)
+            ExpiryDate = now.AddDays(30),
+            BookingId = bookingId
         };
 
         _context.RewardRedemptions.Add(redemption);
@@ -330,6 +344,7 @@ public class RewardService : IRewardService
 
         return MapVoucher(redemption, reward);
     }
+
     // ----- Mapping -----
 
     private static RewardResponse MapToResponse(Reward reward) => new()
@@ -364,6 +379,8 @@ public class RewardService : IRewardService
         DiscountValue = reward.DiscountAmount,
         Status = MapVoucherStatus(rr),
         ExpiryDate = rr.ExpiryDate,
+        IsGifted = rr.IsGifted,
+        BookingId = rr.BookingId,
         IsFreeWash = reward.IsFreeWash,
         WashPackageId = reward.WashPackageId
     };
