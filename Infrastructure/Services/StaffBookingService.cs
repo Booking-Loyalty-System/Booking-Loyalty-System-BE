@@ -246,6 +246,13 @@ public class StaffBookingService : IStaffBookingService
             redemption.BookingId = null;
         }
 
+        // Hoàn lại lượt dùng Promotion đã trừ khi tạo booking (đồng bộ với BookingService.CancelBookingAsync/ForceCancel).
+        if (booking.PromotionId.HasValue)
+        {
+            var promo = await _context.Promotions.FirstOrDefaultAsync(p => p.Id == booking.PromotionId.Value);
+            if (promo != null && promo.UsedCount > 0) promo.UsedCount -= 1;
+        }
+
         await _context.SaveChangesAsync();
         await NotifyCustomerAsync(booking.CustomerId, booking.Id, booking.Status);
 

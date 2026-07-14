@@ -29,7 +29,7 @@ public class BookingImageService : IBookingImageService
         var allowed = type switch
         {
             BookingImageType.BeforeWash =>
-                booking.Status is BookingStatus.CheckedIn or BookingStatus.InProgress,
+                booking.Status is BookingStatus.CheckedIn or BookingStatus.Queued or BookingStatus.InProgress,
             BookingImageType.AfterWash =>
                 booking.Status is BookingStatus.Completed or BookingStatus.CheckedOut,
             _ => false
