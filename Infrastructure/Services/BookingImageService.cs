@@ -31,7 +31,7 @@ public class BookingImageService : IBookingImageService
             BookingImageType.BeforeWash =>
                 booking.Status is BookingStatus.Confirmed or BookingStatus.CheckedIn or BookingStatus.Queued or BookingStatus.InProgress,
             BookingImageType.AfterWash =>
-                booking.Status is BookingStatus.Completed or BookingStatus.CheckedOut,
+                booking.Status is BookingStatus.InProgress or BookingStatus.Completed or BookingStatus.CheckedOut,
             _ => false
         };
         if (!allowed)
