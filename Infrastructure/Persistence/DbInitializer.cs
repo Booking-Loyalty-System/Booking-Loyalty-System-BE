@@ -65,7 +65,33 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // Seed Booking 
+        // Seed voucher Rửa xe miễn phí (phần thưởng mốc 7 lượt/chu kỳ).
+        // LoyaltyService.AwardPointsForBookingAsync tặng reward có Id cố định ...099 khi
+        // CurrentCycleWashes >= 7; nếu reward này KHÔNG tồn tại thì cả việc tặng voucher LẪN
+        // việc reset chu kỳ (-7) đều bị bỏ qua. Reward này không nằm trong HasData (tránh sinh
+        // migration mới trên lịch sử migration đang lỗi) nên seed idempotent tại đây.
+        var freeWashRewardId = Guid.Parse("10000000-0000-0000-0000-000000000099");
+        if (!await context.Rewards.AnyAsync(r => r.Id == freeWashRewardId))
+        {
+            context.Rewards.Add(new Reward
+            {
+                Id = freeWashRewardId,
+                Code = "FREEWASH_GIFT",
+                Name = "Voucher Rửa Xe Miễn Phí",
+                Description = "Quà tặng khi hoàn thành 7 lượt rửa trong chu kỳ.",
+                PointsCost = 0,
+                PointsRequired = 0,
+                DiscountAmount = 200000.00m, // Phủ trọn giá gói rửa đắt nhất → rửa miễn phí (BookingService dùng Min(DiscountAmount, totalPrice)).
+                IsFreeWash = true,
+                IsActive = true,
+                Status = true,
+                StartDate = new DateOnly(2026, 1, 1),
+                EndDate = new DateOnly(2030, 12, 31)
+            });
+            await context.SaveChangesAsync();
+        }
+
+        // Seed Booking
 
         if (!await context.Bookings.AnyAsync())
         {
