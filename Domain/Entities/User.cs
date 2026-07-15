@@ -9,6 +9,7 @@ public class User
     public string? PasswordHash { get; set; }
     public UserRole Role { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsEmailConfirmed { get; set; } = false;
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiry { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -18,4 +19,5 @@ public class User
     public Staff? Staff { get; set; }
     public Point? Point { get; set; }
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public ICollection<EmailVerification> EmailVerifications { get; set; } = new List<EmailVerification>();
 }

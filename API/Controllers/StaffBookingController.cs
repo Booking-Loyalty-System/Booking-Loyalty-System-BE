@@ -29,7 +29,7 @@ public class StaffBookingController : ControllerBase
 
     /// <summary>Lists the bookings for a given day. Defaults to today when no date is supplied.</summary>
     [HttpGet]
-    [Authorize(Roles = "Staff")] // 🌟 Chỉ có nhân viên mới được xem danh sách lịch đặt xe
+    [Authorize(Roles = "Staff")]
     public async Task<IActionResult> GetByDate([FromQuery] string? date)
     {
         var userId = GetUserId();

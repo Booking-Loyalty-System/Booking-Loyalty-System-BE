@@ -91,9 +91,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()   // Chấp nhận tất cả mọi Origin (bao gồm Vercel)
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyMethod()   // Chấp nhận mọi Method (POST, GET, OPTIONS...)
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
 
     });
 });

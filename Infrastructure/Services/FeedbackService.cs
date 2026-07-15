@@ -1,18 +1,22 @@
-﻿using Application.DTOs.Feedback;
+﻿using Application.DTOs.AI;
+using Application.DTOs.Feedback;
 using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 
 namespace Infrastructure.Services
 {
     public class FeedbackService : IFeedbackService
     {
         private readonly IApplicationDbContext _context;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public FeedbackService(IApplicationDbContext context)
+        public FeedbackService(IApplicationDbContext context, IHttpClientFactory httpClientFactory)
         {
             _context = context;
+            _httpClientFactory = httpClientFactory;
         }
 
         public async Task<FeedbackResponse> CustomerCreateFeedbackAsync(Guid userId, FeedbackRequest request)
@@ -66,10 +70,81 @@ namespace Infrastructure.Services
                 OverallRating = feedback.OverallRating,
                 Comment = feedback.Comment,
                 CreatedAt = feedback.CreatedAt
-                // Huy có thể bổ sung trường StaffReply = null, StaffName = null nếu DTO yêu cầu nhé
             };
         }
 
+        /* public async Task<FeedbackResponse> CustomerCreateFeedbackAsync(Guid userId, FeedbackRequest request)
+         {
+             var customer = await _context.Customers.FirstOrDefaultAsync(x => x.UserId == userId);
+             if (customer == null) throw new KeyNotFoundException("Customer not found ");
+             var booking = await _context.Bookings
+                 .FirstOrDefaultAsync(b => b.Id == request.BookingId && b.CustomerId == customer.Id);
+             if (booking == null) throw new KeyNotFoundException("Không tìm thấy đơn đặt lịch hợp lệ của bạn.");
+             var isFeedbacked = await _context.Feedbacks.AnyAsync(f => f.BookingId == request.BookingId);
+             if (isFeedbacked) throw new InvalidOperationException("Đơn đặt lịch này đã được bạn gửi đánh giá trước đó.");
+             // --- 1) Gọi moderation API trước khi lưu ---
+             if (!string.IsNullOrWhiteSpace(request.Comment))
+             {
+                 var client = _httpClientFactory.CreateClient("ProfanityApi");
+                 var payload = new { text = request.Comment };
+                 var json = System.Text.Json.JsonSerializer.Serialize(payload);
+                 var content = new StringContent(json, Encoding.UTF8, "application/json");
+                 HttpResponseMessage httpResp;
+                 try
+                 {
+                     httpResp = await client.PostAsync("check", content); // endpoint /check
+                 }
+                 catch (Exception ex)
+                 {
+                     // tùy chọn: nếu API chết, bạn có thể
+                     // - block luôn, hoặc
+                     // - cho phép lưu và đánh dấu pending_moderation
+                     throw new InvalidOperationException("Không thể kiểm tra nội dung hiện tại, vui lòng thử lại sau.", ex);
+                 }
+                 if (!httpResp.IsSuccessStatusCode)
+                 {
+                     throw new InvalidOperationException("Lỗi khi kiểm tra nội dung phản hồi.");
+                 }
+                 var respJson = await httpResp.Content.ReadAsStringAsync();
+                 var checkResult = System.Text.Json.JsonSerializer.Deserialize<ProfanityCheckResponse>(
+                     respJson, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                 if (checkResult?.IsProfane == true)
+                 {
+                     // Tùy: trả lỗi hoặc lưu trạng thái pending và không công khai
+                     throw new InvalidOperationException("Phát hiện ngôn ngữ không phù hợp trong phản hồi.");
+                 }
+             }
+             // --- 2) Nếu qua kiểm tra, mới lưu vào DB ---
+             var feedback = new Feedback
+             {
+                 Id = Guid.NewGuid(),
+                 BookingId = request.BookingId,
+                 CustomerId = customer.Id,
+                 StaffRating = request.StaffRating,
+                 ServiceRating = request.ServiceRating,
+                 PriceRating = request.PriceRating,
+                 Comment = request.Comment,
+                 CreatedAt = DateTime.UtcNow
+             };
+             _context.Feedbacks.Add(feedback);
+             await _context.SaveChangesAsync();
+             var customerName = await _context.Customers
+                 .Where(c => c.Id == customer.Id)
+                 .Select(c => c.FullName)
+                 .FirstOrDefaultAsync() ?? "Khách hàng";
+             return new FeedbackResponse
+             {
+                 BookingCode = booking.BookingCode,
+                 CustomerName = customerName,
+                 StaffRating = feedback.StaffRating,
+                 ServiceRating = feedback.ServiceRating,
+                 PriceRating = feedback.PriceRating,
+                 OverallRating = feedback.OverallRating,
+                 Comment = feedback.Comment,
+                 CreatedAt = feedback.CreatedAt
+             };
+         }
+ */
         public async Task<IEnumerable<FeedbackResponse>> GetAllFeedbacksAsync()
         {
             return await _context.Feedbacks

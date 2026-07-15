@@ -7,6 +7,13 @@ obj/
 *.userosscache
 *.sln.docstates
 
+__pycache__/
+xlm_roberta_offense_model/
+*.py
+*.csv
+bad_words_vn.txt
+expanded_bad_words_vn.txt
+
 ## Chặn file cấu hình chứa thông tin bảo mật
 appsettings.json
 appsettings.Development.json

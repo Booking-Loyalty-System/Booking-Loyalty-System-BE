@@ -14,9 +14,9 @@ public class TimeSlotService : ITimeSlotService
         _context = context;
     }
 
-   public async Task<List<DailyTimeSlotsSummaryResponse>> GetWeeklySlotsSummaryAsync(Guid branchId, DateOnly startDate)
+    public async Task<List<DailyTimeSlotsSummaryResponse>> GetWeeklySlotsSummaryAsync(Guid branchId, DateOnly startDate, int numberOfDays)
     {
-        var endDate = startDate.AddDays(6);
+        var endDate = startDate.AddDays(numberOfDays);
 
         // 1. Lấy danh sách cấu hình khung giờ cố định của chi nhánh này
         var branchTimeSlots = await _context.BranchTimeSlots
@@ -27,13 +27,13 @@ public class TimeSlotService : ITimeSlotService
 
         // 2. FIX TẠI ĐÂY: Nhờ DATABASE đếm và gom nhóm hộ luôn, gọn nhẹ và chuẩn xác 100%
         var bookedCounts = await _context.Bookings
-            .Where(b => b.BranchTimeSlot.BranchId == branchId 
-                     && b.BookingDate >= startDate 
-                     && b.BookingDate <= endDate 
-                     && b.Status != BookingStatus.Cancelled 
+            .Where(b => b.BranchTimeSlot.BranchId == branchId
+                     && b.BookingDate >= startDate
+                     && b.BookingDate < endDate
+                     && b.Status != BookingStatus.Cancelled
                      && b.Status != BookingStatus.NoShow)
             .GroupBy(b => new { b.BookingDate, b.BranchTimeSlotId })
-            .Select(g => new 
+            .Select(g => new
             {
                 g.Key.BookingDate,
                 g.Key.BranchTimeSlotId,
@@ -43,13 +43,13 @@ public class TimeSlotService : ITimeSlotService
 
         // 3. Biến dữ liệu đã đếm thành Dictionary dạng Tuple (Ngày, ID_Khung_Giờ) để tìm kiếm với tốc độ O(1)
         var bookedDict = bookedCounts.ToDictionary(
-            x => (x.BookingDate, x.BranchTimeSlotId), 
+            x => (x.BookingDate, x.BranchTimeSlotId),
             x => x.Count
         );
 
         var weeklySummary = new List<DailyTimeSlotsSummaryResponse>();
 
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < numberOfDays; i++)
         {
             var currentDate = startDate.AddDays(i);
 
@@ -57,10 +57,10 @@ public class TimeSlotService : ITimeSlotService
             {
                 // 4. Check xem trong từ điển hôm nay, khung giờ này có ai đặt chưa. Không có thì mặc định bằng 0.
                 int bookedCount = bookedDict.TryGetValue((currentDate, bts.Id), out var count) ? count : 0;
-                
+
                 // Toán học cơ bản: Số bệ trống = Sức chứa tối đa - Số xe đã đặt
                 int availableBays = bts.MaxCapacity - bookedCount;
-                if (availableBays < 0) availableBays = 0; 
+                if (availableBays < 0) availableBays = 0;
 
                 bool isAvailable = availableBays > 0;
                 string slotRatio = isAvailable ? $"{availableBays} slots left" : "Full";

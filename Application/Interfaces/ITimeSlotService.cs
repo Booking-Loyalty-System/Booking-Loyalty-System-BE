@@ -4,5 +4,5 @@ namespace Application.Interfaces;
 
 public interface ITimeSlotService
 {
-    Task<List<DailyTimeSlotsSummaryResponse>> GetWeeklySlotsSummaryAsync(Guid branchId, DateOnly startDate);
+    Task<List<DailyTimeSlotsSummaryResponse>> GetWeeklySlotsSummaryAsync(Guid branchId, DateOnly startDate, int numberOfDays);
 }
