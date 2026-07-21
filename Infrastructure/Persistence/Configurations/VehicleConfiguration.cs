@@ -31,5 +31,18 @@ public class VehicleConfiguration : IEntityTypeConfiguration<Vehicle>
 
         builder.Property(v => v.Model)
             .HasMaxLength(50);
+
+        builder.HasData(new Vehicle
+        {
+            Id = Guid.Parse("fb9bd07a-5f09-43cc-9ae9-7d3d7d05e128"),
+            CustomerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            LicensePlate = "29A-88888",
+            Type = VehicleType.Small,
+            IsPrimary = true,
+            VehicleName = "Toyota Camry 2024",
+            Brand = "Toyota",
+            Model = "Camry",
+            Color = "Black",
+        });
     }
 }

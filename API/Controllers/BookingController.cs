@@ -1,10 +1,12 @@
-using System.Security.Claims;
 using Application.Common;
 using Application.DTOs.Booking;
 using Application.Interfaces;
+using Domain.Enums;
 using FluentValidation;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace API.Controllers;
 
@@ -13,10 +15,12 @@ namespace API.Controllers;
 public class BookingController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IBookingImageService _bookingImageService;
 
-    public BookingController(IBookingService bookingService)
+    public BookingController(IBookingService bookingService, IBookingImageService bookingImageService)
     {
         _bookingService = bookingService;
+        _bookingImageService = bookingImageService;
     }
 
     [Authorize]
@@ -65,14 +69,75 @@ public class BookingController : ControllerBase
     [Authorize]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(
-        Guid id, 
+        Guid id,
         [FromBody] UpdateBookingRequest request)
     {
         var userId = GetUserId();
         var result = await _bookingService.UpdateBookingAsync(userId, id, request);
         return Ok(ApiResponse<object>.SuccessResponse(result, "Booking updated successfully."));
     }
-    
+
+    [Authorize]
+    [HttpGet("{id:guid}/download-invoice")]
+    public async Task<IActionResult> DownloadInvoice(Guid id)
+    {
+        try
+        {
+            byte[] pdfBytes = await _bookingService.GenerateInvoiceBytesAsync(id);
+
+            // 2. Lấy lại mã đơn hàng để đặt tên file (Hoặc bạn có thể lấy tên tùy ý)
+            // Để tránh query lại, ta có thể đặt tên file động dựa trên ID luôn
+            string fileName = $"Invoice_{id.ToString().Substring(0, 8).ToUpper()}.pdf";
+
+            // 3. Trả file về trình duyệt trực tiếp
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.FailResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.FailResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.FailResponse("Có lỗi xảy ra trong quá trình xuất hóa đơn: " + ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Staff")]
+    [HttpPost("{id:guid}/images")]
+    public async Task<IActionResult> AddImage(
+        Guid id,
+        [FromBody] AddBookingImageRequest request,
+        [FromServices] IValidator<AddBookingImageRequest> validator)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(ApiResponse<object>.FailResponse(
+                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
+
+        var result = await _bookingImageService.AddAsync(GetUserId(), id, request);
+        return Ok(ApiResponse<object>.SuccessResponse(result, "Image added successfully."));
+    }
+
+    [Authorize]
+    [HttpGet("{id:guid}/images")]
+    public async Task<IActionResult> GetImages(Guid id)
+    {
+        var result = await _bookingImageService.GetByBookingAsync(id);
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
+    [Authorize(Roles = "Staff")]
+    [HttpDelete("{id:guid}/images/{imageId:guid}")]
+    public async Task<IActionResult> DeleteImage(Guid id, Guid imageId)
+    {
+        await _bookingImageService.DeleteAsync(id, imageId);
+        return Ok(ApiResponse<object>.SuccessResponse((object?)null, "Image deleted successfully."));
+    }
+
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

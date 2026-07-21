@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Domain.Entities;
 
+namespace Infrastructure.Persistence.Configurations;
+
 public class CustomerPromotionConfiguration : IEntityTypeConfiguration<CustomerPromotion>
 {
     public void Configure(EntityTypeBuilder<CustomerPromotion> builder)

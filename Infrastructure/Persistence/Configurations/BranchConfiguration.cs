@@ -9,19 +9,36 @@ public class BranchConfiguration : IEntityTypeConfiguration<Branch>
 {
     public void Configure(EntityTypeBuilder<Branch> builder)
     {
-        builder.ToTable("Branches");
         builder.HasKey(b => b.Id);
 
         builder.Property(b => b.BranchName).IsRequired().HasMaxLength(100);
         builder.Property(b => b.Address).IsRequired().HasMaxLength(255);
         builder.Property(b => b.Hotline).HasMaxLength(20);
+        builder.Property(b => b.OperatingHours).HasMaxLength(50);
+
+        builder.Property(b => b.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
 
         // Cấu hình quan hệ: 1 Branch có nhiều WashBays
         builder.HasMany(b => b.WashBays)
             .WithOne(wb => wb.Branch)
             .HasForeignKey(wb => wb.BranchId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Cấu hình quan hệ: 1 Branch có nhiều Staffs
+        builder.HasMany(b => b.Staffs)
+            .WithOne(s => s.Branch)
+            .HasForeignKey(s => s.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // CẤU HÌNH MỚI: 1 Branch có nhiều BranchTimeSlots (Khung giờ hoạt động)
+        builder.HasMany(b => b.BranchTimeSlots)
+            .WithOne(bts => bts.Branch)
+            .HasForeignKey(bts => bts.BranchId)
+            .OnDelete(DeleteBehavior.Cascade);
         
+        // Seed Data giữ nguyên
         builder.HasData(
             new Branch { 
                 Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 

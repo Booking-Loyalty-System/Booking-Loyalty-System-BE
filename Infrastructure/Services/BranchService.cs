@@ -40,7 +40,9 @@ public class BranchService : IBranchService
             Address = request.Address,
             Hotline = request.Hotline,
             OperatingHours = request.OperatingHours,
-            Status = BranchStatus.Active
+            Status = BranchStatus.Active,
+            Longitude = request.Longitude,
+            Latitude = request.Latitude
         };
 
         _context.Branches.Add(branch);
@@ -59,7 +61,8 @@ public class BranchService : IBranchService
         if (request.Hotline != null) branch.Hotline = request.Hotline;
         if (request.OperatingHours != null) branch.OperatingHours = request.OperatingHours;
         if (request.Status != null) branch.Status = Enum.Parse<BranchStatus>(request.Status);
-
+        if (request.Longitude != null) branch.Longitude = request.Longitude;
+        if (request.Latitude != null) branch.Latitude = request.Latitude;   
         await _context.SaveChangesAsync();
 
         return MapToResponse(branch);
@@ -87,5 +90,38 @@ public class BranchService : IBranchService
             Latitude = branch.Latitude.Value,
             Longitude = branch.Longitude.Value,
         };
+    }
+
+    public async Task SetupBranchTimeSlotsAsync(Guid branchId, List<Application.DTOs.TimeSlot.TimeSlotConfigDto> configs)
+    {
+        var branch = await _context.Branches.FindAsync(branchId)
+            ?? throw new AppException("Branch not found.", 404);
+
+        foreach (var cfg in configs)
+        {
+            var existing = await _context.BranchTimeSlots
+                .FirstOrDefaultAsync(bts => bts.BranchId == branchId && bts.TimeSlotId == cfg.TimeSlotId);
+
+            if (existing != null)
+            {
+                existing.MaxCapacity = cfg.MaxCapacity;
+                existing.IsActive = true;
+            }
+            else
+            {
+                var newBts = new BranchTimeSlot
+                {
+                    Id = Guid.NewGuid(),
+                    BranchId = branchId,
+                    TimeSlotId = cfg.TimeSlotId,
+                    MaxCapacity = cfg.MaxCapacity,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.BranchTimeSlots.Add(newBts);
+            }
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

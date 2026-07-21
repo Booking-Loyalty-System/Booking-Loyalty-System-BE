@@ -8,7 +8,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/admin/users")]
-[Authorize(Roles = "Staff")]
+[Authorize(Roles = "Staff,Admin")]
 public class AdminUserController : ControllerBase
 {
     private readonly IAdminUserService _adminUserService;
@@ -30,5 +30,12 @@ public class AdminUserController : ControllerBase
     {
         await _adminUserService.UpdateUserStatusAsync(id, request);
         return Ok(ApiResponse<object>.SuccessResponse(null, "User status updated successfully."));
+    }
+
+    [HttpPut("{id:guid}/role")]
+    public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateUserRoleRequest request)
+    {
+        await _adminUserService.UpdateUserRoleAsync(id, request);
+        return Ok(ApiResponse<object>.SuccessResponse(null, "User role updated successfully."));
     }
 }

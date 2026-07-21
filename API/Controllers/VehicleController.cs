@@ -43,6 +43,22 @@ public class VehicleController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateVehicle(
+        Guid id,
+        [FromBody] UpdateVehicleRequest request,
+        [FromServices] IValidator<UpdateVehicleRequest> validator)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(ApiResponse<object>.FailResponse(
+                string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
+
+        var userId = GetUserId();
+        var result = await _vehicleService.UpdateVehicleAsync(userId, id, request);
+        return Ok(ApiResponse<object>.SuccessResponse(result, "Vehicle updated successfully."));
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteVehicle(Guid id)
     {

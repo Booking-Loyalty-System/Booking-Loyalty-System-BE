@@ -10,6 +10,18 @@ public interface ILoyaltyService
     /// </summary>
     Task AwardPointsForBookingAsync(Guid bookingId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Deducts the configured no-show penalty (spendable points only, clamped at 0) for a
+    /// booking that was marked NoShow. Idempotent: one Penalty ledger row per booking.
+    /// </summary>
+    Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Rà toàn bộ khách và cập nhật hạng theo số booking ~30 ngày gần nhất (nâng + hạ).
+    /// Hạ hạng cả khách không có booking nào trong kỳ. Dùng bởi worker nền định kỳ.
+    /// </summary>
+    Task ReevaluateAllTiersAsync(CancellationToken cancellationToken = default);
+
     Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId);
 
     Task<List<LoyaltyTransactionResponse>> GetHistoryAsync(Guid userId);

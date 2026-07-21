@@ -200,7 +200,7 @@ public class AuthController : ControllerBase
         public string PhoneNumber { get; set; } = string.Empty;
     }
 
-    public class VerifyOtpDto
+    public class VerifyOtpDto  
     {
         public string PhoneNumber { get; set; } = string.Empty;
         public string OtpCode { get; set; } = string.Empty;

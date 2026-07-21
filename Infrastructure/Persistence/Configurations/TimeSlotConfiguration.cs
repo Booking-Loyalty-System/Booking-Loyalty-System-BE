@@ -13,6 +13,12 @@ public class TimeSlotConfiguration : IEntityTypeConfiguration<TimeSlot>
         builder.Property(ts => ts.StartTime)
             .IsRequired();
 
+        // CẤU HÌNH MỚI: 1 TimeSlot có thể xuất hiện ở nhiều BranchTimeSlots
+        builder.HasMany(ts => ts.BranchTimeSlots)
+            .WithOne(bts => bts.TimeSlot)
+            .HasForeignKey(bts => bts.TimeSlotId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         var staticTimeSlots = new List<TimeSlot>();
         for (int i = 8; i < 18; i++)
         {
