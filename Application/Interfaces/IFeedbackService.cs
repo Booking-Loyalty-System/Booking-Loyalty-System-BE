@@ -10,5 +10,6 @@ namespace Application.Interfaces
      string? sortBy = "newest", // newest, oldest, lowest-rating, highest-rating
      bool? isGiftedFilter = null);
         Task<FeedbackStatisticsResponse> GetFeedbackStatisticsAsync(int topCount = 5);
+        Task<BranchFeedbackSummaryResponse> GetCustomerFeedbacksAsync(Guid? branchId = null, int pageIndex = 1, int pageSize = 10);
     }
 }

@@ -5,7 +5,7 @@ using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using System.Data;
 
 namespace Infrastructure.Services;
 
@@ -24,21 +24,159 @@ public class LoyaltyService : ILoyaltyService
         _notificationService = notificationService;
     }
 
+    //public async Task AwardPointsForBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
+    //{
+    //    var freeWashRewardId = Guid.Parse("10000000-0000-0000-0000-000000000099");
+    //    // Serializable so two concurrent completions of the same booking cannot both
+    //    // pass the "already earned?" check and double-award.
+    //    await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
+
+    //    var booking = await _context.Bookings
+    //        .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+    //    if (booking is null)
+    //        return; // Nothing to award; caller already validated existence in normal flow.
+
+    //    // Idempotency: one Earn row per booking. If it already exists, this is a no-op.
+    //    var alreadyEarned = await _context.PointHistories
+    //        .AnyAsync(h => h.BookingId == bookingId && h.TransactionType == LoyaltyTransactionType.Earn, cancellationToken);
+    //    if (alreadyEarned)
+    //    {
+    //        await transaction.CommitAsync(cancellationToken);
+    //        return;
+    //    }
+
+    //    var customer = await _context.Customers
+    //        .Include(c => c.Tier)
+    //        .Include(u => u.User)
+    //        .FirstOrDefaultAsync(c => c.Id == booking.CustomerId, cancellationToken)
+    //        ?? throw new AppException("Customer profile not found.", 404);
+
+    //    var oldTierId = customer.TierId;
+    //    var oldTierName = customer.Tier?.TierName ?? "Thành viên mới";
+
+    //    var points = (int)Math.Floor(booking.TotalPrice * _options.PointsPerCurrencyUnit * customer.Tier.PointRate);
+    //    var now = DateTime.UtcNow;
+
+    //    var point = await GetOrCreatePointAsync(customer.UserId, now, cancellationToken);
+
+    //    // Update the point balance (spendable + lifetime) and the customer's CRM stats.
+    //    point.AvailablePoints += points;
+    //    point.TotalPoints += points; // Tổng điểm lũy kế trọn đời nằm ở đây!
+    //    point.UpdatedAt = now;
+    //    customer.TotalWashes += 1;
+    //    customer.CurrentCycleWashes += 1; // Thẻ tích rửa: cộng dồn trong chu kỳ hiện tại.
+    //    customer.TotalSpent += booking.TotalPrice;
+
+    //    // === GỘP LOGIC HẠNG (nguồn duy nhất) ===
+    //    // Nâng hạng theo điểm lũy kế trọn đời; GIỮ/HẠ hạng theo SỐ BOOKING hoàn tất trong ~30 ngày gần nhất.
+    //    // Quy tắc thuần & idempotent (không dao động): hạng = hạng CAO NHẤT thỏa CẢ HAI điều kiện:
+    //    //   TotalPoints (lũy kế) >= MinPointsRequired  VÀ  số booking 30 ngày >= MaintenanceBookings.
+    //    var since = DateOnly.FromDateTime(now.AddDays(-30));
+    //    var otherDoneBookings = await _context.Bookings.CountAsync(b =>
+    //        b.CustomerId == customer.Id
+    //        && b.Id != booking.Id
+    //        && b.BookingDate >= since
+    //        && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.CheckedOut),
+    //        cancellationToken);
+    //    var recentBookings = otherDoneBookings + 1; // + chính lượt đang checkout
+
+    //    var oldTierMin = customer.Tier?.MinPointsRequired ?? 0;
+    //    var allTiers = await _context.Tiers
+    //        .OrderByDescending(t => t.MinPointsRequired)
+    //        .ToListAsync(cancellationToken);
+    //    var eligibleTier = PickTier(allTiers, point.TotalPoints, recentBookings);
+
+    //    bool isUpgraded = false;
+    //    string newTierName = string.Empty;
+
+    //    // Checkout CHỈ nâng/giữ hạng, KHÔNG hạ. Việc hạ hạng do worker nền (TierMaintenanceService)
+    //    // xử lý dần — mỗi lần chạy chỉ lùi 1 bậc — để tránh checkout lỡ nhảy xuống nhiều bậc cùng lúc.
+    //    if (eligibleTier != null
+    //        && eligibleTier.Id != oldTierId
+    //        && eligibleTier.MinPointsRequired > oldTierMin)
+    //    {
+    //        customer.TierId = eligibleTier.Id;
+    //        newTierName = eligibleTier.TierName;
+    //        isUpgraded = true;
+    //    }
+
+    //    // SỬA TẠI ĐÂY: Xóa bỏ dòng thừa 'var earn = new LoyaltyTransaction' gây lỗi compile
+    //    var earn = new PointHistory
+    //    {
+    //        Id = Guid.NewGuid(),
+    //        PointId = point.Id,
+    //        TransactionType = LoyaltyTransactionType.Earn,
+    //        Amount = points,
+    //        BalanceAfter = point.AvailablePoints,
+    //        BookingId = booking.Id,
+    //        Description = $"Earned from booking {booking.BookingCode}",
+    //        CreatedAt = now,
+    //        ExpiryDate = now.AddMonths(_options.PointLifetimeMonths)
+    //    };
+
+    //    _context.PointHistories.Add(earn);
+    //    bool isFreeWashAwarded = false;
+    //    // Thẻ tích rửa: cứ đủ 7 lần trong chu kỳ thì tặng 1 voucher rửa free rồi trừ 7 (reset chu kỳ,
+    //    // giữ lại phần dư nếu vì lý do nào đó vượt 7). CurrentCycleWashes cho FE biết tiến độ "x/7".
+    //    if (customer.CurrentCycleWashes >= 7)
+    //    {
+    //        // Kiểm tra xem phần thưởng này có đang active trong DB không
+    //        var rewardExists = await _context.Rewards
+    //            .AnyAsync(r => r.Id == freeWashRewardId && r.IsActive, cancellationToken);
+
+    //        if (rewardExists)
+    //        {
+    //            // Tạo bản ghi quy đổi phần thưởng cho khách hàng (Tặng Voucher)
+    //            var redemption = new RewardRedemption
+    //            {
+    //                Id = Guid.NewGuid(),
+    //                CustomerId = customer.Id,
+    //                RewardId = freeWashRewardId,
+    //                CreatedAt = now,
+    //                Status = RedemptionStatus.Pending,
+    //                ExpiryDate = now.AddDays(30)
+    //            };
+
+    //            _context.RewardRedemptions.Add(redemption);
+    //            customer.CurrentCycleWashes -= 7; // Reset chu kỳ tích rửa.
+    //            isFreeWashAwarded = true;
+    //        }
+    //    }
+    //    await _context.SaveChangesAsync(cancellationToken);
+    //    await transaction.CommitAsync(cancellationToken);
+
+    //    // SỬA TẠI ĐÂY: Dùng point.TotalPoints để gửi email thông báo
+    //    if (isUpgraded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+    //    {
+    //        await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, point.TotalPoints);
+    //    }
+
+    //    if (isFreeWashAwarded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+    //    {
+    //        await _notificationService.SendNotificationToCustomerAsync(
+    //            customer.Id,
+    //            "Quà tặng tri ân độc quyền! 🎉",
+    //            "Bạn đã hoàn thành mốc 7 lượt dịch vụ. Hệ thống đã gửi tặng bạn 1 Voucher Rửa xe miễn phí vào kho quà!",
+    //            freeWashRewardId,
+    //            "Loyalty"
+    //        );
+    //    }
+    //}
+
     public async Task AwardPointsForBookingAsync(Guid bookingId, CancellationToken cancellationToken = default)
     {
-        var freeWashRewardId = Guid.Parse("10000000-0000-0000-0000-000000000099");
-        // Serializable so two concurrent completions of the same booking cannot both
-        // pass the "already earned?" check and double-award.
         await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
 
         var booking = await _context.Bookings
             .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+
         if (booking is null)
-            return; // Nothing to award; caller already validated existence in normal flow.
+            return;
 
         // Idempotency: one Earn row per booking. If it already exists, this is a no-op.
         var alreadyEarned = await _context.PointHistories
             .AnyAsync(h => h.BookingId == bookingId && h.TransactionType == LoyaltyTransactionType.Earn, cancellationToken);
+
         if (alreadyEarned)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -61,16 +199,14 @@ public class LoyaltyService : ILoyaltyService
 
         // Update the point balance (spendable + lifetime) and the customer's CRM stats.
         point.AvailablePoints += points;
-        point.TotalPoints += points; // Tổng điểm lũy kế trọn đời nằm ở đây!
+        point.TotalPoints += points;
         point.UpdatedAt = now;
+
         customer.TotalWashes += 1;
-        customer.CurrentCycleWashes += 1; // Thẻ tích rửa: cộng dồn trong chu kỳ hiện tại.
+        customer.CurrentCycleWashes += 1; // Thẻ tích rửa: cộng dồn
         customer.TotalSpent += booking.TotalPrice;
 
-        // === GỘP LOGIC HẠNG (nguồn duy nhất) ===
-        // Nâng hạng theo điểm lũy kế trọn đời; GIỮ/HẠ hạng theo SỐ BOOKING hoàn tất trong ~30 ngày gần nhất.
-        // Quy tắc thuần & idempotent (không dao động): hạng = hạng CAO NHẤT thỏa CẢ HAI điều kiện:
-        //   TotalPoints (lũy kế) >= MinPointsRequired  VÀ  số booking 30 ngày >= MaintenanceBookings.
+        // === TÍNH TOÁN HẠNG THÀNH VIÊN ===
         var since = DateOnly.FromDateTime(now.AddDays(-30));
         var otherDoneBookings = await _context.Bookings.CountAsync(b =>
             b.CustomerId == customer.Id
@@ -78,25 +214,28 @@ public class LoyaltyService : ILoyaltyService
             && b.BookingDate >= since
             && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.CheckedOut),
             cancellationToken);
+
         var recentBookings = otherDoneBookings + 1; // + chính lượt đang checkout
 
         var oldTierMin = customer.Tier?.MinPointsRequired ?? 0;
         var allTiers = await _context.Tiers
             .OrderByDescending(t => t.MinPointsRequired)
             .ToListAsync(cancellationToken);
+
         var eligibleTier = PickTier(allTiers, point.TotalPoints, recentBookings);
-        
+
         bool isUpgraded = false;
         string newTierName = string.Empty;
 
-        if (eligibleTier != null && eligibleTier.Id != oldTierId)
+        if (eligibleTier != null
+            && eligibleTier.Id != oldTierId
+            && eligibleTier.MinPointsRequired > oldTierMin)
         {
             customer.TierId = eligibleTier.Id;
             newTierName = eligibleTier.TierName;
-            isUpgraded = eligibleTier.MinPointsRequired > oldTierMin; // >: LÊN hạng (gửi email), <: XUỐNG hạng
+            isUpgraded = true;
         }
 
-        // SỬA TẠI ĐÂY: Xóa bỏ dòng thừa 'var earn = new LoyaltyTransaction' gây lỗi compile
         var earn = new PointHistory
         {
             Id = Guid.NewGuid(),
@@ -111,52 +250,95 @@ public class LoyaltyService : ILoyaltyService
         };
 
         _context.PointHistories.Add(earn);
+
+        // === LOGIC TẶNG THƯỞNG RỬA XE SAU 7 LẦN ===
         bool isFreeWashAwarded = false;
-        // Thẻ tích rửa: cứ đủ 7 lần trong chu kỳ thì tặng 1 voucher rửa free rồi trừ 7 (reset chu kỳ,
-        // giữ lại phần dư nếu vì lý do nào đó vượt 7). CurrentCycleWashes cho FE biết tiến độ "x/7".
+        Guid? awardedRewardId = null;
+        string awardedRewardName = string.Empty;
+
         if (customer.CurrentCycleWashes >= 7)
         {
-            // Kiểm tra xem phần thưởng này có đang active trong DB không
-            var rewardExists = await _context.Rewards
-                .AnyAsync(r => r.Id == freeWashRewardId && r.IsActive, cancellationToken);
+            // 1. Lấy 7 booking gần nhất (bao gồm cả booking hiện tại) đã hoàn thành
+            var last7Bookings = await _context.Bookings
+                .Where(b => b.CustomerId == customer.Id
+                         && (b.Status == BookingStatus.CheckedOut))
+                .OrderByDescending(b => b.CreatedAt) // Hoặc BookingDate tùy thuộc vào schema của bạn
+                .Take(7)
+                .Select(b => b.TotalPrice)
+                .ToListAsync(cancellationToken);
 
-            if (rewardExists)
+            // Đảm bảo đủ 7 booking mới tính
+            if (last7Bookings.Count == 7)
             {
-                // Tạo bản ghi quy đổi phần thưởng cho khách hàng (Tặng Voucher)
-                var redemption = new RewardRedemption
-                {
-                    Id = Guid.NewGuid(),
-                    CustomerId = customer.Id,
-                    RewardId = freeWashRewardId,
-                    CreatedAt = now,
-                    Status = RedemptionStatus.Pending,
-                    ExpiryDate = now.AddDays(30)
-                };
+                // 2. Tính trung bình số tiền khách đã trả
+                decimal averagePrice = last7Bookings.Average();
 
-                _context.RewardRedemptions.Add(redemption);
-                customer.CurrentCycleWashes -= 7; // Reset chu kỳ tích rửa.
-                isFreeWashAwarded = true;
+                // 3. Xác định Reward Code dựa trên trung bình giá
+                string targetRewardCode = DetermineRewardCodeByAveragePrice(averagePrice);
+
+                // 4. Lấy phần thưởng từ DB
+                // (Lưu ý: Đảm bảo field lưu code của bạn tên là Code hoặc RewardCode)
+                var reward = await _context.Rewards
+                    .FirstOrDefaultAsync(r => r.Code == targetRewardCode && r.IsActive, cancellationToken);
+
+                if (reward != null)
+                {
+                    var redemption = new RewardRedemption
+                    {
+                        Id = Guid.NewGuid(),
+                        CustomerId = customer.Id,
+                        RewardId = reward.Id,
+                        CreatedAt = now,
+                        Status = RedemptionStatus.Pending,
+                        ExpiryDate = now.AddDays(30)
+                    };
+
+                    _context.RewardRedemptions.Add(redemption);
+                    customer.CurrentCycleWashes -= 7; // Reset chu kỳ
+
+                    isFreeWashAwarded = true;
+                    awardedRewardId = reward.Id;
+                    awardedRewardName = reward.Name; // Lưu lại tên để gửi thông báo
+                }
             }
         }
+
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        // SỬA TẠI ĐÂY: Dùng point.TotalPoints để gửi email thông báo
+        // === GỬI EMAIL VÀ NOTIFICATION ===
         if (isUpgraded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
             await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, point.TotalPoints);
         }
 
-        if (isFreeWashAwarded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+        if (isFreeWashAwarded && awardedRewardId.HasValue && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
             await _notificationService.SendNotificationToCustomerAsync(
                 customer.Id,
                 "Quà tặng tri ân độc quyền! 🎉",
-                "Bạn đã hoàn thành mốc 7 lượt dịch vụ. Hệ thống đã gửi tặng bạn 1 Voucher Rửa xe miễn phí vào kho quà!",
-                freeWashRewardId,
+                $"Bạn đã hoàn thành mốc 7 lượt dịch vụ. Hệ thống đã tặng bạn 1 thẻ quà tặng: {awardedRewardName} vào kho quà!",
+                awardedRewardId.Value,
                 "Loyalty"
             );
         }
+    }
+
+    private string DetermineRewardCodeByAveragePrice(decimal averagePrice)
+    {
+        // TODO: Bạn CẦN thay thế các con số (VD: 1000000, 500000) bằng các ngưỡng giá (threshold) thực tế 
+        // của các gói dịch vụ (Basic, Premium, VIP, VIP_VIP) trong hệ thống của bạn.
+
+        if (averagePrice >= 1_000_000)
+            return "FREE_VIP_VIP";
+
+        if (averagePrice >= 500_000)
+            return "FREE_VIP";
+
+        if (averagePrice >= 200_000)
+            return "FREE_PREMIUM";
+
+        return "FREE_BASIC"; // Mặc định gói cơ bản nếu trung bình giá thấp
     }
 
     public async Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default)
@@ -255,6 +437,7 @@ public class LoyaltyService : ILoyaltyService
 
         await _emailService.SendEmailAsync(toEmail, subject, body);
     }
+
 
     public async Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId)
     {

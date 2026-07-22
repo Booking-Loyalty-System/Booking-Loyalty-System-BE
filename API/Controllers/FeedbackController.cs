@@ -62,6 +62,16 @@ namespace API.Controllers
             var result = await _service.GetFeedbackStatisticsAsync(topCount);
             return Ok(ApiResponse<object>.SuccessResponse(result, "Lấy dữ liệu thống kê thành công."));
         }
+
+        [HttpGet("public/feedbacks")]
+        public async Task<IActionResult> GetCustomerFeedbacks(
+    [FromQuery] Guid? branchId = null,
+    [FromQuery] int pageIndex = 1,
+    [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.GetCustomerFeedbacksAsync(branchId, pageIndex, pageSize);
+            return Ok(new { success = true, data = result });
+        }
         private Guid GetUserId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

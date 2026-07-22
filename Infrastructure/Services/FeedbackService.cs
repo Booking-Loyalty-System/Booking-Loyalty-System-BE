@@ -165,9 +165,7 @@ namespace Infrastructure.Services
            .ToListAsync();
         }
 
-        public async Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(
-     string? sortBy = "newest", // newest, oldest, lowest-rating, highest-rating
-     bool? isGiftedFilter = null) // null: tất cả, true: đã đền bù, false: chưa đền bù
+        public async Task<List<FeedbackFilterResponse>> GetFeedbacksAsync(string? sortBy = "newest", bool? isGiftedFilter = null)
         {
             // 1. Tạo query gốc, Include các bảng cần thiết để lấy dữ liệu map sang DTO
             var query = _context.Feedbacks
@@ -264,6 +262,47 @@ namespace Infrastructure.Services
             response.LowestServices = serviceRatings.OrderBy(s => s.AverageRating).Take(topCount).ToList();
 
             return response;
+        }
+
+        public async Task<BranchFeedbackSummaryResponse> GetCustomerFeedbacksAsync(Guid? branchId = null, int pageIndex = 1, int pageSize = 10)
+        {
+            var query = _context.Feedbacks.AsQueryable();
+
+            // Nếu người dùng chọn chi nhánh thì lọc theo branchId
+            if (branchId.HasValue && branchId.Value != Guid.Empty)
+            {
+                query = query.Where(f => f.Booking.BranchTimeSlot.BranchId == branchId.Value);
+            }
+
+            // 1. Tính tổng số feedback và điểm trung bình (Tất cả hoặc theo Branch)
+            var totalCount = await query.CountAsync();
+            var avgRating = totalCount > 0
+                ? await query.AverageAsync(f => (double)(f.StaffRating + f.ServiceRating + f.PriceRating) / 3.0)
+                : 0;
+
+            // 2. Phân trang lấy danh sách feedback
+            var feedbacks = await query
+                .OrderByDescending(f => f.CreatedAt)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .Select(f => new CustomerFeedbackResponse
+                {
+                    CustomerName = f.Booking.Customer.FullName,
+                    OverallRating = f.OverallRating,
+                    StaffRating = f.StaffRating,
+                    ServiceRating = f.ServiceRating,
+                    PriceRating = f.PriceRating,
+                    Comment = f.Comment,
+                    CreatedAt = f.CreatedAt
+                })
+                .ToListAsync();
+
+            return new BranchFeedbackSummaryResponse
+            {
+                AverageRating = Math.Round(avgRating, 1),
+                TotalFeedbacks = totalCount,
+                Feedbacks = feedbacks
+            };
         }
     }
 }

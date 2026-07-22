@@ -112,6 +112,7 @@ namespace Infrastructure.Migrations
                     PasswordHash = table.Column<string>(type: "text", nullable: true),
                     Role = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    IsEmailConfirmed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     RefreshToken = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     RefreshTokenExpiry = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -271,6 +272,30 @@ namespace Infrastructure.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Customers_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EmailVerifications",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    VerificationToken = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsUsed = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    VerifiedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EmailVerifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EmailVerifications_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -841,13 +866,13 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountType", "DiscountValue", "EndDate", "IsActive", "MaxUses", "MinSpend", "Name", "PriorityLevel", "StartDate" },
                 values: new object[,]
                 {
-                    { new Guid("c0000000-0000-0000-0000-000000000001"), "TB-PERCENT", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9783), "Giảm 10% cho toàn bộ hóa đơn tại Tân Bình", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 100000m, "Ưu đãi Tân Bình", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000002"), "Q3-PERCENT", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9793), "Giảm 15% cho toàn bộ hóa đơn tại Quận 3", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 150000m, "Ưu đãi Quận 3", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000003"), "Q9-PERCENT", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9800), "Giảm 20% cho toàn bộ hóa đơn tại Quận 9", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 200000m, "Ưu đãi Quận 9", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000004"), "BRONZE-10K", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9806), "Giảm 5% cho thành viên Đồng", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Ưu đãi hạng Bronze", 2, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000005"), "SILVER-50K", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9812), "Giảm 10% cho thành viên Bạc", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 150000m, "Ưu đãi hạng Silver", 3, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000006"), "GOLD-15", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9819), "Giảm 15% cho thành viên Vàng", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đặc quyền hạng Gold", 4, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000007"), "DIAMOND-VIP", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9824), "Giảm 25% tối đa đặc quyền Kim Cương", 0, 25.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đẳng cấp Diamond", 5, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
+                    { new Guid("c0000000-0000-0000-0000-000000000001"), "TB-PERCENT", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(674), "Giảm 10% cho toàn bộ hóa đơn tại Tân Bình", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 100000m, "Ưu đãi Tân Bình", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000002"), "Q3-PERCENT", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(681), "Giảm 15% cho toàn bộ hóa đơn tại Quận 3", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 150000m, "Ưu đãi Quận 3", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000003"), "Q9-PERCENT", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(686), "Giảm 20% cho toàn bộ hóa đơn tại Quận 9", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, 500, 200000m, "Ưu đãi Quận 9", 1, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000004"), "BRONZE-10K", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(691), "Giảm 5% cho thành viên Đồng", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Ưu đãi hạng Bronze", 2, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000005"), "SILVER-50K", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(696), "Giảm 10% cho thành viên Bạc", 0, 10.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 150000m, "Ưu đãi hạng Silver", 3, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000006"), "GOLD-15", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(700), "Giảm 15% cho thành viên Vàng", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đặc quyền hạng Gold", 4, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000007"), "DIAMOND-VIP", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(705), "Giảm 25% tối đa đặc quyền Kim Cương", 0, 25.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, null, "Đẳng cấp Diamond", 5, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
                 });
 
             migrationBuilder.InsertData(
@@ -855,9 +880,9 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountType", "DiscountValue", "EndDate", "IsActive", "MaxUses", "MinSpend", "Name", "PriorityLevel", "RequiresBirthday", "StartDate" },
                 values: new object[,]
                 {
-                    { new Guid("c0000000-0000-0000-0000-000000000008"), "BDAY-15", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9831), "Giảm 15% trong ngày sinh nhật của bạn", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 200000m, "Mừng Sinh Nhật 15%", 10, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000009"), "BDAY-HAPPY", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9837), "Giảm 5% cho hóa đơn đặt trước vào tuần sinh nhật", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 500000m, "Sinh Nhật Vui Vẻ 5%", 10, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
-                    { new Guid("c0000000-0000-0000-0000-000000000010"), "BDAY-MEGA", new DateTime(2026, 7, 14, 8, 4, 52, 646, DateTimeKind.Utc).AddTicks(9846), "Giảm tối đa 20% cho hóa đơn đặt tiệc sinh nhật lớn", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 1000000m, "Đại Tiệc Sinh Nhật 20%", 9, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
+                    { new Guid("c0000000-0000-0000-0000-000000000008"), "BDAY-15", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(775), "Giảm 15% trong ngày sinh nhật của bạn", 0, 15.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 200000m, "Mừng Sinh Nhật 15%", 10, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000009"), "BDAY-HAPPY", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(780), "Giảm 5% cho hóa đơn đặt trước vào tuần sinh nhật", 0, 5.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 500000m, "Sinh Nhật Vui Vẻ 5%", 10, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { new Guid("c0000000-0000-0000-0000-000000000010"), "BDAY-MEGA", new DateTime(2026, 7, 18, 12, 19, 39, 986, DateTimeKind.Utc).AddTicks(785), "Giảm tối đa 20% cho hóa đơn đặt tiệc sinh nhật lớn", 0, 20.00m, new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc), true, null, 1000000m, "Đại Tiệc Sinh Nhật 20%", 9, true, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
                 });
 
             migrationBuilder.InsertData(
@@ -865,16 +890,16 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountAmount", "EndDate", "IsActive", "IsFreeWash", "Name", "PointsCost", "PointsRequired", "StartDate", "Status", "WashPackageId" },
                 values: new object[,]
                 {
-                    { new Guid("10000000-0000-0000-0000-000000000001"), "VOUCHER_10K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3590), "Giảm 10,000đ", 10000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 10k", 50, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000002"), "VOUCHER_20K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3622), "Giảm 20,000đ", 20000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 20k", 100, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000003"), "VOUCHER_50K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3627), "Giảm 50,000đ", 50000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 50k", 250, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000004"), "VOUCHER_100K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3630), "Giảm 100,000đ", 100000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 100k", 500, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000005"), "VOUCHER_150K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3634), "Giảm 150,000đ", 150000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 150k", 750, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000006"), "VOUCHER_200K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3637), "Giảm 200,000đ", 200000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 200k", 1000, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000007"), "VOUCHER_250K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3642), "Giảm 250,000đ", 250000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 250k", 1250, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000008"), "VOUCHER_300K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3646), "Giảm 300,000đ", 300000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 300k", 1500, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000009"), "VOUCHER_400K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3652), "Giảm 400,000đ", 400000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 400k", 2000, 0, new DateOnly(2026, 1, 1), true, null },
-                    { new Guid("10000000-0000-0000-0000-000000000010"), "VOUCHER_500K", new DateTime(2026, 7, 14, 8, 4, 52, 650, DateTimeKind.Utc).AddTicks(3656), "Giảm 500,000đ", 500000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 500k", 2500, 0, new DateOnly(2026, 1, 1), true, null }
+                    { new Guid("10000000-0000-0000-0000-000000000001"), "VOUCHER_10K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2157), "Giảm 10,000đ", 10000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 10k", 50, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000002"), "VOUCHER_20K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2202), "Giảm 20,000đ", 20000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 20k", 100, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000003"), "VOUCHER_50K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2208), "Giảm 50,000đ", 50000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 50k", 250, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000004"), "VOUCHER_100K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2213), "Giảm 100,000đ", 100000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 100k", 500, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000005"), "VOUCHER_150K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2216), "Giảm 150,000đ", 150000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 150k", 750, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000006"), "VOUCHER_200K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2221), "Giảm 200,000đ", 200000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 200k", 1000, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000007"), "VOUCHER_250K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2225), "Giảm 250,000đ", 250000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 250k", 1250, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000008"), "VOUCHER_300K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2228), "Giảm 300,000đ", 300000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 300k", 1500, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000009"), "VOUCHER_400K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2231), "Giảm 400,000đ", 400000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 400k", 2000, 0, new DateOnly(2026, 1, 1), true, null },
+                    { new Guid("10000000-0000-0000-0000-000000000010"), "VOUCHER_500K", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2235), "Giảm 500,000đ", 500000.00m, new DateOnly(2026, 12, 31), true, false, "Voucher 500k", 2500, 0, new DateOnly(2026, 1, 1), true, null }
                 });
 
             migrationBuilder.InsertData(
@@ -907,18 +932,29 @@ namespace Infrastructure.Migrations
 
             migrationBuilder.InsertData(
                 table: "Users",
-                columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
+                columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "IsEmailConfirmed", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 7, 14, 8, 4, 52, 836, DateTimeKind.Utc).AddTicks(7047), "admin@system.com", null, true, "$2a$11$GpmMxxdidrbTPdc9BbQfgetCaGkaVEWx65pGME3aqOWoUGrTS8OUq", null, null, "Admin", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 14, 8, 4, 53, 28, DateTimeKind.Utc).AddTicks(357), "staff@system.com", null, true, "$2a$11$OTQifo5UDsFi5HxT9OrvEOaijQIoMhWKJT6HfAQMpQok3Kv/tv0nK", null, null, "Staff", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 7, 14, 8, 4, 53, 211, DateTimeKind.Utc).AddTicks(870), "staff1@system.com", null, true, "$2a$11$FRI11ZpCILKPUpfnOaxmweowqtrpc0hMyZ4Fu/QDneOQBoWorsKiK", null, null, "Staff", null },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 7, 14, 8, 4, 53, 391, DateTimeKind.Utc).AddTicks(2357), "staff2@system.com", null, true, "$2a$11$RTSPK9DENXG3.8O5gctMXechT5Ds6k4mCTMf3F7dSBfEO86x2.xFW", null, null, "Staff", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 7, 14, 8, 4, 53, 571, DateTimeKind.Utc).AddTicks(5185), "customer@system.com", null, true, "$2a$11$yi3REadl8nMa/Z1a6r5X.OOT4vdb3jIDli9G3GdbMZUH.H4n9TZkS", null, null, "Customer", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd"), new DateTime(2026, 7, 14, 8, 4, 53, 754, DateTimeKind.Utc).AddTicks(2454), "cus2@system.com", null, true, "$2a$11$JoQBA2LHFDJ5tlLosQoveuJRRijiYstJJWT4X/gLqcMAUxLLQ4vDC", null, null, "Customer", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce"), new DateTime(2026, 7, 14, 8, 4, 53, 936, DateTimeKind.Utc).AddTicks(5532), "cus3@system.com", null, true, "$2a$11$Jl3H0Cz7DdrSENo7TalwbOshX8LIL48tnzZKIQrPLRz.sDcLBukm2", null, null, "Customer", null },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf"), new DateTime(2026, 7, 14, 8, 4, 54, 116, DateTimeKind.Utc).AddTicks(7972), "cus4@system.com", null, true, "$2a$11$OJrLqTxSLoTNBphCTbAXROn8D2wFJzkkt6AZHjAgQzTn1vnMonSKq", null, null, "Customer", null },
-                    { new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), new DateTime(2026, 7, 14, 8, 4, 54, 296, DateTimeKind.Utc).AddTicks(3859), "downgrade@system.com", null, true, "$2a$11$eiqaXFmvv5/Rf4Qhqcn/6eIMeyV8EDWfWdqpa0WDXNxNtgVpbBQHi", null, null, "Customer", null }
+                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), new DateTime(2026, 7, 18, 12, 19, 40, 178, DateTimeKind.Utc).AddTicks(4671), "admin@system.com", null, true, true, "$2a$11$owh0kjhfIbOIsbH98j1tbO6bLXj6ISMiM5LsnjmKQ5VtOWRqicBri", null, null, "Admin", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 18, 12, 19, 40, 358, DateTimeKind.Utc).AddTicks(7829), "staff@system.com", null, true, true, "$2a$11$TfPYT8pp.mBYtdqkhWBBVe3/BQS2DTe0fyOFxR0AviUZfpKFa5D.u", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"), new DateTime(2026, 7, 18, 12, 19, 40, 540, DateTimeKind.Utc).AddTicks(6611), "staff1@system.com", null, true, true, "$2a$11$uNzHfBpFSEaPq.a6Ag8YcuCVp0ajgp.oUojD82v83/2R56kY6z8Le", null, null, "Staff", null },
+                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"), new DateTime(2026, 7, 18, 12, 19, 40, 722, DateTimeKind.Utc).AddTicks(477), "staff2@system.com", null, true, true, "$2a$11$5LnaiKItViOCFZvJbPG8j.XxPSszkuPtrvK8cDmgbXOtHPSnHMne2", null, null, "Staff", null }
+                });
+
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
+                values: new object[] { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), new DateTime(2026, 7, 18, 12, 19, 40, 902, DateTimeKind.Utc).AddTicks(8846), "customer@system.com", null, true, "$2a$11$hdVdLoI2zWcsy5W7C27Ag./ceb4dEH7uOqjuIQbQlf3/TvrrOvIpC", null, null, "Customer", null });
+
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "CreatedAt", "Email", "GoogleId", "IsActive", "IsEmailConfirmed", "PasswordHash", "RefreshToken", "RefreshTokenExpiry", "Role", "UpdatedAt" },
+                values: new object[,]
+                {
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd"), new DateTime(2026, 7, 18, 12, 19, 41, 83, DateTimeKind.Utc).AddTicks(6732), "cus2@system.com", null, true, true, "$2a$11$BBDAvbKn8BplGuV4O6hBT.wMsZ3JUe8smgvOIgX9pp3DBDO34hHwi", null, null, "Customer", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce"), new DateTime(2026, 7, 18, 12, 19, 41, 266, DateTimeKind.Utc).AddTicks(142), "cus3@system.com", null, true, true, "$2a$11$nQlMmShGYb/95LXFZd5o8.pjWdVXsIOCIfrtRzaP7kmXWvfHD9YGi", null, null, "Customer", null },
+                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf"), new DateTime(2026, 7, 18, 12, 19, 41, 447, DateTimeKind.Utc).AddTicks(3213), "cus4@system.com", null, true, true, "$2a$11$TYf3SrtLb5jkMztnEd09FOA7I7rfqsOv67Qo8cRaAhivfdgKHUb56", null, null, "Customer", null },
+                    { new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), new DateTime(2026, 7, 18, 12, 19, 41, 627, DateTimeKind.Utc).AddTicks(4682), "downgrade@system.com", null, true, true, "$2a$11$s8.K/eQeBdB4Ng2xZHCk8enjjEYXZd1ZLgrXsdkcpNTrCKkTj5MJ.", null, null, "Customer", null }
                 });
 
             migrationBuilder.InsertData(
@@ -963,6 +999,16 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "Rewards",
+                columns: new[] { "Id", "Code", "CreatedAt", "Description", "DiscountAmount", "EndDate", "IsActive", "IsFreeWash", "Name", "PointsCost", "PointsRequired", "StartDate", "Status", "WashPackageId" },
+                values: new object[,]
+                {
+                    { new Guid("20000000-0000-0000-0000-000000000001"), "FREE_BASIC", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2238), "Tặng 1 lượt dịch vụ Basic Wash tri ân sau chu kỳ tích rửa", 80000.00m, new DateOnly(2030, 12, 31), true, true, "Thưởng Rửa xe Cơ bản Miễn phí", 0, 0, new DateOnly(2026, 1, 1), true, new Guid("a1b2c3d4-0001-0001-0001-000000000001") },
+                    { new Guid("20000000-0000-0000-0000-000000000002"), "FREE_PREMIUM", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2244), "Tặng 1 lượt dịch vụ Premium Wash tri ân sau chu kỳ tích rửa", 120000.00m, new DateOnly(2030, 12, 31), true, true, "Thưởng Rửa xe Cao cấp Miễn phí", 0, 0, new DateOnly(2026, 1, 1), true, new Guid("a1b2c3d4-0001-0001-0001-000000000002") },
+                    { new Guid("20000000-0000-0000-0000-000000000003"), "FREE_VIP", new DateTime(2026, 7, 18, 12, 19, 39, 991, DateTimeKind.Utc).AddTicks(2250), "Tặng 1 lượt dịch vụ VIP Detailing tri ân sau chu kỳ tích rửa", 200000.00m, new DateOnly(2030, 12, 31), true, true, "Thưởng Rửa xe VIP Miễn phí", 0, 0, new DateOnly(2026, 1, 1), true, new Guid("a1b2c3d4-0001-0001-0001-000000000003") }
+                });
+
+            migrationBuilder.InsertData(
                 table: "Staffs",
                 columns: new[] { "Id", "BranchId", "FullName", "IsAvailable", "PhoneNumber", "UserId" },
                 values: new object[,]
@@ -988,24 +1034,24 @@ namespace Infrastructure.Migrations
                 columns: new[] { "Id", "BranchId", "CreatedAt", "Name", "Status", "SupportedTypes" },
                 values: new object[,]
                 {
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6293), "Bay A1 (Q9)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6305), "Bay A2 (Q9)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6308), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6311), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6327), "Bay A1 (TB)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6331), "Bay A2 (TB)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6333), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6336), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6314), "Bay A1 (Q3)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6318), "Bay A2 (Q3)", "Available", "Small,Medium" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6321), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
-                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(6323), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7585), "Bay A1 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7597), "Bay A2 (Q9)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7602), "Bay B1 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0001-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7604), "Bay B2 (Q9)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7619), "Bay A1 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7622), "Bay A2 (TB)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7625), "Bay B1 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0002-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7627), "Bay B2 (TB)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000001"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7608), "Bay A1 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000002"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7611), "Bay A2 (Q3)", "Available", "Small,Medium" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000003"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7614), "Bay B1 (Q3)", "Available", "Small,Medium,Large" },
+                    { new Guid("b1b2c3d4-0003-0001-0001-000000000004"), new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"), new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(7616), "Bay B2 (Q3)", "Available", "Small,Medium,Large" }
                 });
 
             migrationBuilder.InsertData(
                 table: "Vehicles",
                 columns: new[] { "Id", "Brand", "Color", "CreatedAt", "CustomerId", "IsDeleted", "IsPrimary", "LicensePlate", "Model", "Type", "VehicleName" },
-                values: new object[] { new Guid("fb9bd07a-5f09-43cc-9ae9-7d3d7d05e128"), "Toyota", "Black", new DateTime(2026, 7, 14, 8, 4, 54, 297, DateTimeKind.Utc).AddTicks(3185), new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), false, true, "29A-88888", "Camry", "Small", "Toyota Camry 2024" });
+                values: new object[] { new Guid("fb9bd07a-5f09-43cc-9ae9-7d3d7d05e128"), "Toyota", "Black", new DateTime(2026, 7, 18, 12, 19, 41, 628, DateTimeKind.Utc).AddTicks(4308), new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), false, true, "29A-88888", "Camry", "Small", "Toyota Camry 2024" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_BookingAddOns_AddOnId",
@@ -1148,6 +1194,11 @@ namespace Infrastructure.Migrations
                 table: "Customers",
                 column: "UserId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmailVerifications_UserId",
+                table: "EmailVerifications",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Feedbacks_BookingId",
@@ -1306,6 +1357,9 @@ namespace Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "CustomerPromotions");
+
+            migrationBuilder.DropTable(
+                name: "EmailVerifications");
 
             migrationBuilder.DropTable(
                 name: "Feedbacks");

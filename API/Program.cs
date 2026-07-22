@@ -91,7 +91,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "https://booking-loyalty-system-fe.vercel.app", "https://nonelementary-slippily-princeton.ngrok-free.dev", "https://localhost:7001")
               .AllowAnyMethod()   // Chấp nhận mọi Method (POST, GET, OPTIONS...)
               .AllowAnyHeader()
               .AllowCredentials();
@@ -101,13 +101,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 app.UseCors("AllowAll");
+app.UseRouting();
+
 // Middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
