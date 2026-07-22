@@ -318,7 +318,8 @@ public class LoyaltyService : ILoyaltyService
     /// </summary>
     public async Task ReevaluateAllTiersAsync(CancellationToken cancellationToken = default)
     {
-        var since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
+        var now = DateTime.UtcNow;
+        var since = DateOnly.FromDateTime(now.AddDays(-30));
 
         var tiersDesc = await _context.Tiers
             .OrderByDescending(t => t.MinPointsRequired)
@@ -352,9 +353,16 @@ public class LoyaltyService : ILoyaltyService
 
             if (currentIndex >= 0 && targetIndex > currentIndex)
             {
-                // HẠ hạng: chỉ lùi ĐÚNG 1 bậc mỗi lần worker chạy, dù đủ điều kiện rớt sâu hơn.
-                // Lần sweep sau (mỗi 6h) sẽ tiếp tục lùi tiếp 1 bậc nếu vẫn không đủ số booking.
+                // Mỗi THÁNG DƯƠNG LỊCH chỉ HẠ tối đa 1 bậc: nếu tháng này đã hạ rồi thì đợi sang tháng sau.
+                // Nhờ vậy khách không bị rớt thẳng nhiều bậc (vd Kim Cương → Đồng) trong cùng một tháng,
+                // dù worker chạy mỗi 6h và khách đủ điều kiện rớt sâu hơn.
+                if (customer.LastTierDowngradeAt is { } lastDown
+                    && lastDown.Year == now.Year && lastDown.Month == now.Month)
+                    continue;
+
+                // HẠ hạng: chỉ lùi ĐÚNG 1 bậc, rồi ghi mốc thời gian để khoá việc hạ tiếp trong tháng này.
                 customer.TierId = tiersDesc[currentIndex + 1].Id;
+                customer.LastTierDowngradeAt = now;
                 changed++;
             }
             else

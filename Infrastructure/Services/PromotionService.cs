@@ -131,6 +131,7 @@ public class PromotionService : IPromotionService
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             MaxUses = request.MaxUses,
+            MaxUsesPerCustomer = request.MaxUsesPerCustomer,
             UsedCount = 0,
             MinSpend = request.MinSpend,
             IsActive = true,
@@ -180,6 +181,7 @@ public class PromotionService : IPromotionService
         if (request.StartDate.HasValue) promotion.StartDate = request.StartDate.Value;
         if (request.EndDate.HasValue) promotion.EndDate = request.EndDate.Value;
         if (request.MaxUses.HasValue) promotion.MaxUses = request.MaxUses.Value;
+        if (request.MaxUsesPerCustomer.HasValue) promotion.MaxUsesPerCustomer = request.MaxUsesPerCustomer.Value;
         if (request.MinSpend.HasValue) promotion.MinSpend = request.MinSpend.Value;
         if (request.IsActive.HasValue) promotion.IsActive = request.IsActive.Value;
         if (request.RequiresBirthday.HasValue) promotion.RequiresBirthday = request.RequiresBirthday.Value;
@@ -278,6 +280,16 @@ public class PromotionService : IPromotionService
         if (promotion.MaxUses.HasValue && promotion.UsedCount >= promotion.MaxUses.Value)
             throw new AppException("This promotion has reached its usage limit.", 400);
 
+        // Giới hạn theo TỪNG khách: đếm số booking khách này đã áp mã. Lượt đang tạo chưa được lưu
+        // nên chưa bị tính (ApplyAsync chạy trước khi Booking được thêm vào context).
+        if (promotion.MaxUsesPerCustomer is { } perCustomerLimit)
+        {
+            var usedByCustomer = await _context.Bookings.CountAsync(b =>
+                b.CustomerId == customer.Id && b.PromotionId == promotion.Id);
+            if (usedByCustomer >= perCustomerLimit)
+                throw new AppException("Bạn đã dùng hết số lần cho phép của mã khuyến mãi này.", 400);
+        }
+
         if (promotion.MinSpend.HasValue && subtotal < promotion.MinSpend.Value)
             throw new AppException($"This promotion requires a minimum spend of {promotion.MinSpend.Value:0.##}.", 400);
 
@@ -318,6 +330,7 @@ public class PromotionService : IPromotionService
         StartDate = p.StartDate,
         EndDate = p.EndDate,
         MaxUses = p.MaxUses,
+        MaxUsesPerCustomer = p.MaxUsesPerCustomer,
         UsedCount = p.UsedCount,
         MinSpend = p.MinSpend,
         IsActive = p.IsActive,

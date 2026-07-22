@@ -13,6 +13,9 @@ public class CreatePromotionRequest
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public int? MaxUses { get; set; }
+
+    /// <summary>Số lần tối đa MỖI khách được dùng mã này. Null = không giới hạn theo từng khách.</summary>
+    public int? MaxUsesPerCustomer { get; set; }
     public decimal? MinSpend { get; set; }
 
     /// <summary>True = chỉ dùng được trong tuần sinh nhật của khách (sinh nhật ± 3 ngày).</summary>

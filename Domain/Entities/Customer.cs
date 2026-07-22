@@ -22,6 +22,13 @@ public class Customer
 
     public decimal TotalSpent { get; set; }
 
+    /// <summary>
+    /// Thời điểm gần nhất khách bị worker HẠ 1 bậc hạng. Dùng để giới hạn: mỗi tháng dương lịch
+    /// chỉ hạ tối đa 1 bậc — tránh rớt thẳng nhiều bậc (vd Kim Cương → Đồng) trong cùng một tháng.
+    /// Null = chưa từng bị hạ.
+    /// </summary>
+    public DateTime? LastTierDowngradeAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public User User { get; set; } = null!;
     public Tier Tier { get; set; } = null!;

@@ -48,6 +48,10 @@ public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
         builder.Property(p => p.MaxUses)
             .IsRequired(false);
 
+        // Giới hạn số lần MỖI khách được dùng mã (null = không giới hạn theo khách).
+        builder.Property(p => p.MaxUsesPerCustomer)
+            .IsRequired(false);
+
         builder.Property(p => p.UsedCount)
             .HasDefaultValue(0)
             .IsRequired();
