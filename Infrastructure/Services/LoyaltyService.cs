@@ -523,8 +523,22 @@ public class LoyaltyService : ILoyaltyService
             var lifetime = pointsByUser.TryGetValue(customer.UserId, out var tp) ? tp : 0;
             var recent = countByCustomer.TryGetValue(customer.Id, out var c) ? c : 0;
             var target = PickTier(tiersDesc, lifetime, recent);
-            if (target != null && target.Id != customer.TierId)
+            if (target == null || target.Id == customer.TierId) continue;
+
+            // tiersDesc giảm dần theo MinPointsRequired => index LỚN hơn = hạng THẤP hơn.
+            var currentIndex = tiersDesc.FindIndex(t => t.Id == customer.TierId);
+            var targetIndex = tiersDesc.FindIndex(t => t.Id == target.Id);
+
+            if (currentIndex >= 0 && targetIndex > currentIndex)
             {
+                // HẠ hạng: chỉ lùi ĐÚNG 1 bậc mỗi lần worker chạy, dù đủ điều kiện rớt sâu hơn.
+                // Lần sweep sau (mỗi 6h) sẽ tiếp tục lùi tiếp 1 bậc nếu vẫn không đủ số booking.
+                customer.TierId = tiersDesc[currentIndex + 1].Id;
+                changed++;
+            }
+            else
+            {
+                // Nâng/khôi phục hạng (hoặc không xác định được hạng hiện tại): áp thẳng hạng đủ điều kiện.
                 customer.TierId = target.Id;
                 changed++;
             }
