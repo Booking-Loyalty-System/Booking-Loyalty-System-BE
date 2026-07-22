@@ -28,6 +28,9 @@ public class Promotion
     
     public int UsedCount { get; set; }
 
+    /// <summary>Số lần tối đa MỘT khách được dùng mã này (đếm theo số booking đã áp mã). Null = không giới hạn theo từng khách.</summary>
+    public int? MaxUsesPerCustomer { get; set; }
+
     /// <summary>Minimum order subtotal required to apply this promotion. Null = no minimum.</summary>
     public decimal? MinSpend { get; set; }
 

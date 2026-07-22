@@ -11,6 +11,9 @@ public class PromotionResponse
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public int? MaxUses { get; set; }
+
+    /// <summary>Số lần tối đa mỗi khách được dùng mã này. Null = không giới hạn theo từng khách.</summary>
+    public int? MaxUsesPerCustomer { get; set; }
     public int UsedCount { get; set; }
     public decimal? MinSpend { get; set; }
     public bool IsActive { get; set; }

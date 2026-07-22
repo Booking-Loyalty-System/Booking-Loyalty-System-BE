@@ -10,6 +10,9 @@ public class UpdatePromotionRequest
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public int? MaxUses { get; set; }
+
+    /// <summary>Số lần tối đa mỗi khách được dùng mã này. Null = giữ nguyên giá trị cũ (không đổi).</summary>
+    public int? MaxUsesPerCustomer { get; set; }
     public decimal? MinSpend { get; set; }
     public bool? IsActive { get; set; }
     public bool? RequiresBirthday { get; set; }
