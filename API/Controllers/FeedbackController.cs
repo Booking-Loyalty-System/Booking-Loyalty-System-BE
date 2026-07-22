@@ -45,9 +45,13 @@ namespace API.Controllers
 
         [Authorize] // Hoặc [Authorize(Roles = "Admin,Manager")] tùy vào luồng phân quyền
         [HttpGet("filter")]
-        public async Task<IActionResult> GetFilteredFeedbacks([FromQuery] bool isDescending = true)
+        public async Task<IActionResult> GetFilteredFeedbacks(
+    [FromQuery] string? sortBy = "newest",
+    [FromQuery] bool? isGifted = null)
         {
-            var result = await _service.GetFeedbacksAsync(isDescending);
+            // Truyền đầy đủ các tham số filter và sort xuống service xử lý
+            var result = await _service.GetFeedbacksAsync(sortBy, isGifted);
+
             return Ok(ApiResponse<object>.SuccessResponse(result, "Lấy danh sách đánh giá thành công."));
         }
 
@@ -57,6 +61,16 @@ namespace API.Controllers
         {
             var result = await _service.GetFeedbackStatisticsAsync(topCount);
             return Ok(ApiResponse<object>.SuccessResponse(result, "Lấy dữ liệu thống kê thành công."));
+        }
+
+        [HttpGet("public/feedbacks")]
+        public async Task<IActionResult> GetCustomerFeedbacks(
+    [FromQuery] Guid? branchId = null,
+    [FromQuery] int pageIndex = 1,
+    [FromQuery] int pageSize = 10)
+        {
+            var result = await _service.GetCustomerFeedbacksAsync(branchId, pageIndex, pageSize);
+            return Ok(new { success = true, data = result });
         }
         private Guid GetUserId()
         {

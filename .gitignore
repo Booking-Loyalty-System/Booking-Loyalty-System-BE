@@ -1,3 +1,12 @@
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+pythonenv/
+
+.vscode/
 ## Thư mục build và rác của VS/Rider
 bin/
 obj/
@@ -6,6 +15,13 @@ obj/
 *.user
 *.userosscache
 *.sln.docstates
+
+__pycache__/
+xlm_roberta_offense_model/
+*.py
+*.csv
+bad_words_vn.txt
+expanded_bad_words_vn.txt
 
 ## Chặn file cấu hình chứa thông tin bảo mật
 appsettings.json

@@ -16,9 +16,5 @@ public class CreateWashPackageRequestValidator : AbstractValidator<CreateWashPac
 
         RuleFor(x => x.DurationMinutes)
             .GreaterThan(0).WithMessage("Duration must be greater than 0.");
-
-        RuleFor(x => x.VehicleType)
-            .Must(t => t == null || t == "Small" || t == "Medium" || t == "Large")
-            .WithMessage("Vehicle type must be Small, Medium, or Large.");
     }
 }

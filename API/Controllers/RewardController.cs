@@ -41,9 +41,9 @@ public class RewardController : ControllerBase
     }
 
     [HttpPatch("gift")]
-    public async Task<IActionResult> GiftVoucher(Guid customerId, Guid rewardId)
+    public async Task<IActionResult> GiftVoucher(Guid customerId, Guid rewardId, Guid? bookingId)
     {
-        var result = await _rewardService.GiftCompensationVoucherAsync(customerId, rewardId);
+        var result = await _rewardService.GiftCompensationVoucherAsync(customerId, rewardId, bookingId);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 

@@ -40,6 +40,13 @@ public class PromotionController : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 
+    [HttpGet("eligible")]
+    public async Task<IActionResult> GetEligiblePromotions([FromQuery] Guid? branchId = null)
+    {
+        var result = await _promotionService.GetEligiblePromotionsAsync(GetUserId(), branchId);
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
     private Guid GetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

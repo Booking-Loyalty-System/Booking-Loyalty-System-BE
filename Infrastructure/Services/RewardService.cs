@@ -3,6 +3,7 @@ using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services;
@@ -10,10 +11,16 @@ namespace Infrastructure.Services;
 public class RewardService : IRewardService
 {
     private readonly IApplicationDbContext _context;
-
-    public RewardService(IApplicationDbContext context)
+    private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
+    public RewardService(
+    ApplicationDbContext context,
+    INotificationService notificationService,
+    IEmailService emailService)
     {
         _context = context;
+        _notificationService = notificationService;
+        _emailService = emailService;
     }
 
     // ----- Catalog management -----
@@ -47,7 +54,9 @@ public class RewardService : IRewardService
             PointsCost = request.PointsCost,
             DiscountAmount = request.DiscountAmount,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            WashPackageId = request.WashPackageId,
+            IsFreeWash = request.WashPackageId.HasValue
         };
 
         _context.Rewards.Add(reward);
@@ -285,15 +294,25 @@ public class RewardService : IRewardService
         return MapRedemption(redemption, redemption.Reward.Name, null);
     }
 
-    public async Task<VoucherResponse> GiftCompensationVoucherAsync(Guid customerId, Guid rewardId)
+    public async Task<VoucherResponse> GiftCompensationVoucherAsync(Guid customerId, Guid rewardId, Guid? bookingId)
     {
         await using var transaction = await _context.BeginTransactionAsync();
+
+        if (bookingId.HasValue)
+        {
+            bool isAlreadyGifted = await _context.RewardRedemptions
+                .AnyAsync(r => r.BookingId == bookingId.Value && r.IsGifted);
+
+            if (isAlreadyGifted)
+                throw new AppException("Booking này đã được tặng voucher đền bù trước đó.", 400);
+        }
 
         var reward = await _context.Rewards
             .FirstOrDefaultAsync(r => r.Id == rewardId)
             ?? throw new AppException("Reward/Voucher type not found.", 404);
 
         var customer = await _context.Customers
+            .Include(c => c.User)
             .FirstOrDefaultAsync(c => c.Id == customerId)
             ?? throw new AppException("Customer profile not found.", 404);
 
@@ -301,9 +320,14 @@ public class RewardService : IRewardService
             .FirstOrDefaultAsync(p => p.UserId == customer.UserId);
 
         var now = DateTime.UtcNow;
+        var expiryDate = now.AddDays(30);
 
         if (point is not null)
         {
+            string description = bookingId.HasValue
+            ? $"[Admin Gift] Đền bù Voucher cho Booking {bookingId.Value}: {reward.Name}"
+            : $"[Admin Gift] Đền bù Voucher qua Chat: {reward.Name}";
+
             var ledger = new PointHistory
             {
                 Id = Guid.NewGuid(),
@@ -312,9 +336,9 @@ public class RewardService : IRewardService
                 Amount = 0,
                 BalanceAfter = point.AvailablePoints,
                 RewardId = reward.Id,
-                Description = $"[Admin Gift] Đền bù/Tặng Voucher: {reward.Name}",
+                Description = description,
                 CreatedAt = now,
-                ExpiryDate = now.AddDays(30)
+                ExpiryDate = expiryDate
             };
             _context.PointHistories.Add(ledger);
         }
@@ -328,15 +352,77 @@ public class RewardService : IRewardService
             Status = RedemptionStatus.Pending,
             CreatedAt = now,
             IsGifted = true,
-            ExpiryDate = now.AddDays(30)
+            ExpiryDate = expiryDate,
+            BookingId = bookingId
         };
 
         _context.RewardRedemptions.Add(redemption);
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        var notifyTitle = "Quà Tặng Đền Bù - Voucher Mới!";
+        var notifyMessage = bookingId.HasValue
+            ? $"Bạn đã được tặng voucher '{reward.Name}' đền bù cho sự cố tại lịch đặt dịch vụ #{bookingId.Value.ToString()[..8].ToUpper()}."
+            : $"Bạn đã được tặng voucher '{reward.Name}' từ ban quản trị hệ thống.";
+
+        // 1. Gửi thông báo hệ thống & SignalR Realtime đến App của Khách hàng
+        try
+        {
+            await _notificationService.SendNotificationToCustomerAsync(
+                customerId: customer.Id,
+                title: notifyTitle,
+                message: notifyMessage,
+                relatedId: redemption.Id,
+                type: "Loyalty"
+            );
+        }
+        catch (Exception)
+        {
+            // Log lại lỗi gửi notification nếu cần, nhưng không ném Exception 
+            // để tránh rollback một voucher đã ghi nhận thành công dưới Database.
+        }
+
+        // 2. Gửi Email thông báo trực tiếp đến Hòm thư Khách hàng
+        if (customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+        {
+            var emailSubject = "Quà Tặng Đền Bù - Bạn Nhận Được Voucher Mới";
+            var emailBody = $@"
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;'>
+                <div style='background-color: #ff9f43; color: #ffffff; padding: 20px; text-align: center;'>
+                    <h2 style='margin: 0;'>Món Quà Nho Nhỏ Từ Chúng Tôi!</h2>
+                </div>
+                <div style='padding: 24px; color: #333333;'>
+                    <p>Xin chào <strong>{customer.FullName}</strong>,</p>
+                    <p>Chúng tôi rất tiếc vì những trải nghiệm chưa thực sự trọn vẹn của bạn vừa qua. Ban quản trị hệ thống xin gửi tặng bạn một chiếc voucher đền bù:</p>
+                    
+                    <div style='background-color: #fff9f0; border-left: 4px solid #ff9f43; padding: 15px; margin: 20px 0; border-radius: 4px;'>
+                        <h3 style='margin: 0 0 10px 0; color: #d35400;'>Thông tin Voucher:</h3>
+                        <p style='margin: 5px 0;'><strong>Tên ưu đãi:</strong> {reward.Name}</p>
+                        <p style='margin: 5px 0;'><strong>Ngày hết hạn:</strong> {expiryDate.ToLocalTime():dd/MM/yyyy HH:mm}</p>
+                        {(bookingId.HasValue ? $"<p style='margin: 5px 0;'><strong>Đền bù cho đơn đặt lịch:</strong> #{bookingId.Value.ToString()[..8].ToUpper()}</p>" : "")}
+                    </div>
+
+                    <p>Voucher này đã được gửi trực tiếp vào tài khoản của bạn và sẵn sàng sử dụng cho lần đặt lịch tiếp theo.</p>
+                    <p style='color: #777777;'>Chúng tôi rất trân trọng sự thấu hiểu và đồng hành của bạn!</p>
+                </div>
+                <div style='background-color: #f8f9fa; text-align: center; padding: 12px; color: #777777; font-size: 12px; border-top: 1px solid #e0e0e0;'>
+                    Đây là email tự động gửi từ hệ thống chăm sóc khách hàng. Vui lòng không phản hồi lại email này.
+                </div>
+            </div>";
+
+            try
+            {
+                await _emailService.SendEmailAsync(customer.User.Email, emailSubject, emailBody);
+            }
+            catch (Exception)
+            {
+                return MapVoucher(redemption, reward); // Log lỗi gửi email nếu cần, nhưng không ném Exception để tránh rollback voucher đã ghi nhận thành công.
+            }
+        }
+
         return MapVoucher(redemption, reward);
     }
+
     // ----- Mapping -----
 
     private static RewardResponse MapToResponse(Reward reward) => new()
@@ -371,6 +457,8 @@ public class RewardService : IRewardService
         DiscountValue = reward.DiscountAmount,
         Status = MapVoucherStatus(rr),
         ExpiryDate = rr.ExpiryDate,
+        IsGifted = rr.IsGifted,
+        BookingId = rr.BookingId,
         IsFreeWash = reward.IsFreeWash,
         WashPackageId = reward.WashPackageId
     };

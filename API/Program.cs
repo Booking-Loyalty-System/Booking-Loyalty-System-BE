@@ -91,20 +91,17 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        if (builder.Environment.IsDevelopment())
-            // Dev: cho phep moi port localhost (vite co the nhay 5173->5174->5175 khi port ban),
-            // tranh loi "Network Error" do CORS khi FE khong o dung 5173.
-            policy.SetIsOriginAllowed(origin =>
-                    Uri.TryCreate(origin, UriKind.Absolute, out var u)
-                    && (u.Host == "localhost" || u.Host == "127.0.0.1"))
-                .AllowCredentials().AllowAnyMethod().AllowAnyHeader();
-        else
-            policy.WithOrigins("http://localhost:5173")
-                .AllowCredentials().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins("http://localhost:5173", "https://booking-loyalty-system-fe.vercel.app", "https://nonelementary-slippily-princeton.ngrok-free.dev", "https://localhost:7001")
+              .AllowAnyMethod()   // Chấp nhận mọi Method (POST, GET, OPTIONS...)
+              .AllowAnyHeader()
+              .AllowCredentials();
+
     });
 });
 
 var app = builder.Build();
+app.UseCors("AllowAll");
+app.UseRouting();
 
 // Middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
@@ -112,8 +109,7 @@ app.UseMiddleware<ExceptionMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

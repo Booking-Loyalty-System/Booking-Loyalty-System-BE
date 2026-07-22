@@ -89,22 +89,23 @@ public class PaymentController : ControllerBase
     [HttpPost("payos/webhook")]
     public async Task<IActionResult> PayOsWebhook([FromBody] Webhook webhookBody)
     {
-        try
-        {
-            // ✅ Đã sửa: Dùng Webhooks.VerifyAsync để xác thực chữ ký và bóc tách dữ liệu sạch
-            WebhookData webhookData = await _payOSClient.Webhooks.VerifyAsync(webhookBody);
+        //try
+        //{
+        //    // ✅ Đã sửa: Dùng Webhooks.VerifyAsync để xác thực chữ ký và bóc tách dữ liệu sạch
+        //    WebhookData webhookData = await _payOSClient.Webhooks.VerifyAsync(webhookBody);
 
-            // Cập nhật trạng thái Booking thành Confirmed và Payment thành Paid trong DB
-            await _paymentService.HandlePayOsWebhookAsync(webhookData);
+        //    // Cập nhật trạng thái Booking thành Confirmed và Payment thành Paid trong DB
+        //    await _paymentService.HandlePayOsWebhookAsync(webhookData);
 
-            // Bắt buộc trả về HTTP 200 để báo cho PayOS dừng gửi lại gói tin này
-            return Ok(new { success = true, message = "Webhook handled successfully." });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[PayOS Webhook Error]: {ex.Message}");
-            return BadRequest(new { success = false, message = ex.Message });
-        }
+        //    // Bắt buộc trả về HTTP 200 để báo cho PayOS dừng gửi lại gói tin này
+        //    return Ok(new { success = true, message = "Webhook handled successfully." });
+        //}
+        //catch (Exception ex)
+        //{
+        //    Console.WriteLine($"[PayOS Webhook Error]: {ex.Message}");
+        //    return BadRequest(new { success = false, message = ex.Message });
+        //}
+        return Ok(new { success = true, message = "Webhook received (simulated)." });
     }
 
     [HttpGet("return")]
@@ -116,7 +117,7 @@ public class PaymentController : ControllerBase
         // Kiểm tra xem orderCode truyền về có hợp lệ không
         if (!long.TryParse(orderCode, out long parsedOrderCode))
         {
-            return Redirect("http://localhost:5173/staff/dashboard?paymentStatus=failed");
+            return Redirect("https://booking-loyalty-system-fe.vercel.app/staff/dashboard?paymentStatus=failed");
         }
 
         // Gọi sang service cập nhật Database ngay tại đây
@@ -125,10 +126,10 @@ public class PaymentController : ControllerBase
         // Chuyển hướng người dùng về Frontend kèm theo trạng thái để hiển thị Toast
         if (isSuccess)
         {
-            return Redirect($"http://localhost:5173/staff/dashboard?paymentStatus=success&orderCode={orderCode}");
+            return Redirect($"https://booking-loyalty-system-fe.vercel.app/staff/dashboard?paymentStatus=success&orderCode={orderCode}");
         }
 
-        return Redirect($"http://localhost:5173/staff/dashboard?paymentStatus=cancel&orderCode={orderCode}");
+        return Redirect($"https://booking-loyalty-system-fe.vercel.app/staff/dashboard?paymentStatus=cancel&orderCode={orderCode}");
     }
 
     // Endpoint nếu họ bấm nút Hủy trên trang PayOS: https://localhost:7001/api/payment/cancel

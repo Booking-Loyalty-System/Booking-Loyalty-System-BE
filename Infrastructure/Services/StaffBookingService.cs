@@ -368,6 +368,7 @@ public class StaffBookingService : IStaffBookingService
             Status = booking.Status.ToString(),
             TotalAmount = booking.TotalPrice,
             PointsEarned = pointsEarned,
+            CancellationReason = booking.CancellationReason,
             CreatedAt = booking.CreatedAt.ToString("o"),
             BayId = booking.BayId
         };

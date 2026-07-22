@@ -1,10 +1,11 @@
-using System.Text.Json;
 using Application.DTOs.WashPackage;
 using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Threading;
 
 namespace Infrastructure.Services;
 
@@ -42,8 +43,10 @@ public class WashPackageService : IWashPackageService
         return packages.Select(MapToResponse).ToList();
     }
 
-    public async Task<WashPackageResponse> CreateAsync(CreateWashPackageRequest request)
+    public async Task<WashPackageResponse> CreateAsync(CreateWashPackageRequest request, CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
+
         var package = new WashPackage
         {
             Id = Guid.NewGuid(),
@@ -52,13 +55,29 @@ public class WashPackageService : IWashPackageService
             Price = request.Price,
             DurationMinutes = request.DurationMinutes,
             Features = request.Features != null ? JsonSerializer.Serialize(request.Features) : null,
-            VehicleType = request.VehicleType != null ? Enum.Parse<VehicleType>(request.VehicleType) : null,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
-
         _context.WashPackages.Add(package);
-        await _context.SaveChangesAsync();
+
+        var autoReward = new Reward
+        {
+            Id = Guid.NewGuid(),
+            Code = $"FREE_{request.Name.ToUpper().Replace(" ", "_")}",
+            Name = $"Thưởng Rửa xe {request.Name} Miễn phí",
+            Description = $"Tặng 1 lượt dịch vụ {request.Name} tri ân sau chu kỳ tích rửa 7 lần",
+            PointsCost = 0,
+            DiscountAmount = request.Price,
+            IsFreeWash = true,
+            WashPackageId = package.Id,
+            StartDate = new DateOnly(DateTime.UtcNow.Year, 1, 1),
+            EndDate = new DateOnly(2030, 12, 31),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Rewards.Add(autoReward);
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return MapToResponse(package);
     }

@@ -14,18 +14,18 @@ public class TimeSlotController : ControllerBase
     {
         _timeSlotService = timeSlotService;
     }
-    
+
     /// <summary>
     /// API lấy danh sách tổng hợp lịch trống 7 ngày liên tiếp khớp chuẩn UI dạng lưới
     /// </summary>
     [HttpGet("weekly-summary")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetWeeklySummary([FromQuery] Guid branchId, [FromQuery] DateOnly? startDate)
+    public async Task<IActionResult> GetWeeklySummary([FromQuery] Guid branchId, [FromQuery] DateOnly? startDate, [FromQuery] int numberOfDays = 7)
     {
         // Nếu Frontend không truyền ngày bắt đầu, tự lấy ngày hôm nay
         var targetStartDate = startDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var weeklySummary = await _timeSlotService.GetWeeklySlotsSummaryAsync(branchId, targetStartDate);
+        var weeklySummary = await _timeSlotService.GetWeeklySlotsSummaryAsync(branchId, targetStartDate, numberOfDays);
         return Ok(weeklySummary);
     }
 }

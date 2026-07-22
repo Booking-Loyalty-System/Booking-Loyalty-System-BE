@@ -20,6 +20,7 @@ public class BookingResponseData
     public string Status { get; set; } = null!;
     public decimal TotalAmount { get; set; }
     public int? PointsEarned { get; set; }
+    public string? CancellationReason { get; set; }
     public Guid? BayId { get; set; }
     public string CreatedAt { get; set; } = null!;
 }

@@ -34,4 +34,5 @@ public interface IPromotionService
     /// discount to apply. Throws AppException on failure.
     /// </summary>
     Task<(Guid PromotionId, decimal DiscountAmount)> ApplyAsync(string code, decimal subtotal, Customer customer, Guid branchId);
+    Task<IEnumerable<object>> GetEligiblePromotionsAsync(Guid userId, Guid? branchId);
 }

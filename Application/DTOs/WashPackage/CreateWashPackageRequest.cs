@@ -7,5 +7,4 @@ public class CreateWashPackageRequest
     public decimal Price { get; set; }
     public int DurationMinutes { get; set; }
     public List<string>? Features { get; set; }
-    public string? VehicleType { get; set; }
 }

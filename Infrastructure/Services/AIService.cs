@@ -41,22 +41,81 @@ namespace Infrastructure.Services
             var jsonPayload = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync(url, content);
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var errorDetail = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Gemini Error: {response.StatusCode} - {errorDetail}");
+                // 1. Gửi request và nhận response thông thường
+                var response = await _httpClient.PostAsync(url, content);
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                // 2. Nếu Google trả về mã lỗi (400, 401, 403, 429, 500...)
+                if (!response.IsSuccessStatusCode)
+                {
+                    try
+                    {
+                        // Thử parse cấu trúc lỗi chuẩn của Google để lấy thông báo chi tiết
+                        using var errorDoc = JsonDocument.Parse(responseString);
+                        if (errorDoc.RootElement.TryGetProperty("error", out var errorEl))
+                        {
+                            var code = errorEl.GetProperty("code").GetInt32();
+                            var message = errorEl.GetProperty("message").GetString();
+                            var status = errorEl.GetProperty("status").GetString();
+
+                            throw new Exception($"Gemini API Error [{status} - {code}]: {message}");
+                        }
+                    }
+                    catch (Exception ex) when (!(ex is Exception && ex.Message.StartsWith("Gemini API Error")))
+                    {
+                        // Nếu không parse được cấu trúc lỗi của Google, ném ra chuỗi thô ban đầu
+                    }
+
+                    throw new Exception($"Gemini HTTP Error: {(int)response.StatusCode} {response.ReasonPhrase} - Details: {responseString}");
+                }
+
+                // 3. Nếu Success nhưng Response trống hoặc null
+                if (string.IsNullOrWhiteSpace(responseString))
+                {
+                    throw new Exception("Gemini Error: Nhận được phản hồi rỗng (Empty response) từ Google server.");
+                }
+
+                // 4. Parse dữ liệu khi thành công (Có bọc kiểm tra an toàn bằng TryGetProperty)
+                using var doc = JsonDocument.Parse(responseString);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+                {
+                    var firstCandidate = candidates[0];
+
+                    // Kiểm tra xem câu trả lời có bị chặn bởi bộ lọc an toàn (Safety Ratings) không
+                    if (firstCandidate.TryGetProperty("finishReason", out var reason) && reason.GetString() != "STOP")
+                    {
+                        var reasonStr = reason.GetString();
+                        if (reasonStr == "SAFETY" || reasonStr == "RECITATION")
+                        {
+                            throw new Exception($"Gemini Blocked: Nội dung bị Google chặn do vi phạm chính sách hoặc lý do an toàn ({reasonStr}).");
+                        }
+                    }
+
+                    if (firstCandidate.TryGetProperty("content", out var resContent) &&
+                        resContent.TryGetProperty("parts", out var parts) && parts.GetArrayLength() > 0)
+                    {
+                        return parts[0].GetProperty("text").GetString() ?? string.Empty;
+                    }
+                }
+
+                throw new Exception($"Gemini Parse Error: Cấu trúc JSON thay đổi hoặc không tìm thấy trường dữ liệu 'text'. Response thô: {responseString}");
             }
+            catch (HttpRequestException netEx)
+            {
+                // 5. Bắt lỗi kết nối mạng (Timeout, rớt mạng, DNS không phân giải được, sai URL...)
+                throw new Exception($"Gemini Network Connection Error: Không thể kết nối tới máy chủ Google Generative Language. Chi tiết: {netEx.Message}", netEx);
+            }
+            catch (Exception ex)
+            {
+                // Giữ nguyên các Exception có chủ đích được throw ở trên, tránh bọc lại vô nghĩa
+                if (ex.Message.StartsWith("Gemini ")) throw;
 
-            var responseString = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(responseString);
-
-            return doc.RootElement
-                .GetProperty("candidates")[0]
-                .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
-                .GetString() ?? string.Empty;
+                throw new Exception($"Gemini Unexpected Error: {ex.Message}", ex);
+            }
         }
 
         public async Task<(string sessionId, string response)> ChatWithCustomerAsync(Guid userId, string customerMessage)
@@ -154,15 +213,28 @@ namespace Infrastructure.Services
             Tin nhắn mới của khách hàng: ""{customerMessage}""
             Trợ lý ảo phản hồi ngắn gọn:";
 
-            string aiResponse = await CallGeminiAsync(systemPrompt);
-
-            // Kiểm tra từ khóa không phân biệt hoa thường
-            if (aiResponse.Contains("chuyển đến nhân viên chi nhánh", StringComparison.OrdinalIgnoreCase))
+            string aiResponse;
+            try
             {
-                session.Status = ChatSessionStatus.WaitingForStaff;
+                // Gọi API Gemini
+                aiResponse = await CallGeminiAsync(systemPrompt);
+
+                // Kiểm tra từ khóa không phân biệt hoa thường
+                if (aiResponse.Contains("chuyển đến nhân viên chi nhánh", StringComparison.OrdinalIgnoreCase))
+                {
+                    session.Status = ChatSessionStatus.WaitingForStaff;
+                }
+            }
+            catch (Exception ex)
+            {
+                // BẮT LỖI TẠI ĐÂY: Nếu Gemini lỗi, gán nội dung lỗi chi tiết vào aiResponse để hiển thị trực tiếp lên UI chat
+                aiResponse = $"[HỆ THỐNG DEBUG ĐANG BẬT] Đã xảy ra lỗi khi gọi AI. Chi tiết lỗi: {ex.Message}";
+
+                // Bạn có thể log ra console server để xem đầy đủ StackTrace (nếu cần)
+                Console.WriteLine($"=== AI SERVICE ERROR ===\n{ex.ToString()}\n========================");
             }
 
-            // 3. Lưu phản hồi của AI
+            // 3. Lưu phản hồi của AI (hoặc nội dung lỗi) vào Database để cuộc trò chuyện không bị gián đoạn
             var aiMsgEntity = new ChatMessage
             {
                 Id = Guid.NewGuid(),
@@ -176,6 +248,7 @@ namespace Infrastructure.Services
             session.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            // Gửi qua SignalR về cho Client hiển thị lên khung chat
             await _hub.Clients.Group(session.Id.ToString()).SendAsync("ReceiveMessage", new
             {
                 senderType = aiMsgEntity.SenderType,

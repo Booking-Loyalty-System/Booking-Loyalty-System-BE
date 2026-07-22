@@ -65,11 +65,6 @@ public static class DbInitializer
             await context.SaveChangesAsync();
         }
 
-        // Seed voucher Rửa xe miễn phí (phần thưởng mốc 7 lượt/chu kỳ).
-        // LoyaltyService.AwardPointsForBookingAsync tặng reward có Id cố định ...099 khi
-        // CurrentCycleWashes >= 7; nếu reward này KHÔNG tồn tại thì cả việc tặng voucher LẪN
-        // việc reset chu kỳ (-7) đều bị bỏ qua. Reward này không nằm trong HasData (tránh sinh
-        // migration mới trên lịch sử migration đang lỗi) nên seed idempotent tại đây.
         var freeWashRewardId = Guid.Parse("10000000-0000-0000-0000-000000000099");
         if (!await context.Rewards.AnyAsync(r => r.Id == freeWashRewardId))
         {
@@ -194,6 +189,205 @@ public static class DbInitializer
                 {
                     var batch = bookings.Skip(i).Take(batchSize);
                     await context.Bookings.AddRangeAsync(batch);
+                    await context.SaveChangesAsync();
+                }
+            }
+            finally
+            {
+                context.ChangeTracker.AutoDetectChangesEnabled = true;
+            }
+        }
+
+        var hasSeed2026 = await context.Bookings.AnyAsync(b => b.BookingDate >= new DateOnly(2026, 1, 1));
+
+        if (!hasSeed2026)
+        {
+            var bookings2026 = new List<Booking>();
+
+            var customerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+            var vehicleId = Guid.Parse("fb9bd07a-5f09-43cc-9ae9-7d3d7d05e128");
+            var washPackageId = Guid.Parse("a1b2c3d4-0001-0001-0001-000000000002");
+            var bayId = Guid.Parse("b1b2c3d4-0001-0001-0001-000000000001");
+
+            // Đếm số lượng booking hiện tại từ năm 2025 để cộng dồn counter, tránh trùng mã code
+            int currentTotalBookings = await context.Bookings.CountAsync();
+            int globalCounter = currentTotalBookings + 1;
+
+            // Cấu hình mốc thời gian từ đầu năm 2026 đến ngày hôm nay
+            var startDate2026 = new DateOnly(2026, 1, 1);
+            var endDate2026 = DateOnly.FromDateTime(DateTime.UtcNow);
+
+            var branchDataMatrix = new[]
+            {
+        new {
+            BranchId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02",
+            StaffId = "11111111-1111-1111-1111-111111111113"
+        },
+        new {
+            BranchId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03",
+            StaffId = "11111111-1111-1111-1111-111111111112"
+        },
+        new {
+            BranchId = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            StaffId = "11111111-1111-1111-1111-111111111111"
+        }
+    };
+
+            var startTimes = new List<TimeOnly>
+    {
+        new TimeOnly(8, 0),  new TimeOnly(9, 0),  new TimeOnly(10, 0), new TimeOnly(11, 0),
+        new TimeOnly(12, 0), new TimeOnly(13, 0), new TimeOnly(14, 0), new TimeOnly(15, 0),
+        new TimeOnly(16, 0), new TimeOnly(17, 0)
+    };
+
+            var slotIdsInDb = masterTimeSlots.Select(s => s.Id.ToString()).ToList();
+
+            for (var currentDate = startDate2026; currentDate <= endDate2026; currentDate = currentDate.AddDays(1))
+            {
+                for (int branchIdx = 0; branchIdx < branchDataMatrix.Length; branchIdx++)
+                {
+                    var currentBranch = branchDataMatrix[branchIdx];
+
+                    bool isWeekend = currentDate.DayOfWeek == DayOfWeek.Saturday || currentDate.DayOfWeek == DayOfWeek.Sunday;
+                    int dailyBookingCount = isWeekend ? 2 : (currentDate.Day % 3 == 0 ? 1 : 2);
+
+                    for (int b = 0; b < dailyBookingCount; b++)
+                    {
+                        int slotIndex = (currentDate.DayOfYear + branchIdx * 3 + b * 2) % slotIdsInDb.Count;
+
+                        var masterSlotId = slotIdsInDb[slotIndex];
+                        var branchTimeSlotGuidId = CreateDeterministicGuid($"{currentBranch.BranchId}_{masterSlotId}");
+
+                        var startTime = startTimes[slotIndex % startTimes.Count];
+
+                        // Sinh mã dạng BK26xxxxx nối tiếp số counter toàn cục
+                        string bookingCode = $"BK26{globalCounter:D5}";
+
+                        // Sinh GUID dạng 26262626-... để phân biệt rõ với dữ liệu 2025 cũ
+                        var bookingGuid = Guid.Parse($"26262626-2626-2626-2626-{globalCounter:D12}");
+
+                        decimal totalPrice = 120000.00m + (slotIndex * 15000m);
+
+                        var createdAt = new DateTime(2026, currentDate.Month, currentDate.Day, 6, 0, 0, DateTimeKind.Utc).AddDays(-1);
+                        var updatedAt = new DateTime(2026, currentDate.Month, currentDate.Day, startTime.Hour, startTime.Minute, 0, DateTimeKind.Utc).AddHours(1);
+
+                        bookings2026.Add(new Booking
+                        {
+                            Id = bookingGuid,
+                            BookingCode = bookingCode,
+                            Status = BookingStatus.CheckedOut,
+                            TotalPrice = totalPrice,
+                            DiscountAmount = 0.00m,
+                            BranchTimeSlotId = branchTimeSlotGuidId,
+                            BayId = bayId,
+                            CustomerId = customerId,
+                            VehicleId = vehicleId,
+                            WashPackageId = washPackageId,
+                            StaffId = Guid.Parse(currentBranch.StaffId),
+                            BookingDate = currentDate,
+                            StartTime = startTime,
+                            CreatedAt = createdAt,
+                            UpdatedAt = updatedAt,
+                            CustomerNote = $"Data seed doanh thu hệ thống năm 2026 - Ngày {currentDate:dd/MM/yyyy}"
+                        });
+
+                        globalCounter++;
+                    }
+                }
+            }
+
+            // Tiến hành lưu hàng loạt dữ liệu 2026
+            try
+            {
+                context.ChangeTracker.AutoDetectChangesEnabled = false;
+                const int batchSize = 1000;
+                for (int i = 0; i < bookings2026.Count; i += batchSize)
+                {
+                    var batch = bookings2026.Skip(i).Take(batchSize);
+                    await context.Bookings.AddRangeAsync(batch);
+                    await context.SaveChangesAsync();
+                }
+            }
+            finally
+            {
+                context.ChangeTracker.AutoDetectChangesEnabled = true;
+            }
+        }
+
+        var bookings2026WithoutFeedback = await context.Bookings
+            .Where(b => b.BookingDate >= new DateOnly(2026, 1, 1) && b.Feedback == null)
+            .Select(b => new { b.Id, b.CustomerId, b.BookingDate, b.StartTime })
+            .ToListAsync();
+
+        if (bookings2026WithoutFeedback.Any())
+        {
+            var seedFeedbacks = new List<Feedback>();
+
+            // Mẫu comment phong phú để seed cho tự nhiên
+            var sampleComments = new[]
+            {
+                "Dịch vụ rất tốt, rửa sạch sẽ và cẩn thận!",
+                "Nhân viên nhiệt tình, phòng chờ mát mẻ.",
+                "Giá cả hợp lý, sẽ tiếp tục ủng hộ chi nhánh.",
+                "Rửa xe khá nhanh, đúng giờ đã đặt.",
+                "Chất lượng dịch vụ tuyệt vời, 5 sao!",
+                "Xe sạch bong kin kịt, lau khô rất kỹ.",
+                "Khá hài lòng với chất lượng phục vụ ở đây.",
+                "Dịch vụ tốt, lần sau sẽ quay lại."
+            };
+
+            int feedbackCounter = 1;
+
+            foreach (var bk in bookings2026WithoutFeedback)
+            {
+                // Chọn ngẫu nhiên/xoay vòng điểm đánh giá (chủ yếu từ 4 đến 5 sao)
+                int staffRating = (feedbackCounter % 5 == 0) ? 4 : 5;
+                int serviceRating = (feedbackCounter % 7 == 0) ? 4 : 5;
+                int priceRating = (feedbackCounter % 3 == 0) ? 4 : 5;
+
+                // Điểm trung bình cộng
+                double overallRating = Math.Round((staffRating + serviceRating + priceRating) / 3.0, 1);
+
+                // Lấy mẫu comment
+                string comment = sampleComments[feedbackCounter % sampleComments.Length];
+
+                // Thời gian tạo feedback: khoảng 1-2 tiếng sau khi hoàn thành dịch vụ
+                var feedbackCreatedAt = new DateTime(
+                    bk.BookingDate.Year,
+                    bk.BookingDate.Month,
+                    bk.BookingDate.Day,
+                    bk.StartTime.Hour,
+                    bk.StartTime.Minute,
+                    0,
+                    DateTimeKind.Utc
+                ).AddHours(2);
+
+                // ID Deterministic dạng 36363636-... cho Feedback
+                var feedbackGuid = Guid.Parse($"36363636-3636-3636-3636-{feedbackCounter:D12}");
+
+                seedFeedbacks.Add(new Feedback
+                {
+                    Id = feedbackGuid,
+                    BookingId = bk.Id,
+                    CustomerId = bk.CustomerId,
+                    StaffRating = staffRating,
+                    ServiceRating = serviceRating,
+                    PriceRating = priceRating,
+                    Comment = comment,
+                    CreatedAt = feedbackCreatedAt
+                });
+
+                feedbackCounter++;
+            }
+
+            try
+            {
+                context.ChangeTracker.AutoDetectChangesEnabled = false;
+                const int batchSize = 1000;
+                for (int i = 0; i < seedFeedbacks.Count; i += batchSize)
+                {
+                    var batch = seedFeedbacks.Skip(i).Take(batchSize);
+                    await context.Feedbacks.AddRangeAsync(batch);
                     await context.SaveChangesAsync();
                 }
             }

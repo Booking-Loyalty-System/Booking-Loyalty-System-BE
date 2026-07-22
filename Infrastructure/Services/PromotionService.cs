@@ -255,6 +255,75 @@ public class PromotionService : IPromotionService
         return (promotion.Id, discount);
     }
 
+    public async Task<IEnumerable<object>> GetEligiblePromotionsAsync(Guid userId, Guid? branchId)
+    {
+        var now = DateTime.UtcNow;
+
+        // 1. Lấy thông tin khách hàng để check Tier và Birthday
+        var customer = await _context.Customers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == userId);
+
+        if (customer == null) return Enumerable.Empty<object>();
+
+        // 2. Truy vấn danh sách Promotion thỏa mãn điều kiện
+        var query = _context.Promotions
+            .Include(p => p.TierPromotions)
+            .Include(p => p.PromotionBranches)
+            .AsNoTracking()
+            .Where(p => p.IsActive
+                        && p.StartDate <= now
+                        && p.EndDate >= now
+                        && (p.MaxUses == null || p.UsedCount < p.MaxUses));
+
+        // 3. Lọc theo Hạng thành viên (Tier) của Customer
+        query = query.Where(p => p.TierPromotions.Any(tp => tp.TierId == customer.TierId));
+
+        var rawPromotions = await query.ToListAsync();
+        var eligiblePromotions = new List<Promotion>();
+
+        // 4. Lọc chi tiết ở Memory (Birthday & Branch)
+        foreach (var promo in rawPromotions)
+        {
+            // Kiểm tra tuần sinh nhật (± 3 ngày) nếu promo yêu cầu
+            if (promo.RequiresBirthday)
+            {
+                if (customer.DateOfBirth == null) continue;
+
+                var birthdayThisYear = new DateTime(now.Year, customer.DateOfBirth.Value.Month, customer.DateOfBirth.Value.Day);
+                var startBirthdayWindow = birthdayThisYear.AddDays(-3);
+                var endBirthdayWindow = birthdayThisYear.AddDays(3);
+
+                if (now < startBirthdayWindow || now > endBirthdayWindow)
+                    continue; // Vượt quá khung ngày sinh nhật
+            }
+
+            // Kiểm tra Chi nhánh
+            if (branchId.HasValue && promo.PromotionBranches.Any())
+            {
+                // Nếu promo giới hạn chi nhánh, và chi nhánh hiện tại không nằm trong danh sách -> Loại
+                if (!promo.PromotionBranches.Any(pb => pb.BranchId == branchId.Value))
+                    continue;
+            }
+
+            eligiblePromotions.Add(promo);
+        }
+
+        return eligiblePromotions
+            .OrderByDescending(p => p.PriorityLevel)
+            .Select(p => new
+            {
+                p.Id,
+                p.Code,
+                p.Name,
+                p.Description,
+                p.DiscountType,
+                p.DiscountValue,
+                p.MinSpend,
+                p.PriorityLevel
+            });
+    }
+
     /// <summary>Loads a promotion by code and enforces all eligibility rules, or throws.</summary>
     private async Task<Promotion> LoadValidPromotionAsync(string code, decimal subtotal, Customer customer, Guid? branchId)
     {
