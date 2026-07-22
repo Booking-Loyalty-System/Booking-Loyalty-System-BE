@@ -6,6 +6,7 @@ env.bak/
 venv.bak/
 pythonenv/
 
+.vscode/
 ## Thư mục build và rác của VS/Rider
 bin/
 obj/
