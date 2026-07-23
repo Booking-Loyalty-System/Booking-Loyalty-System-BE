@@ -262,22 +262,27 @@ public class PromotionService : IPromotionService
         // 1. Lấy thông tin khách hàng để check Tier và Birthday
         var customer = await _context.Customers
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == userId);
+            .FirstOrDefaultAsync(c => c.UserId == userId);
 
         if (customer == null) return Enumerable.Empty<object>();
 
-        // 2. Truy vấn danh sách Promotion thỏa mãn điều kiện
+        // FIX 1: Lấy .Value để Dictionary chuẩn key là Guid
+        var userPromoUsage = await _context.Bookings
+            .Where(b => b.CustomerId == customer.Id && b.PromotionId != null && b.Status != BookingStatus.Cancelled)
+            .GroupBy(b => b.PromotionId)
+            .Select(g => new { PromotionId = g.Key!.Value, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PromotionId, x => x.Count);
+
         var query = _context.Promotions
             .Include(p => p.TierPromotions)
             .Include(p => p.PromotionBranches)
             .AsNoTracking()
             .Where(p => p.IsActive
                         && p.StartDate <= now
-                        && p.EndDate >= now
-                        && (p.MaxUses == null || p.UsedCount < p.MaxUses));
+                        && p.EndDate >= now);
 
-        // 3. Lọc theo Hạng thành viên (Tier) của Customer
-        query = query.Where(p => p.TierPromotions.Any(tp => tp.TierId == customer.TierId));
+        // FIX 2: Lấy KM dành cho mọi người (không cấu hình Tier) HOẶC KM đúng Tier của khách
+        query = query.Where(p => !p.TierPromotions.Any() || p.TierPromotions.Any(tp => tp.TierId == customer.TierId));
 
         var rawPromotions = await query.ToListAsync();
         var eligiblePromotions = new List<Promotion>();
@@ -285,6 +290,14 @@ public class PromotionService : IPromotionService
         // 4. Lọc chi tiết ở Memory (Birthday & Branch)
         foreach (var promo in rawPromotions)
         {
+            if (promo.MaxUses.HasValue)
+            {
+                // Do key giờ đã là Guid chuẩn, nên TryGetValue sẽ chạy chính xác 100%
+                userPromoUsage.TryGetValue(promo.Id, out int usedCount);
+                if (usedCount >= promo.MaxUses.Value)
+                    continue; // Hết số lần -> Loại ngay lập tức
+            }
+
             // Kiểm tra tuần sinh nhật (± 3 ngày) nếu promo yêu cầu
             if (promo.RequiresBirthday)
             {
@@ -295,13 +308,12 @@ public class PromotionService : IPromotionService
                 var endBirthdayWindow = birthdayThisYear.AddDays(3);
 
                 if (now < startBirthdayWindow || now > endBirthdayWindow)
-                    continue; // Vượt quá khung ngày sinh nhật
+                    continue;
             }
 
             // Kiểm tra Chi nhánh
             if (branchId.HasValue && promo.PromotionBranches.Any())
             {
-                // Nếu promo giới hạn chi nhánh, và chi nhánh hiện tại không nằm trong danh sách -> Loại
                 if (!promo.PromotionBranches.Any(pb => pb.BranchId == branchId.Value))
                     continue;
             }
@@ -344,8 +356,16 @@ public class PromotionService : IPromotionService
         if (now < promotion.StartDate || now > promotion.EndDate)
             throw new AppException("This promotion is not valid at this time.", 400);
 
-        if (promotion.MaxUses.HasValue && promotion.UsedCount >= promotion.MaxUses.Value)
-            throw new AppException("This promotion has reached its usage limit.", 400);
+        if (promotion.MaxUses.HasValue)
+        {
+            var userUsageCount = await _context.Bookings
+                .CountAsync(b => b.CustomerId == customer.Id
+                              && b.PromotionId == promotion.Id
+                              && b.Status != BookingStatus.Cancelled);
+
+            if (userUsageCount >= promotion.MaxUses.Value)
+                throw new AppException($"Mã khuyến mãi này giới hạn {promotion.MaxUses.Value} lần/người. Bạn đã sử dụng hết, vui lòng chọn ưu đãi khác.", 400);
+        }
 
         if (promotion.MinSpend.HasValue && subtotal < promotion.MinSpend.Value)
             throw new AppException($"This promotion requires a minimum spend of {promotion.MinSpend.Value:0.##}.", 400);
