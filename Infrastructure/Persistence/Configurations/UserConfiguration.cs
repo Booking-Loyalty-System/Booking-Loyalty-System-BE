@@ -25,6 +25,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.RefreshToken)
             .HasMaxLength(256);
 
+        builder.Property(u => u.IsEmailConfirmed)
+            .HasDefaultValue(false);
+
         builder.HasOne(u => u.Customer)
             .WithOne(c => c.User)
             .HasForeignKey<Customer>(c => c.UserId)
@@ -35,10 +38,15 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .WithOne(s => s.User)
             .HasForeignKey<Staff>(s => s.UserId);
 
+        builder.HasMany(u => u.EmailVerifications)
+            .WithOne(ev => ev.User)
+            .HasForeignKey(ev => ev.UserId);
+
         builder.HasOne(u => u.Point)
         .WithOne(p => p.User)
         .HasForeignKey<Point>(p => p.UserId)
         .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasData(
             new User
             {
@@ -48,6 +56,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin"),
                 Role = UserRole.Admin,
                 IsActive = true,
+                IsEmailConfirmed = true,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -57,6 +66,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("staff"),
                 Role = UserRole.Staff,
                 IsActive = true,
+                IsEmailConfirmed = true,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -66,6 +76,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("staff"),
                 Role = UserRole.Staff,
                 IsActive = true,
+                IsEmailConfirmed = true,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -75,6 +86,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("staff"),
                 Role = UserRole.Staff,
                 IsActive = true,
+                IsEmailConfirmed = true,
                 CreatedAt = DateTime.UtcNow
             },
             new User
@@ -86,10 +98,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             },
-            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccd"), Email = "cus2@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccce"), Email = "cus3@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
-            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"), Email = "cus4@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow },
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccd"), Email = "cus2@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, IsEmailConfirmed = true, CreatedAt = DateTime.UtcNow },
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccce"), Email = "cus3@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, IsEmailConfirmed = true, CreatedAt = DateTime.UtcNow },
+            new User { Id = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccf"), Email = "cus4@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, IsEmailConfirmed = true, CreatedAt = DateTime.UtcNow },
             // DEMO XUỐNG HẠNG: customer Diamond dành riêng để test hạ hạng
-            new User { Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), Email = "downgrade@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, CreatedAt = DateTime.UtcNow });
+            new User { Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), Email = "downgrade@system.com", PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer"), Role = UserRole.Customer, IsActive = true, IsEmailConfirmed = true, CreatedAt = DateTime.UtcNow });
     }
 }

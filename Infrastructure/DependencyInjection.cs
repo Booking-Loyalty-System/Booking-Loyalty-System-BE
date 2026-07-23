@@ -122,7 +122,11 @@ public static class DependencyInjection
         services.AddScoped<IAdminAnalyticService, AdminAnalyticService>();
         services.AddHostedService<NotificationWorker>();
 
-        // Cancels unpaid bookings past the VNPay payment window, releasing their slots.
+        services.AddHttpClient("ProfanityApi", client =>
+        {
+            client.BaseAddress = new Uri("http://127.0.0.1:8000/");
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
         services.AddHostedService<PendingBookingCleanupService>();
 
         // Auto-marks Confirmed/CheckedIn bookings as NoShow once the booked time + grace passes.

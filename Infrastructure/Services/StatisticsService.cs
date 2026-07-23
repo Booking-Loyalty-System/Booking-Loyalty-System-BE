@@ -1,5 +1,7 @@
 using Application.DTOs.Statistics;
+using Application.DTOs.Tier;
 using Application.Interfaces;
+using Domain.Entities;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -147,7 +149,94 @@ public class StatisticsService : IStatisticsService
             .ToList();
     }
 
-    // -- helpers --
+    public async Task<List<TierPeriodReportResponse>> GetTierStatisticsAsync(TierStatisticsRequest request)
+    {
+        // 1. Lấy toàn bộ danh sách khách hàng và thông tin hạng của họ
+        // LƯU Ý: Ở đây đang dùng Customer.CreatedAt để demo theo chu kỳ đăng ký/hoạt động.
+        // Nếu sau này bạn có bảng lịch sử nâng hạng, hãy query từ bảng đó.
+        var query = _context.Customers
+            .Include(c => c.Tier)
+            .Where(c => c.CreatedAt.Year == request.Year);
+
+        // 2. Nhóm dữ liệu theo tiêu chí (Tháng, Quý, Năm)
+        var groupedData = await query.ToListAsync();
+
+        var rawPeriods = groupedData
+            .GroupBy(c => new
+            {
+                PeriodNumber = request.Criteria.ToLower() switch
+                {
+                    "month" => c.CreatedAt.Month,
+                    "quarter" => (c.CreatedAt.Month - 1) / 3 + 1,
+                    _ => 1 // "year"
+                },
+                PeriodLabel = request.Criteria.ToLower() switch
+                {
+                    "month" => $"Tháng {c.CreatedAt.Month:D2}/{request.Year}",
+                    "quarter" => $"Quý {(c.CreatedAt.Month - 1) / 3 + 1}/{request.Year}",
+                    _ => $"Năm {request.Year}"
+                }
+            })
+            .OrderBy(g => g.Key.PeriodNumber)
+            .ToList();
+
+        // Lấy danh sách tất cả các Tier hiện có để đảm bảo kỳ nào cũng hiển thị đủ các hạng (dù count = 0)
+        var allTiers = await _context.Tiers.ToListAsync();
+
+        var report = new List<TierPeriodReportResponse>();
+        TierPeriodReportResponse previousPeriodReport = null;
+
+        // 3. Tính toán số lượng, tỉ lệ % và độ chênh lệch
+        foreach (var group in rawPeriods)
+        {
+            var periodReport = new TierPeriodReportResponse()
+            {
+                PeriodLabel = group.Key.PeriodLabel,
+                TotalCustomersInPeriod = group.Count()
+            };
+
+            foreach (var tier in allTiers)
+            {
+                var customersInTier = group.Where(c => c.TierId == tier.Id).ToList();
+                int count = customersInTier.Count;
+
+                // Tính % của hạng này chiếm bao nhiêu trong tổng số khách của kỳ hiện tại
+                double percentage = periodReport.TotalCustomersInPeriod > 0
+                    ? Math.Round((double)count / periodReport.TotalCustomersInPeriod * 100, 2)
+                    : 0;
+
+                // Tính % chênh lệch số lượng so với kỳ trước đó
+                double percentageChange = 0;
+                if (previousPeriodReport != null)
+                {
+                    var prevTierCount = previousPeriodReport.Tiers.FirstOrDefault(t => t.TierId == tier.Id)?.Count ?? 0;
+                    if (prevTierCount > 0)
+                    {
+                        // Công thức: ((Kỳ này - Kỳ trước) / Kỳ trước) * 100
+                        percentageChange = Math.Round(((double)(count - prevTierCount) / prevTierCount) * 100, 2);
+                    }
+                    else if (count > 0)
+                    {
+                        percentageChange = 100; // Tăng trưởng 100% nếu kỳ trước bằng 0 và kỳ này có khách
+                    }
+                }
+
+                periodReport.Tiers.Add(new TierCountResponse
+                {
+                    TierId = tier.Id,
+                    TierName = tier.TierName,
+                    Count = count,
+                    Percentage = percentage,
+                    PercentageChangeFromPrevious = percentageChange
+                });
+            }
+
+            report.Add(periodReport);
+            previousPeriodReport = periodReport; // Lưu lại để so sánh cho chu kỳ tiếp theo
+        }
+
+        return report;
+    }
 
     private record BookingDatePrice
     {
@@ -164,7 +253,8 @@ public class StatisticsService : IStatisticsService
                 var d = b.BookingDate;
                 var offset = ((int)d.DayOfWeek + 6) % 7; // Monday = 0
                 return d.AddDays(-offset).ToString("yyyy-MM-dd");
-            },
+            }
+            ,
             "month" => b => b.BookingDate.ToString("yyyy-MM"),
             _ => b => b.BookingDate.ToString("yyyy-MM-dd")
         };

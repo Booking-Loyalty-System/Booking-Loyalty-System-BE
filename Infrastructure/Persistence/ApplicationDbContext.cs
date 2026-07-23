@@ -46,6 +46,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<ChatFeedback> ChatFeedbacks => Set<ChatFeedback>();
+    public DbSet<EmailVerification> EmailVerifications => Set<EmailVerification>();
     public Task<IDbContextTransaction> BeginTransactionAsync(
         IsolationLevel isolationLevel = IsolationLevel.Serializable,
         CancellationToken cancellationToken = default)

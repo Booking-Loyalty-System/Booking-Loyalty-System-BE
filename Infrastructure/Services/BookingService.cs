@@ -251,6 +251,11 @@ public class BookingService : IBookingService
                     && (r.ExpiryDate == null || r.ExpiryDate > DateTime.UtcNow))
                 ?? throw new AppException("Voucher not found, already used, or expired.", 400);
 
+            if (appliedRedemption.Reward.WashPackageId != null && appliedRedemption.Reward.WashPackageId != washPackage.Id)
+            {
+                throw new AppException($"Voucher này chỉ áp dụng cho gói dịch vụ quy định, không áp dụng cho gói '{washPackage.Name}'.", 400);
+            }
+
             var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, totalPrice);
             discountAmount += voucherDiscount;
             totalPrice -= voucherDiscount;

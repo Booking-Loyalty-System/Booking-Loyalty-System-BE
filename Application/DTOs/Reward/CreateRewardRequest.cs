@@ -8,4 +8,5 @@ public class CreateRewardRequest
 
     /// <summary>Fixed-amount discount the voucher grants when applied to a booking.</summary>
     public decimal DiscountAmount { get; set; }
+    public Guid? WashPackageId { get; set; }
 }

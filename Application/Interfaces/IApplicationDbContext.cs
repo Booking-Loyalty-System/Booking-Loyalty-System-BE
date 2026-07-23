@@ -44,6 +44,7 @@ public interface IApplicationDbContext
     DbSet<ChatSession> ChatSessions { get; }
     DbSet<ChatMessage> ChatMessages { get; }
     DbSet<ChatFeedback> ChatFeedbacks { get; }
+    DbSet<EmailVerification> EmailVerifications { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>

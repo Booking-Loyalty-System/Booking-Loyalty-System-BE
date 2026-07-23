@@ -1,4 +1,5 @@
 using Application.Common;
+using Application.DTOs.Tier;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,6 +71,19 @@ public class AdminStatisticsController : ControllerBase
     public async Task<IActionResult> GetTierDistribution()
     {
         var result = await _statisticsService.GetTierDistributionAsync();
+        return Ok(ApiResponse<object>.SuccessResponse(result));
+    }
+
+    [HttpGet("tier-statistics")]
+    public async Task<IActionResult> GetTierStatistics([FromQuery] TierStatisticsRequest request)
+    {
+        if (request.Year == 0)
+            request.Year = DateTime.UtcNow.Year;
+
+        if (string.IsNullOrWhiteSpace(request.Criteria))
+            request.Criteria = "month";
+
+        var result = await _statisticsService.GetTierStatisticsAsync(request);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 }

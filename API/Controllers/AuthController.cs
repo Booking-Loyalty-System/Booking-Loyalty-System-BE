@@ -58,6 +58,17 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] EmailVerificationRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.OtpCode))
+            return BadRequest(ApiResponse<object>.FailResponse("Vui lòng cung cấp đầy đủ Email và mã OTP."));
+
+        // Gọi trực tiếp luồng xử lý VerifyEmailAsync trong AuthService đã hoàn thiện
+        var result = await _authService.VerifyEmailAsync(request.Id, request.OtpCode);
+        return Ok(result);
+    }
+
     /// <summary>
     /// A03: Refresh access token
     /// </summary>
@@ -117,7 +128,7 @@ public class AuthController : ControllerBase
         var result = await _authService.GoogleLoginAsync(code);
         return Ok(result);
     }
-    
+
     /*[HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp(
         [FromBody] VerifyOtpRequest request,
@@ -160,7 +171,7 @@ public class AuthController : ControllerBase
             phoneNumber = verifiedPhoneNumber
         }));
     }*/
-    
+
     [HttpPost("send-otp")]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpDto request)
     {
@@ -171,7 +182,7 @@ public class AuthController : ControllerBase
 
         if (isSuccess)
             return Ok(new { success = true, message = "Mã OTP đã được gửi!" });
-            
+
         return StatusCode(500, new { success = false, message = "Lỗi khi gửi OTP." });
     }
 
@@ -186,7 +197,7 @@ public class AuthController : ControllerBase
 
         if (isValid)
             return Ok(new { success = true, message = "Xác thực thành công!" });
-            
+
         return BadRequest(new { success = false, message = "Mã OTP không chính xác hoặc đã hết hạn." });
     }
     private Guid GetUserId()
@@ -194,13 +205,13 @@ public class AuthController : ControllerBase
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Guid.Parse(claim!);
     }
-    
+
     public class SendOtpDto
     {
         public string PhoneNumber { get; set; } = string.Empty;
     }
 
-    public class VerifyOtpDto  
+    public class VerifyOtpDto
     {
         public string PhoneNumber { get; set; } = string.Empty;
         public string OtpCode { get; set; } = string.Empty;

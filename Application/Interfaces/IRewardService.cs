@@ -37,5 +37,5 @@ public interface IRewardService
 
     /// <summary>Marks the customer's own voucher as used (consumed).</summary>
     Task UseVoucherAsync(Guid userId, Guid voucherId);
-    Task<VoucherResponse> GiftCompensationVoucherAsync(Guid userId, Guid rewardId);
+    Task<VoucherResponse> GiftCompensationVoucherAsync(Guid userId, Guid rewardId, Guid? bookingId);
 }
