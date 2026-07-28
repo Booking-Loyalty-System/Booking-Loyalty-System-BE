@@ -32,25 +32,7 @@ public class StaffController : ControllerBase
         }
 
         var profile = await _staffService.GetProfileByUserIdAsync(userId);
-        
+
         return Ok(ApiResponse<StaffProfileResponse>.SuccessResponse(profile, "Lấy thông tin nhân viên thành công."));
-    }
-    
-    [Authorize(Roles = "Admin")]
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ApiResponse<StaffProfileResponse>>> GetStaffById(Guid id)
-    {
-        var staff = await _staffService.GetStaffByIdAsync(id);
-        
-        return Ok(ApiResponse<StaffProfileResponse>.SuccessResponse(staff, $"Lấy thông tin nhân viên có ID {id} thành công."));
-    }
-    
-    [Authorize(Roles = "Admin")]
-    [HttpPost]
-    public async Task<ActionResult<ApiResponse<StaffProfileResponse>>> CreateStaff([FromBody] CreateStaffRequest request)
-    {
-        var newStaff = await _staffService.CreateStaffAsync(request);
-        
-        return Ok(ApiResponse<StaffProfileResponse>.SuccessResponse(newStaff, "Tạo tài khoản nhân viên thành công."));
     }
 }
