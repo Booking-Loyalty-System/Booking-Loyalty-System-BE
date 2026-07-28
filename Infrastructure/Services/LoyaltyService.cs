@@ -168,7 +168,8 @@ public class LoyaltyService : ILoyaltyService
         await using var transaction = await _context.BeginTransactionAsync(cancellationToken: cancellationToken);
 
         var booking = await _context.Bookings
-            .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
+        .Include(b => b.Reward)
+        .FirstOrDefaultAsync(b => b.Id == bookingId, cancellationToken);
 
         if (booking is null)
             return;
@@ -202,11 +203,15 @@ public class LoyaltyService : ILoyaltyService
         point.TotalPoints += points;
         point.UpdatedAt = now;
 
-        customer.TotalWashes += 1;
-        customer.CurrentCycleWashes += 1; // Thẻ tích rửa: cộng dồn
         customer.TotalSpent += booking.TotalPrice;
 
-        // === TÍNH TOÁN HẠNG THÀNH VIÊN ===
+        bool isFreeWashBooking = booking.Reward != null && booking.Reward.IsFreeWash;
+        customer.TotalWashes += 1;
+        if (!isFreeWashBooking)
+        {
+            customer.CurrentCycleWashes += 1;
+        }
+
         var since = DateOnly.FromDateTime(now.AddDays(-30));
         var otherDoneBookings = await _context.Bookings.CountAsync(b =>
             b.CustomerId == customer.Id
@@ -255,34 +260,31 @@ public class LoyaltyService : ILoyaltyService
         bool isFreeWashAwarded = false;
         Guid? awardedRewardId = null;
         string awardedRewardName = string.Empty;
+        DateTime? awardedExpiryDate = null;
 
         if (customer.CurrentCycleWashes >= 7)
         {
             // 1. Lấy 7 booking gần nhất (bao gồm cả booking hiện tại) đã hoàn thành
             var last7Bookings = await _context.Bookings
                 .Where(b => b.CustomerId == customer.Id
-                         && (b.Status == BookingStatus.CheckedOut))
-                .OrderByDescending(b => b.CreatedAt) // Hoặc BookingDate tùy thuộc vào schema của bạn
+                         && b.Status == BookingStatus.CheckedOut
+                         && (b.Reward == null || !b.Reward.IsFreeWash))
+                .OrderByDescending(b => b.CreatedAt)
                 .Take(7)
                 .Select(b => b.TotalPrice)
                 .ToListAsync(cancellationToken);
 
-            // Đảm bảo đủ 7 booking mới tính
             if (last7Bookings.Count == 7)
             {
-                // 2. Tính trung bình số tiền khách đã trả
                 decimal averagePrice = last7Bookings.Average();
-
-                // 3. Xác định Reward Code dựa trên trung bình giá
                 string targetRewardCode = DetermineRewardCodeByAveragePrice(averagePrice);
 
-                // 4. Lấy phần thưởng từ DB
-                // (Lưu ý: Đảm bảo field lưu code của bạn tên là Code hoặc RewardCode)
                 var reward = await _context.Rewards
                     .FirstOrDefaultAsync(r => r.Code == targetRewardCode && r.IsActive, cancellationToken);
 
                 if (reward != null)
                 {
+                    var expiryDate = now.AddDays(30);
                     var redemption = new RewardRedemption
                     {
                         Id = Guid.NewGuid(),
@@ -290,15 +292,16 @@ public class LoyaltyService : ILoyaltyService
                         RewardId = reward.Id,
                         CreatedAt = now,
                         Status = RedemptionStatus.Pending,
-                        ExpiryDate = now.AddDays(30)
+                        ExpiryDate = expiryDate
                     };
 
                     _context.RewardRedemptions.Add(redemption);
-                    customer.CurrentCycleWashes -= 7; // Reset chu kỳ
+                    customer.CurrentCycleWashes -= 7;
 
                     isFreeWashAwarded = true;
                     awardedRewardId = reward.Id;
-                    awardedRewardName = reward.Name; // Lưu lại tên để gửi thông báo
+                    awardedRewardName = reward.Name;
+                    awardedExpiryDate = expiryDate;
                 }
             }
         }
@@ -306,21 +309,22 @@ public class LoyaltyService : ILoyaltyService
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        // === GỬI EMAIL VÀ NOTIFICATION ===
         if (isUpgraded && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
             await SendUpgradeEmailSafeAsync(customer.User.Email, oldTierName, newTierName, point.TotalPoints);
         }
 
-        if (isFreeWashAwarded && awardedRewardId.HasValue && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
+        if (isFreeWashAwarded && awardedRewardId.HasValue && awardedExpiryDate.HasValue && customer.User != null && !string.IsNullOrEmpty(customer.User.Email))
         {
+            string expireStr = awardedExpiryDate.Value.ToString("dd/MM/yyyy HH:mm");
             await _notificationService.SendNotificationToCustomerAsync(
                 customer.Id,
                 "Quà tặng tri ân độc quyền! 🎉",
-                $"Bạn đã hoàn thành mốc 7 lượt dịch vụ. Hệ thống đã tặng bạn 1 thẻ quà tặng: {awardedRewardName} vào kho quà!",
+                $"Hoàn thành 7 lượt dịch vụ, bạn được tặng: {awardedRewardName}. Hạn sử dụng: {expireStr}. Đặt lịch ngay!",
                 awardedRewardId.Value,
                 "Loyalty"
             );
+            await SendRewardEmailSafeAsync(customer.User.Email, awardedRewardName, awardedExpiryDate.Value);
         }
     }
 
@@ -438,7 +442,21 @@ public class LoyaltyService : ILoyaltyService
         await _emailService.SendEmailAsync(toEmail, subject, body);
     }
 
+    private async Task SendRewardEmailSafeAsync(string toEmail, string rewardName, DateTime expiryDate)
+    {
+        string subject = "🎁 Bạn có một thẻ quà tặng mới từ hệ thống!";
+        string body = $@"
+        <h2>Chào bạn,</h2>
+        <p>Chúc mừng bạn đã hoàn thành xuất sắc chu kỳ 7 lượt dịch vụ rửa xe.</p>
+        <p>Để tri ân, hệ thống đã gửi tặng bạn 1 Voucher: <b>{rewardName}</b>.</p>
+        <p>Mã quà tặng này sẽ hết hạn vào lúc: <b style='color:red;'>{expiryDate:dd/MM/yyyy HH:mm}</b>.</p>
+        <p>Vui lòng đăng nhập vào ứng dụng và đặt lịch trước thời hạn để không bỏ lỡ phần quà này nhé!</p>
+        <br/>
+        <p>Cảm ơn bạn đã tin tưởng và đồng hành cùng chúng tôi!</p>
+    ";
 
+        await _emailService.SendEmailAsync(toEmail, subject, body); // Gửi qua MailKit đã được cấu hình[cite: 3]
+    }
     public async Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId)
     {
         var customer = await _context.Customers
