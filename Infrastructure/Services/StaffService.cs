@@ -39,6 +39,77 @@ public class StaffService : IStaffService
         return MapToResponse(staff);
     }
 
+    public async Task<List<StaffProfileResponse>> GetAllStaffAsync(StaffFilterRequest filter)
+    {
+        var query = _context.Staffs
+            .Include(s => s.User)
+            .Include(s => s.Branch)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (filter.BranchId.HasValue)
+            query = query.Where(s => s.BranchId == filter.BranchId.Value);
+
+        if (filter.IsActive.HasValue)
+            query = query.Where(s => s.User.IsActive == filter.IsActive.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim().ToLower();
+            query = query.Where(s =>
+                s.FullName.ToLower().Contains(search) ||
+                (s.User.Email != null && s.User.Email.ToLower().Contains(search)));
+        }
+
+        var staffs = await query
+            .OrderBy(s => s.FullName)
+            .ToListAsync();
+
+        return staffs.Select(MapToResponse).ToList();
+    }
+
+    public async Task<StaffProfileResponse> UpdateStaffAsync(Guid staffId, UpdateStaffRequest request)
+    {
+        var staff = await _context.Staffs
+                        .Include(s => s.User)
+                        .Include(s => s.Branch)
+                        .FirstOrDefaultAsync(s => s.Id == staffId)
+                    ?? throw new AppException("Staff member not found.", 404);
+
+        // Nếu đổi chi nhánh thì kiểm tra chi nhánh mới có tồn tại không
+        if (staff.BranchId != request.BranchId)
+        {
+            var branch = await _context.Branches.FindAsync(request.BranchId)
+                         ?? throw new AppException("Chi nhánh được chỉ định không tồn tại.", 404);
+            staff.BranchId = branch.Id;
+            staff.Branch = branch;
+        }
+
+        staff.FullName = request.FullName;
+        staff.PhoneNumber = request.PhoneNumber;
+        staff.IsAvailable = request.IsAvailable;
+
+        await _context.SaveChangesAsync();
+
+        return MapToResponse(staff);
+    }
+
+    public async Task DeleteStaffAsync(Guid staffId)
+    {
+        var staff = await _context.Staffs
+                        .Include(s => s.User)
+                        .FirstOrDefaultAsync(s => s.Id == staffId)
+                    ?? throw new AppException("Staff member not found.", 404);
+
+        // Soft-delete: chặn đăng nhập + đánh dấu không còn làm việc,
+        // giữ nguyên bản ghi để bảo toàn lịch sử booking.
+        staff.User.IsActive = false;
+        staff.User.UpdatedAt = DateTime.UtcNow;
+        staff.IsAvailable = false;
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<StaffProfileResponse> CreateStaffAsync(CreateStaffRequest request)
     {
         // 1. Check trùng Email trong hệ thống
@@ -57,6 +128,7 @@ public class StaffService : IStaffService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = UserRole.Staff, // Ép cứng Role là Staff luôn
             IsActive = true,
+            IsEmailConfirmed = true,
             CreatedAt = DateTime.UtcNow
         };
 
