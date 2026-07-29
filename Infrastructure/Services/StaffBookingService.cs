@@ -103,6 +103,16 @@ public class StaffBookingService : IStaffBookingService
         if (staffId == Guid.Empty)
             throw new AppException("staffId is required to check-in.", 400);
 
+        var vehicleBusy = await _context.Bookings.AnyAsync(b =>
+            b.VehicleId == booking.VehicleId &&
+            b.Id != booking.Id &&
+            (b.Status == BookingStatus.CheckedIn ||
+             b.Status == BookingStatus.Queued ||
+             b.Status == BookingStatus.InProgress));
+
+        if (vehicleBusy)
+            throw new AppException("This vehicle is currently being serviced in another booking. Please wait until the current service is completed.", 400);
+
         booking.StaffId = staffId;
         booking.Status = BookingStatus.CheckedIn;
         booking.UpdatedAt = DateTime.UtcNow;
