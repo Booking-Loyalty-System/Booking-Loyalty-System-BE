@@ -144,6 +144,9 @@ public class AuthService : IAuthService
         if (!user.IsEmailConfirmed)
             throw new AppException("Please verify your email address before logging in.", 403);
 
+        if (user.Staff != null && !user.Staff.IsAvailable)
+            throw new AppException("Your staff account has been disabled.", 403);
+
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
 
