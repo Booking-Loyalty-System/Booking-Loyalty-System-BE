@@ -128,6 +128,7 @@ public class StaffService : IStaffService
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = UserRole.Staff, // Ép cứng Role là Staff luôn
             IsActive = true,
+            IsEmailConfirmed = true,
             CreatedAt = DateTime.UtcNow
         };
 
