@@ -15,13 +15,15 @@ public class StaffBookingService : IStaffBookingService
     private readonly ILoyaltyService _loyaltyService;
     private readonly IHubContext<BookingHub> _hubContext;
     private readonly INotificationService _notificationService;
+    private readonly TimeZoneInfo _shopTimeZone;
 
-    public StaffBookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IHubContext<BookingHub> hubContext, INotificationService notificationService)
+    public StaffBookingService(IApplicationDbContext context, ILoyaltyService loyaltyService, IHubContext<BookingHub> hubContext, INotificationService notificationService, TimeZoneInfo shopTimeZone)
     {
         _context = context;
         _loyaltyService = loyaltyService;
         _hubContext = hubContext;
         _notificationService = notificationService;
+        _shopTimeZone = shopTimeZone;
     }
 
     public async Task<BookingResponseData> GetBookingByQrPayloadAsync(string qrPayload)
@@ -102,6 +104,10 @@ public class StaffBookingService : IStaffBookingService
 
         if (staffId == Guid.Empty)
             throw new AppException("staffId is required to check-in.", 400);
+
+        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone));
+        if (booking.BookingDate != today)
+            throw new AppException("Check-in is only allowed on the booking date.", 400);
 
         var vehicleBusy = await _context.Bookings.AnyAsync(b =>
             b.VehicleId == booking.VehicleId &&
