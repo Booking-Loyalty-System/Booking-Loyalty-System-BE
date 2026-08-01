@@ -42,9 +42,26 @@ public class BranchService : IBranchService
             OperatingHours = request.OperatingHours,
             Status = BranchStatus.Active,
             Longitude = request.Longitude,
-            Latitude = request.Latitude
+            Latitude = request.Latitude,
+            BranchTimeSlots = new List<BranchTimeSlot>()
         };
 
+        var allTimeSlots = await _context.TimeSlots.ToListAsync();
+
+        foreach (var timeSlot in allTimeSlots)
+        {
+            var branchTimeSlot = new BranchTimeSlot
+            {
+                Id = Guid.NewGuid(),
+                BranchId = branch.Id,
+                TimeSlotId = timeSlot.Id,
+                MaxCapacity = 4, // Tạm thời để 0, bạn có thể thay đổi tùy logic
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            branch.BranchTimeSlots.Add(branchTimeSlot);
+        }
         _context.Branches.Add(branch);
         await _context.SaveChangesAsync();
 
@@ -62,7 +79,7 @@ public class BranchService : IBranchService
         if (request.OperatingHours != null) branch.OperatingHours = request.OperatingHours;
         if (request.Status != null) branch.Status = Enum.Parse<BranchStatus>(request.Status);
         if (request.Longitude != null) branch.Longitude = request.Longitude;
-        if (request.Latitude != null) branch.Latitude = request.Latitude;   
+        if (request.Latitude != null) branch.Latitude = request.Latitude;
         await _context.SaveChangesAsync();
 
         return MapToResponse(branch);

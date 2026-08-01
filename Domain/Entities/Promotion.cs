@@ -34,6 +34,7 @@ public class Promotion
     public bool IsActive { get; set; } = true;
 
     public bool RequiresBirthday { get; set; }
+    public decimal? MaxDiscount { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

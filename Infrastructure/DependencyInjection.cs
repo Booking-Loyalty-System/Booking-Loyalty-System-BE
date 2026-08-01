@@ -120,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<IChatFeedbackService, ChatFeedbackService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
         services.AddScoped<IAdminAnalyticService, AdminAnalyticService>();
+        services.AddScoped<IReportService, ReportService>();
         services.AddHostedService<NotificationWorker>();
 
         services.AddHttpClient("ProfanityApi", client =>

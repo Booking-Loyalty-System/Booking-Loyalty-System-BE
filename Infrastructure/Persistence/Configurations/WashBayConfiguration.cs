@@ -19,10 +19,6 @@ public class WashBayConfiguration : IEntityTypeConfiguration<WashBay>
             .HasConversion<string>()
             .HasMaxLength(20);
 
-        builder.Property(wb => wb.SupportedTypes)
-            .IsRequired()
-            .HasMaxLength(100);
-
         // Seed data
         builder.HasData(
             new WashBay { Id = Guid.Parse("b1b2c3d4-0001-0001-0001-000000000001"), Name = "Bay A1 (Q9)", Status = WashBayStatus.Available, SupportedTypes = "Small,Medium", BranchId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") },
