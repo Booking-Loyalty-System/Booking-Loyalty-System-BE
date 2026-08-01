@@ -38,10 +38,10 @@ public class WashBayService : IWashBayService
         var bays = await query
             .OrderBy(wb => wb.Name)
             .ToListAsync();
-        
+
         return bays.Select(MapToResponse).ToList();
     }
-    
+
     public async Task<WashBayResponse?> GetByIdAsync(Guid id)
     {
         var bay = await _context.WashBays.FindAsync(id);
@@ -54,8 +54,8 @@ public class WashBayService : IWashBayService
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
+            BranchId = request.BranchId,
             Status = WashBayStatus.Available,
-            SupportedTypes = string.Join(",", request.SupportedTypes),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -96,7 +96,6 @@ public class WashBayService : IWashBayService
             Name = bay.Name,
             Status = bay.Status.ToString(),
             BranchId = bay.BranchId,
-            SupportedTypes = bay.SupportedTypes.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
             CreatedAt = bay.CreatedAt
         };
     }

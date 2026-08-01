@@ -25,15 +25,17 @@ public class AdminDashboardService : IAdminDashboardService
 
     public async Task<DashboardSummaryResponse> GetDashboardSummaryAsync()
     {
-        var now = DateTime.UtcNow;
-        // Fix lỗi PostgreSQL: Thêm tham số DateTimeKind.Utc
-        var currentMonthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
+        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
+        var nextMonthStart = currentMonthStart.AddMonths(1);
+
+        // Sử dụng BookingDate
         var monthlyBookings = await _context.Bookings
-            .Where(b => b.CreatedAt >= currentMonthStart)
+            .Where(b => b.BookingDate >= currentMonthStart && b.BookingDate < nextMonthStart)
             .ToListAsync();
 
-        var completedBookings = monthlyBookings.Where(b => b.Status == BookingStatus.Completed).ToList();
+        var completedBookings = monthlyBookings.Where(b => b.Status == BookingStatus.CheckedOut).ToList();
         var totalRevenue = completedBookings.Sum(b => b.TotalPrice);
         var totalBookings = monthlyBookings.Count;
         var activeCustomers = monthlyBookings.Select(b => b.CustomerId).Distinct().Count();
@@ -42,14 +44,16 @@ public class AdminDashboardService : IAdminDashboardService
         var revenueChart = new List<RevenueDataDto>();
         for (int i = 4; i >= 0; i--)
         {
-            var targetMonth = now.AddMonths(-i);
+            var targetMonth = today.AddMonths(-i);
+
             // Fix lỗi PostgreSQL: Thêm tham số DateTimeKind.Utc
-            var startDate = new DateTime(targetMonth.Year, targetMonth.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var startDate = new DateOnly(targetMonth.Year, targetMonth.Month, 1);
             var endDate = startDate.AddMonths(1);
 
+            // Sử dụng BookingDate
             var monthRevenue = await _context.Bookings
-                .Where(b => b.Status == BookingStatus.Completed && b.CreatedAt >= startDate && b.CreatedAt < endDate)
-                .SumAsync(b => b.TotalPrice);
+            .Where(b => b.Status == BookingStatus.CheckedOut && b.BookingDate >= startDate && b.BookingDate < endDate)
+            .SumAsync(b => b.TotalPrice);
 
             revenueChart.Add(new RevenueDataDto
             {
@@ -59,12 +63,12 @@ public class AdminDashboardService : IAdminDashboardService
         }
 
         var tierDistribution = new List<TierDistributionDto>
-        {
-            new() { Name = "Bronze", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Bronze"), Color = "#3b82f6" },
-            new() { Name = "Silver", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Silver"), Color = "#9ca3af" },
-            new() { Name = "Gold", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Gold"), Color = "#eab308" },
-            new() { Name = "Diamond", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Diamond"), Color = "#a855f7" }
-        };
+    {
+        new() { Name = "Bronze", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Bronze"), Color = "#3b82f6" },
+        new() { Name = "Silver", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Silver"), Color = "#9ca3af" },
+        new() { Name = "Gold", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Gold"), Color = "#eab308" },
+        new() { Name = "Diamond", Value = await _context.Customers.CountAsync(c => c.Tier.TierName == "Diamond"), Color = "#a855f7" }
+    };
 
         return new DashboardSummaryResponse
         {

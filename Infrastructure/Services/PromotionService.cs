@@ -33,33 +33,29 @@ public class PromotionService : IPromotionService
     {
         var now = DateTime.UtcNow;
 
+        Customer? customer = null;
+        if (userId.HasValue)
+        {
+            customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.UserId == userId.Value);
+        }
+
         var promotions = await _context.Promotions
             .Include(p => p.TierPromotions)
             .Include(p => p.PromotionBranches)
             .Where(p => p.IsActive
                 && p.StartDate <= now
-                && p.EndDate >= now
-                && (p.MaxUses == null || p.UsedCount < p.MaxUses))
+                && p.EndDate >= now)
             .OrderByDescending(p => p.PriorityLevel)
             .ThenByDescending(p => p.CreatedAt)
             .ToListAsync();
 
-        // Khách đã đăng nhập: chỉ trả về các KM mà khách dùng được ngay (đúng hạng + đang trong tuần sinh nhật).
-        // Điều kiện chi nhánh/địa chỉ kiểm tra lúc Preview/Apply vì list chưa biết khách chọn chi nhánh nào.
-        if (userId is not null)
-        {
-            var customer = await _context.Customers
-                .FirstOrDefaultAsync(c => c.UserId == userId.Value);
+        var filteredPromotions = promotions.Where(p =>
+            IsTierEligible(p, customer) &&
+            IsBirthdayEligible(p, customer, now)
+        ).ToList();
 
-            if (customer is not null)
-            {
-                promotions = promotions
-                    .Where(p => IsTierEligible(p, customer) && IsBirthdayEligible(p, customer, now))
-                    .ToList();
-            }
-        }
-
-        return promotions.Select(MapToResponse).ToList();
+        return filteredPromotions.Select(MapToResponse).ToList();
     }
 
     // ----- Eligibility (sinh nhật / hạng / chi nhánh) -----
@@ -332,7 +328,8 @@ public class PromotionService : IPromotionService
                 p.DiscountType,
                 p.DiscountValue,
                 p.MinSpend,
-                p.PriorityLevel
+                p.PriorityLevel,
+                p.MaxDiscount,
             });
     }
 
