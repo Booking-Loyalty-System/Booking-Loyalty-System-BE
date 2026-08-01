@@ -139,12 +139,11 @@ public class StaffService : IStaffService
             UserId = user.Id,
             BranchId = branch.Id,
             FullName = request.FullName,
-            PhoneNumber = request.PhoneNumber,
             IsAvailable = true
         };
 
         // Gán ngược reference nếu cần thiết cho EF Core theo dõi trạng thái thực thể chặt chẽ hơn
-        staff.User = user; 
+        staff.User = user;
         staff.Branch = branch;
 
         // 5. Lưu vào Database thông qua Unit of Work / DBContext
@@ -155,7 +154,7 @@ public class StaffService : IStaffService
         // 6. Map kết quả trả về cho Client
         return MapToResponse(staff);
     }
-    
+
     public async Task<List<WashBayResponse>> GetWashBaysByBranchIdAsync(Guid branchId)
     {
         // Kiểm tra Branch có tồn tại không (Tuỳ chọn, giúp báo lỗi rõ ràng hơn)
@@ -199,7 +198,7 @@ public class StaffService : IStaffService
         // 5. Lưu thay đổi
         await _context.SaveChangesAsync();
     }
-    
+
     private static WashBayResponse MapToResponse(WashBay washBay)
     {
         return new WashBayResponse
@@ -207,8 +206,8 @@ public class StaffService : IStaffService
             Id = washBay.Id,
             Name = washBay.Name,
             Status = washBay.Status.ToString(),
-            SupportedTypes = string.IsNullOrWhiteSpace(washBay.SupportedTypes) 
-                ? new List<string>() 
+            SupportedTypes = string.IsNullOrWhiteSpace(washBay.SupportedTypes)
+                ? new List<string>()
                 : washBay.SupportedTypes
                     .Split(',', StringSplitOptions.RemoveEmptyEntries)
                     .Select(type => type.Trim())
@@ -217,7 +216,7 @@ public class StaffService : IStaffService
             BranchId = washBay.BranchId
         };
     }
-    
+
     // Hàm Helper chuyển đổi dữ liệu từ Entity sang DTO an toàn
     private static StaffProfileResponse MapToResponse(Domain.Entities.Staff staff)
     {

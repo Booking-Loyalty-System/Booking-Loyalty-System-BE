@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="FirebaseAdmin" Version="3.5.0" />
     <PackageReference Include="Google.Apis" Version="1.74.0" />
     <PackageReference Include="Google.Apis.Oauth2.v2" Version="1.74.0.1869" />

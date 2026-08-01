@@ -31,6 +31,7 @@ public class CustomerService : ICustomerService
     {
         var customer = await _context.Customers
             .Include(c => c.User)
+            .Include(c => c.Tier)
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
