@@ -9,6 +9,9 @@ namespace Infrastructure.Services;
 
 public class PromotionService : IPromotionService
 {
+    /// <summary>Trần giảm giá: một khuyến mãi không được giảm quá 20% giá gói dịch vụ.</summary>
+    private const decimal MaxDiscountRate = 0.20m;
+
     private readonly IApplicationDbContext _context;
 
     public PromotionService(IApplicationDbContext context)
@@ -230,6 +233,7 @@ public class PromotionService : IPromotionService
 
         var promotion = await LoadValidPromotionAsync(code, subtotal, customer, branchId);
         var discount = ComputeDiscount(promotion, subtotal);
+        EnforceDiscountCap(discount, subtotal);
 
         return new PromotionPreviewResponse
         {
@@ -244,6 +248,9 @@ public class PromotionService : IPromotionService
     {
         var promotion = await LoadValidPromotionAsync(code, subtotal, customer, branchId);
         var discount = ComputeDiscount(promotion, subtotal);
+
+        // Chặn trước khi giữ chỗ lượt dùng: nếu vượt trần thì không áp và không tăng UsedCount.
+        EnforceDiscountCap(discount, subtotal);
 
         // Reserve one use. Caller's SaveChanges/transaction commits this together with the booking.
         promotion.UsedCount += 1;
@@ -391,6 +398,19 @@ public class PromotionService : IPromotionService
         };
 
         return Math.Min(discount, subtotal);
+    }
+
+    /// <summary>
+    /// Chặn khi mức giảm vượt quá trần cho phép (<see cref="MaxDiscountRate"/> = 20% giá gói dịch vụ).
+    /// Dùng chung cho cả Preview (để FE làm mờ ưu đãi không chọn được) và Apply (chặn tạo booking).
+    /// Không thay đổi trạng thái khuyến mãi — chỉ từ chối áp cho gói giá thấp.
+    /// </summary>
+    private static void EnforceDiscountCap(decimal discount, decimal packagePrice)
+    {
+        if (packagePrice > 0 && discount > packagePrice * MaxDiscountRate)
+            throw new AppException(
+                $"Mã khuyến mãi này giảm quá {MaxDiscountRate * 100:0}% giá gói dịch vụ nên không thể áp dụng cho gói này. " +
+                "Vui lòng chọn gói có giá cao hơn hoặc ưu đãi khác.", 400);
     }
 
     private static PromotionResponse MapToResponse(Promotion p) => new()

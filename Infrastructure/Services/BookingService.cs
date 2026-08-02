@@ -16,6 +16,9 @@ namespace Infrastructure.Services;
 
 public class BookingService : IBookingService
 {
+    /// <summary>Trần giảm giá voucher: voucher GIẢM TIỀN không được giảm quá 20% giá gói dịch vụ (free-wash được miễn trừ).</summary>
+    private const decimal MaxDiscountRate = 0.20m;
+
     private readonly IApplicationDbContext _context;
     private readonly ILoyaltyService _loyaltyService;
     private readonly IPromotionService _promotionService;
@@ -254,6 +257,16 @@ public class BookingService : IBookingService
             if (appliedRedemption.Reward.WashPackageId != null && appliedRedemption.Reward.WashPackageId != washPackage.Id)
             {
                 throw new AppException($"Voucher này chỉ áp dụng cho gói dịch vụ quy định, không áp dụng cho gói '{washPackage.Name}'.", 400);
+            }
+
+            // Chặn voucher GIẢM TIỀN vượt trần 20% giá gói (free-wash là quà 100% nên miễn trừ).
+            // Không hủy voucher — giữ nguyên Pending để khách dùng cho gói có giá cao hơn.
+            if (!appliedRedemption.Reward.IsFreeWash
+                && appliedRedemption.Reward.DiscountAmount > washPackage.Price * MaxDiscountRate)
+            {
+                throw new AppException(
+                    $"Voucher này giảm quá {MaxDiscountRate * 100:0}% giá gói '{washPackage.Name}' nên không thể áp dụng. " +
+                    "Bạn có thể dùng voucher cho gói dịch vụ có giá cao hơn.", 400);
             }
 
             var voucherDiscount = Math.Min(appliedRedemption.Reward.DiscountAmount, totalPrice);
