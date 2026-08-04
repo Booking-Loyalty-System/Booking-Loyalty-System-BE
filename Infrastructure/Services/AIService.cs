@@ -1,4 +1,5 @@
 ﻿using Application.DTOs.Feedback;
+using Application.Exceptions;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
@@ -22,12 +23,17 @@ namespace Infrastructure.Services
             _httpClient = httpClient;
             _context = context;
             _hub = hub;
-            _apiKey = configuration["GeminiSettings:ApiKey"]
-                ?? throw new ArgumentNullException("Gemini API Key is missing in appsettings.json");
+            // KHÔNG ném lỗi ở constructor: AIService được DI vào ChatController, nên thiếu key
+            // sẽ làm chết cả controller => toàn bộ API chat trả 500 dù chat người-với-người
+            // không cần AI. Chỉ báo lỗi tại đúng chỗ thực sự gọi Gemini (CallGeminiAsync).
+            _apiKey = configuration["GeminiSettings:ApiKey"] ?? string.Empty;
         }
 
         private async Task<string> CallGeminiAsync(string prompt)
         {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+                throw new AppException("Tính năng trợ lý AI chưa được cấu hình (thiếu Gemini API Key).", 503);
+
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
 
             var requestBody = new
