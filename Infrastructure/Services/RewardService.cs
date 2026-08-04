@@ -25,11 +25,17 @@ public class RewardService : IRewardService
 
     // ----- Catalog management -----
 
-    public async Task<List<RewardResponse>> GetAllAsync(bool activeOnly)
+    public async Task<List<RewardResponse>> GetAllAsync(bool activeOnly, bool includeFreeWash = true)
     {
         var query = _context.Rewards.AsQueryable();
         if (activeOnly)
             query = query.Where(r => r.IsActive);
+
+        // Danh mục đổi điểm của khách không được liệt kê quà rửa xe miễn phí:
+        // loại quà này chỉ trao tự động sau 7 lượt rửa, không đổi bằng điểm.
+        // Admin vẫn xem được đầy đủ để quản lý.
+        if (!includeFreeWash)
+            query = query.Where(r => !r.IsFreeWash);
 
         var rewards = await query
             .OrderBy(r => r.PointsCost)
@@ -117,26 +123,47 @@ public class RewardService : IRewardService
         if (!reward.IsActive)
             throw new AppException("Reward is not available.", 400);
 
+        // Voucher rửa xe miễn phí là quà tri ân, chỉ trao tự động sau khi khách hoàn thành
+        // đủ 7 lượt rửa TRẢ TIỀN. Trước đây chúng có PointsCost = 0 mà vẫn nằm trong danh mục
+        // đổi điểm, nên khách đổi được không giới hạn chỉ với 1 lượt rửa trong chu kỳ.
+        if (reward.IsFreeWash)
+            throw new AppException(
+                "Phần thưởng rửa xe miễn phí chỉ được trao sau khi bạn hoàn thành đủ 7 lượt rửa, không thể đổi bằng điểm.", 400);
+
+        // Trước đây chỉ kiểm IsActive nên phần thưởng đã hết hạn vẫn đổi được bình thường.
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (today < reward.StartDate || today > reward.EndDate)
+            throw new AppException("Phần thưởng này không còn trong thời gian áp dụng.", 400);
+
         var customer = await _context.Customers
             .FirstOrDefaultAsync(c => c.UserId == userId)
             ?? throw new AppException("Customer profile not found.", 404);
 
+        var now = DateTime.UtcNow;
+
+        // Khách chưa từng tích điểm thì chưa có dòng Points; tạo mới thay vì báo "không đủ điểm"
+        // (thông báo sai bản chất khi phần thưởng có giá 0 điểm).
         var point = await _context.Points
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
-        if (point is null || point.AvailablePoints < reward.PointsCost)
+        if (point is null)
+        {
+            point = new Point
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                AvailablePoints = 0,
+                TotalPoints = 0,
+                UpdatedAt = now
+            };
+            _context.Points.Add(point);
+        }
+
+        if (point.AvailablePoints < reward.PointsCost)
             throw new AppException("Insufficient points to redeem this reward.", 400);
 
-        var now = DateTime.UtcNow;
         point.AvailablePoints -= reward.PointsCost;
         point.UpdatedAt = now;
-
-        if (reward.IsFreeWash)
-        {
-            if (customer.CurrentCycleWashes < 1)
-                throw new AppException("Not enough cycle washes to redeem free wash.", 400);
-            customer.CurrentCycleWashes -= 1;
-        }
 
         // Redeeming a reward spends points and produces a voucher: a Redeem ledger row
         // carrying the RewardId and an expiry date (per ERD Point History).

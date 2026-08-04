@@ -22,7 +22,7 @@ public class RewardController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var result = await _rewardService.GetAllAsync(activeOnly: true);
+        var result = await _rewardService.GetAllAsync(activeOnly: true, includeFreeWash: false);
         return Ok(ApiResponse<object>.SuccessResponse(result));
     }
 

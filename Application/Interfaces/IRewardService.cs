@@ -5,7 +5,8 @@ namespace Application.Interfaces;
 public interface IRewardService
 {
     // Catalog management
-    Task<List<RewardResponse>> GetAllAsync(bool activeOnly);
+    /// <param name="includeFreeWash">False để ẩn quà rửa xe miễn phí khỏi danh mục đổi điểm của khách.</param>
+    Task<List<RewardResponse>> GetAllAsync(bool activeOnly, bool includeFreeWash = true);
     Task<RewardResponse?> GetByIdAsync(Guid id);
     Task<RewardResponse> CreateAsync(CreateRewardRequest request);
     Task<RewardResponse> UpdateAsync(Guid id, UpdateRewardRequest request);
