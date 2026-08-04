@@ -18,8 +18,6 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.PhoneNumber)
             .HasMaxLength(15);
 
-        builder.HasIndex(c => c.PhoneNumber).IsUnique();
-
         builder.Property(c => c.TotalSpent)
             .HasColumnType("decimal(18,2)");
 

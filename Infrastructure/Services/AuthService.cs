@@ -39,10 +39,6 @@ public class AuthService : IAuthService
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             throw new AppException("Email already exists.", 409);
 
-        // Check duplicate phone
-        if (!string.IsNullOrEmpty(request.PhoneNumber) && await _context.Customers.AnyAsync(c => c.PhoneNumber == request.PhoneNumber))
-            throw new AppException("Phone number already exists.", 409);
-
         var tier = await _context.Tiers.FirstOrDefaultAsync(t => t.TierName == "Bronze")
                    ?? throw new AppException("System configuration error: Default tier not found.", 500);
 
