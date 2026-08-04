@@ -13,8 +13,9 @@ public class Tier
     public int MaintenancePoints { get; set; }
 
     /// <summary>
-    /// Số booking hoàn tất tối thiểu trong ~30 ngày gần nhất để GIỮ hạng này.
-    /// Dưới ngưỡng (kể cả 0 booking) → bị hạ xuống hạng thấp nhất còn duy trì được.
+    /// KHÔNG còn dùng trong nghiệp vụ. Trước đây là số booking tối thiểu trong ~30 ngày để giữ hạng,
+    /// phục vụ cơ chế hạ hạng — cơ chế này đã được bỏ, hạng nay chỉ xét theo <see cref="MinPointsRequired"/>
+    /// và không bao giờ giảm. Giữ lại để không phải đổi schema; không đọc, không ghi ở luồng nào.
     /// </summary>
     public int MaintenanceBookings { get; set; }
 

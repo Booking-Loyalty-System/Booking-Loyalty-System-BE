@@ -16,12 +16,6 @@ public interface ILoyaltyService
     /// </summary>
     Task ApplyNoShowPenaltyAsync(Guid bookingId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Rà toàn bộ khách và cập nhật hạng theo số booking ~30 ngày gần nhất (nâng + hạ).
-    /// Hạ hạng cả khách không có booking nào trong kỳ. Dùng bởi worker nền định kỳ.
-    /// </summary>
-    Task ReevaluateAllTiersAsync(CancellationToken cancellationToken = default);
-
     Task<LoyaltyBalanceResponse> GetBalanceAsync(Guid userId);
 
     Task<List<LoyaltyTransactionResponse>> GetHistoryAsync(Guid userId);
