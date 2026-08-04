@@ -7,6 +7,10 @@ public class Reward
     public decimal DiscountAmount { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
+    /// <summary>
+    /// KHÔNG dùng trong nghiệp vụ. Cờ bật/tắt phần thưởng là <see cref="IsActive"/>.
+    /// Trường này chỉ còn tồn tại để giữ tương thích schema — không đọc, không ghi ở bất kỳ luồng nào.
+    /// </summary>
     public bool Status { get; set; }
 
     public ICollection<Booking> Bookings = new List<Booking>();

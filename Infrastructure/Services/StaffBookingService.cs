@@ -105,10 +105,6 @@ public class StaffBookingService : IStaffBookingService
         if (staffId == Guid.Empty)
             throw new AppException("staffId is required to check-in.", 400);
 
-        var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone));
-        if (booking.BookingDate != today)
-            throw new AppException("Check-in is only allowed on the booking date.", 400);
-
         var vehicleBusy = await _context.Bookings.AnyAsync(b =>
             b.VehicleId == booking.VehicleId &&
             b.Id != booking.Id &&

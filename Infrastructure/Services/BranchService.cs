@@ -55,7 +55,7 @@ public class BranchService : IBranchService
                 Id = Guid.NewGuid(),
                 BranchId = branch.Id,
                 TimeSlotId = timeSlot.Id,
-                MaxCapacity = 4, // Tạm thời để 0, bạn có thể thay đổi tùy logic
+                MaxCapacity = 4,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
