@@ -134,8 +134,8 @@ public static class DependencyInjection
         services.AddHostedService<AutoNoShowService>();
         services.AddHttpClient();
 
-        // Rà hạng thành viên định kỳ: hạ hạng khách thiếu booking trong ~30 ngày (kể cả khách 0 booking).
-        services.AddHostedService<TierMaintenanceService>();
+        // Đã bỏ worker rà hạng định kỳ (TierMaintenanceService): hạng nay chỉ tăng theo điểm
+        // lũy kế và được cập nhật ngay lúc checkout, không còn hạ hạng nên không cần quét nền.
 
         return services;
     }

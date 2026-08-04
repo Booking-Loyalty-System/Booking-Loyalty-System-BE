@@ -105,6 +105,12 @@ public class StaffBookingService : IStaffBookingService
         if (staffId == Guid.Empty)
             throw new AppException("staffId is required to check-in.", 400);
 
+        // Trước đây chỉ kiểm Guid.Empty rồi gán thẳng vào booking.StaffId, nên staffId không
+        // tồn tại sẽ vi phạm khoá ngoại và trả 500 thay vì báo lỗi rõ ràng cho nhân viên.
+        var staffExists = await _context.Staffs.AnyAsync(s => s.Id == staffId);
+        if (!staffExists)
+            throw new AppException("Staff not found.", 404);
+
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _shopTimeZone));
         if (booking.BookingDate != today)
             throw new AppException("Check-in is only allowed on the booking date.", 400);

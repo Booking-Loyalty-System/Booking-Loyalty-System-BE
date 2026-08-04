@@ -218,25 +218,13 @@ public class LoyaltyService : ILoyaltyService
             customer.CurrentCycleWashes += 1;
         }
 
-        var since = DateOnly.FromDateTime(now.AddDays(-30));
-        var otherDoneBookings = await _context.Bookings.CountAsync(b =>
-            b.CustomerId == customer.Id
-            && b.Id != booking.Id
-            && b.BookingDate >= since
-            && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.CheckedOut)
-            && (b.Reward == null || !b.Reward.IsFreeWash),
-            cancellationToken);
-
-        // Lượt rửa MIỄN PHÍ không được tính để giữ hạng — đồng bộ với cách tính CurrentCycleWashes
-        // ở trên. Nếu tính, khách có thể dùng quà miễn phí để giữ hạng cao vô thời hạn.
-        var recentBookings = otherDoneBookings + (isFreeWashBooking ? 0 : 1); // + chính lượt đang checkout
-
         var oldTierMin = customer.Tier?.MinPointsRequired ?? 0;
         var allTiers = await _context.Tiers
             .OrderByDescending(t => t.MinPointsRequired)
             .ToListAsync(cancellationToken);
 
-        var eligibleTier = PickTier(allTiers, point.TotalPoints, recentBookings);
+        // Hạng xét thuần theo điểm lũy kế; không còn đếm booking 30 ngày vì đã bỏ hạ hạng.
+        var eligibleTier = PickTier(allTiers, point.TotalPoints);
 
         bool isUpgraded = false;
         string newTierName = string.Empty;
@@ -544,71 +532,16 @@ public class LoyaltyService : ILoyaltyService
             .ToListAsync();
     }
 
-    // Quy tắc hạng DÙNG CHUNG (checkout + worker nền):
-    // hạng CAO NHẤT thỏa cả điểm lũy kế (Min) lẫn số booking gần đây (MaintenanceBookings).
-    private static Tier? PickTier(List<Tier> tiersDesc, int lifetimePoints, int recentBookings)
-        => tiersDesc.FirstOrDefault(t => lifetimePoints >= t.MinPointsRequired
-                                      && recentBookings >= t.MaintenanceBookings)
+    // Quy tắc hạng: hạng CAO NHẤT có MinPointsRequired <= điểm lũy kế trọn đời.
+    // Hạng chỉ TĂNG, không bao giờ giảm — cơ chế hạ hạng theo số booking 30 ngày đã được bỏ
+    // theo yêu cầu nghiệp vụ. Vì vậy Tier.MaintenanceBookings không còn được dùng để xét hạng.
+    private static Tier? PickTier(List<Tier> tiersDesc, int lifetimePoints)
+        => tiersDesc.FirstOrDefault(t => lifetimePoints >= t.MinPointsRequired)
            ?? tiersDesc.LastOrDefault();
 
-    /// <summary>
-    /// Rà toàn bộ khách và cập nhật hạng theo SỐ BOOKING hoàn tất trong ~30 ngày gần nhất.
-    /// Dùng cho worker nền: HẠ hạng cả khách KHÔNG có booking nào trong kỳ (không cần checkout).
-    /// </summary>
-    public async Task ReevaluateAllTiersAsync(CancellationToken cancellationToken = default)
-    {
-        var since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
-
-        var tiersDesc = await _context.Tiers
-            .OrderByDescending(t => t.MinPointsRequired)
-            .ToListAsync(cancellationToken);
-        if (tiersDesc.Count == 0) return;
-
-        // Đếm booking hoàn tất 30 ngày cho TẤT CẢ khách trong 1 query.
-        var bookingCounts = await _context.Bookings
-            .Where(b => b.BookingDate >= since
-                     && (b.Status == BookingStatus.Completed || b.Status == BookingStatus.CheckedOut)
-                     // Lượt rửa miễn phí không tính để giữ hạng (khớp với AwardPointsForBookingAsync).
-                     && (b.Reward == null || !b.Reward.IsFreeWash))
-            .GroupBy(b => b.CustomerId)
-            .Select(g => new { CustomerId = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
-        var countByCustomer = bookingCounts.ToDictionary(x => x.CustomerId, x => x.Count);
-
-        var pointsByUser = await _context.Points
-            .ToDictionaryAsync(p => p.UserId, p => p.TotalPoints, cancellationToken);
-
-        var customers = await _context.Customers.ToListAsync(cancellationToken);
-        int changed = 0;
-        foreach (var customer in customers)
-        {
-            var lifetime = pointsByUser.TryGetValue(customer.UserId, out var tp) ? tp : 0;
-            var recent = countByCustomer.TryGetValue(customer.Id, out var c) ? c : 0;
-            var target = PickTier(tiersDesc, lifetime, recent);
-            if (target == null || target.Id == customer.TierId) continue;
-
-            // tiersDesc giảm dần theo MinPointsRequired => index LỚN hơn = hạng THẤP hơn.
-            var currentIndex = tiersDesc.FindIndex(t => t.Id == customer.TierId);
-            var targetIndex = tiersDesc.FindIndex(t => t.Id == target.Id);
-
-            if (currentIndex >= 0 && targetIndex > currentIndex)
-            {
-                // HẠ hạng: chỉ lùi ĐÚNG 1 bậc mỗi lần worker chạy, dù đủ điều kiện rớt sâu hơn.
-                // Lần sweep sau (mỗi 6h) sẽ tiếp tục lùi tiếp 1 bậc nếu vẫn không đủ số booking.
-                customer.TierId = tiersDesc[currentIndex + 1].Id;
-                changed++;
-            }
-            else
-            {
-                // Nâng/khôi phục hạng (hoặc không xác định được hạng hiện tại): áp thẳng hạng đủ điều kiện.
-                customer.TierId = target.Id;
-                changed++;
-            }
-        }
-
-        if (changed > 0)
-            await _context.SaveChangesAsync(cancellationToken);
-    }
+    // Đã bỏ ReevaluateAllTiersAsync cùng worker TierMaintenanceService: đó là nơi duy nhất
+    // thực hiện HẠ hạng. Nay hạng chỉ đổi khi điểm lũy kế tăng, mà điểm chỉ tăng lúc checkout
+    // (AwardPointsForBookingAsync) — nên không cần quét nền định kỳ nữa.
 
     /// <summary>Loads the user's Point balance row, creating it on first use.</summary>
     private async Task<Point> GetOrCreatePointAsync(Guid userId, DateTime now, CancellationToken ct)
