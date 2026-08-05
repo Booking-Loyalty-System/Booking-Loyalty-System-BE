@@ -134,9 +134,6 @@ public static class DependencyInjection
         services.AddHostedService<AutoNoShowService>();
         services.AddHttpClient();
 
-        // Đã bỏ worker rà hạng định kỳ (TierMaintenanceService): hạng nay chỉ tăng theo điểm
-        // lũy kế và được cập nhật ngay lúc checkout, không còn hạ hạng nên không cần quét nền.
-
         return services;
     }
 }

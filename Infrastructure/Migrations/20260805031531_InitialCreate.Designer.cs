@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260804094527_InitialCreate")]
+    [Migration("20260805031531_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -931,7 +931,8 @@ namespace Infrastructure.Migrations
                         .HasDefaultValue(true);
 
                     b.Property<decimal?>("MaxDiscount")
-                        .HasColumnType("numeric");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<int?>("MaxUses")
                         .HasColumnType("integer");
@@ -973,13 +974,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000001"),
                             Code = "TB-PERCENT",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(166),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9516),
                             Description = "Giảm 10% cho toàn bộ hóa đơn tại Tân Bình",
                             DiscountType = 0,
                             DiscountValue = 10.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
-                            MaxUses = 500,
+                            MaxDiscount = 50000m,
+                            MaxUses = 1,
                             MinSpend = 100000m,
                             Name = "Ưu đãi Tân Bình",
                             PriorityLevel = 1,
@@ -991,13 +993,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000002"),
                             Code = "Q3-PERCENT",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(173),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9524),
                             Description = "Giảm 15% cho toàn bộ hóa đơn tại Quận 3",
                             DiscountType = 0,
                             DiscountValue = 15.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
-                            MaxUses = 500,
+                            MaxDiscount = 100000m,
+                            MaxUses = 1,
                             MinSpend = 150000m,
                             Name = "Ưu đãi Quận 3",
                             PriorityLevel = 1,
@@ -1009,13 +1012,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000003"),
                             Code = "Q9-PERCENT",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(178),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9530),
                             Description = "Giảm 20% cho toàn bộ hóa đơn tại Quận 9",
                             DiscountType = 0,
                             DiscountValue = 20.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
-                            MaxUses = 500,
+                            MaxDiscount = 150000m,
+                            MaxUses = 1,
                             MinSpend = 200000m,
                             Name = "Ưu đãi Quận 9",
                             PriorityLevel = 1,
@@ -1026,13 +1030,15 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000004"),
-                            Code = "BRONZE-10K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(184),
+                            Code = "BRONZE-5",
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9536),
                             Description = "Giảm 5% cho thành viên Đồng",
                             DiscountType = 0,
                             DiscountValue = 5.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 20000m,
+                            MaxUses = 1,
                             Name = "Ưu đãi hạng Bronze",
                             PriorityLevel = 2,
                             RequiresBirthday = false,
@@ -1042,13 +1048,15 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000005"),
-                            Code = "SILVER-50K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(188),
+                            Code = "SILVER-10",
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9605),
                             Description = "Giảm 10% cho thành viên Bạc",
                             DiscountType = 0,
                             DiscountValue = 10.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 50000m,
+                            MaxUses = 1,
                             MinSpend = 150000m,
                             Name = "Ưu đãi hạng Silver",
                             PriorityLevel = 3,
@@ -1060,12 +1068,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000006"),
                             Code = "GOLD-15",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(193),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9610),
                             Description = "Giảm 15% cho thành viên Vàng",
                             DiscountType = 0,
                             DiscountValue = 15.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 150000m,
+                            MaxUses = 1,
                             Name = "Đặc quyền hạng Gold",
                             PriorityLevel = 4,
                             RequiresBirthday = false,
@@ -1076,12 +1086,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000007"),
                             Code = "DIAMOND-VIP",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(199),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9616),
                             Description = "Giảm 25% tối đa đặc quyền Kim Cương",
                             DiscountType = 0,
                             DiscountValue = 25.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 300000m,
+                            MaxUses = 1,
                             Name = "Đẳng cấp Diamond",
                             PriorityLevel = 5,
                             RequiresBirthday = false,
@@ -1092,12 +1104,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000008"),
                             Code = "BDAY-15",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(204),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9622),
                             Description = "Giảm 15% trong ngày sinh nhật của bạn",
                             DiscountType = 0,
                             DiscountValue = 15.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 200000m,
+                            MaxUses = 1,
                             MinSpend = 200000m,
                             Name = "Mừng Sinh Nhật 15%",
                             PriorityLevel = 10,
@@ -1109,12 +1123,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000009"),
                             Code = "BDAY-HAPPY",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(210),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9627),
                             Description = "Giảm 5% cho hóa đơn đặt trước vào tuần sinh nhật",
                             DiscountType = 0,
                             DiscountValue = 5.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 100000m,
+                            MaxUses = 1,
                             MinSpend = 500000m,
                             Name = "Sinh Nhật Vui Vẻ 5%",
                             PriorityLevel = 10,
@@ -1126,12 +1142,14 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("c0000000-0000-0000-0000-000000000010"),
                             Code = "BDAY-MEGA",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 220, DateTimeKind.Utc).AddTicks(216),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 577, DateTimeKind.Utc).AddTicks(9636),
                             Description = "Giảm tối đa 20% cho hóa đơn đặt tiệc sinh nhật lớn",
                             DiscountType = 0,
                             DiscountValue = 20.00m,
                             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
+                            MaxDiscount = 500000m,
+                            MaxUses = 1,
                             MinSpend = 1000000m,
                             Name = "Đại Tiệc Sinh Nhật 20%",
                             PriorityLevel = 9,
@@ -1258,7 +1276,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000001"),
                             Code = "VOUCHER_10K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1526),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9947),
                             Description = "Giảm 10,000đ",
                             DiscountAmount = 10000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1274,7 +1292,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000002"),
                             Code = "VOUCHER_20K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1548),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9973),
                             Description = "Giảm 20,000đ",
                             DiscountAmount = 20000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1290,7 +1308,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000003"),
                             Code = "VOUCHER_50K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1553),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9978),
                             Description = "Giảm 50,000đ",
                             DiscountAmount = 50000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1306,7 +1324,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000004"),
                             Code = "VOUCHER_100K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1557),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9982),
                             Description = "Giảm 100,000đ",
                             DiscountAmount = 100000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1322,7 +1340,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000005"),
                             Code = "VOUCHER_150K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1563),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9985),
                             Description = "Giảm 150,000đ",
                             DiscountAmount = 150000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1338,7 +1356,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000006"),
                             Code = "VOUCHER_200K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1567),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9988),
                             Description = "Giảm 200,000đ",
                             DiscountAmount = 200000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1354,7 +1372,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000007"),
                             Code = "VOUCHER_250K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1574),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9992),
                             Description = "Giảm 250,000đ",
                             DiscountAmount = 250000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1370,7 +1388,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000008"),
                             Code = "VOUCHER_300K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1578),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9995),
                             Description = "Giảm 300,000đ",
                             DiscountAmount = 300000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1386,7 +1404,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000009"),
                             Code = "VOUCHER_400K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1581),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 580, DateTimeKind.Utc).AddTicks(9999),
                             Description = "Giảm 400,000đ",
                             DiscountAmount = 400000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1402,7 +1420,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000010"),
                             Code = "VOUCHER_500K",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1585),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 581, DateTimeKind.Utc).AddTicks(2),
                             Description = "Giảm 500,000đ",
                             DiscountAmount = 500000.00m,
                             EndDate = new DateOnly(2026, 12, 31),
@@ -1418,7 +1436,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("20000000-0000-0000-0000-000000000001"),
                             Code = "FREE_BASIC",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1588),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 581, DateTimeKind.Utc).AddTicks(5),
                             Description = "Tặng 1 lượt dịch vụ Basic Wash tri ân sau chu kỳ tích rửa",
                             DiscountAmount = 80000.00m,
                             EndDate = new DateOnly(2030, 12, 31),
@@ -1435,7 +1453,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("20000000-0000-0000-0000-000000000002"),
                             Code = "FREE_PREMIUM",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1595),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 581, DateTimeKind.Utc).AddTicks(11),
                             Description = "Tặng 1 lượt dịch vụ Premium Wash tri ân sau chu kỳ tích rửa",
                             DiscountAmount = 120000.00m,
                             EndDate = new DateOnly(2030, 12, 31),
@@ -1452,7 +1470,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("20000000-0000-0000-0000-000000000003"),
                             Code = "FREE_VIP",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 223, DateTimeKind.Utc).AddTicks(1600),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 581, DateTimeKind.Utc).AddTicks(17),
                             Description = "Tặng 1 lượt dịch vụ VIP Detailing tri ân sau chu kỳ tích rửa",
                             DiscountAmount = 200000.00m,
                             EndDate = new DateOnly(2030, 12, 31),
@@ -1785,91 +1803,91 @@ namespace Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 374, DateTimeKind.Utc).AddTicks(4452),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 765, DateTimeKind.Utc).AddTicks(6627),
                             Email = "admin@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$jVmsDXR58EWWdaVJhyU1veGOLFAnzk0iayXHLuYVBnEkrG1DFZXkG",
+                            PasswordHash = "$2a$11$VlYuRHMHw1a30o8HFMvK0OMv3uQOjtKujrg1VnU4ngccCClsvX7ZG",
                             Role = "Admin"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 558, DateTimeKind.Utc).AddTicks(1814),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 28, 945, DateTimeKind.Utc).AddTicks(6819),
                             Email = "staff@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$XTu6j.eTTb9Sm89it5Gn6eoloUB4xe26eomchuYkhrYn3zVvus48m",
+                            PasswordHash = "$2a$11$2pA.yNSKsB8WtyvXuOxjsOOfwWVJHszcmZnlMk3D30rWNcXlgVTlO",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbc"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 676, DateTimeKind.Utc).AddTicks(84),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 29, 125, DateTimeKind.Utc).AddTicks(8868),
                             Email = "staff1@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$kpfGXNUEUbw./R3TPgmqL.wESlTegBGLIm3cgFSQqINV514olNk8u",
+                            PasswordHash = "$2a$11$VHM9IGWLLUBwr9GCrPVjiuNHfRGAoc6/Nw/O1US8aw5mcQjmTWCJ.",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbd"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 789, DateTimeKind.Utc).AddTicks(4984),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 29, 305, DateTimeKind.Utc).AddTicks(3367),
                             Email = "staff2@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$HurkC/ngqqkPd8uYlEDGaexO1yTLRYGO//sdGY40pXe88909O8d/i",
+                            PasswordHash = "$2a$11$.CVlMrQKA3oxI8n9iF/.guhVJUXeGwan3cqK4v8oXeVC0jldGhXV6",
                             Role = "Staff"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 25, 924, DateTimeKind.Utc).AddTicks(9639),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 29, 485, DateTimeKind.Utc).AddTicks(1342),
                             Email = "customer@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$vKwQIsQs3B5/z2x6XFkW7uZok.b7emN923Pyt69CzisbBH1mh0tQ2",
+                            PasswordHash = "$2a$11$VcbrWeZZLRHBpEoUI7uNDeWW8oTHSAyn/FozqItUWIBa1JQYggDFy",
                             Role = "Customer"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccd"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 90, DateTimeKind.Utc).AddTicks(8531),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 29, 665, DateTimeKind.Utc).AddTicks(1550),
                             Email = "cus2@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$pJgNXmhHM5l91i.APpprr.R3X0rdkBNV41i2Zo1gB5yj8MSOB387m",
+                            PasswordHash = "$2a$11$e6tM3IfJs/y4zIWkeRlgXOwUJ3fkyR8KvPgs7NzmsH2/nCfouKTKu",
                             Role = "Customer"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-ccccccccccce"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 206, DateTimeKind.Utc).AddTicks(6618),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 29, 845, DateTimeKind.Utc).AddTicks(1099),
                             Email = "cus3@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$DAl1XL0HTHMSzuw3pcKEW.k/7FQKX7y7qAQRQtXo9tzlQ//nDU8Fa",
+                            PasswordHash = "$2a$11$/71kRgsyr9FklLLCGDDt0ewdtZ1/cMdxhCEz6hSYNK79OTAHAvrZi",
                             Role = "Customer"
                         },
                         new
                         {
                             Id = new Guid("cccccccc-cccc-cccc-cccc-cccccccccccf"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 352, DateTimeKind.Utc).AddTicks(7406),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 24, DateTimeKind.Utc).AddTicks(2193),
                             Email = "cus4@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$Ba07Yig7QRL5j9AkoYMrv./F9ApabKttTFUUxp2F480vuo8Jhg5mm",
+                            PasswordHash = "$2a$11$aygqtDDnUtZoL5o3K9fEMepgFnvcuJ6arCrCz/8oqSJAbsTciVr12",
                             Role = "Customer"
                         },
                         new
                         {
                             Id = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 480, DateTimeKind.Utc).AddTicks(6377),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 172, DateTimeKind.Utc).AddTicks(5423),
                             Email = "downgrade@system.com",
                             IsActive = true,
                             IsEmailConfirmed = true,
-                            PasswordHash = "$2a$11$igMBizUoKpnWS9eq6WuTRuZP1Lz8Pgh2iAwo3PttJr6a9TMWIAq9O",
+                            PasswordHash = "$2a$11$GRS.rvPxHIf0uTOeiag86.2zFdegDy8zHADjG84T9doAugPUpKdMC",
                             Role = "Customer"
                         });
                 });
@@ -1932,7 +1950,7 @@ namespace Infrastructure.Migrations
                             Id = new Guid("fb9bd07a-5f09-43cc-9ae9-7d3d7d05e128"),
                             Brand = "Toyota",
                             Color = "Black",
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(2962),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(4547),
                             CustomerId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
                             IsDeleted = false,
                             IsPrimary = true,
@@ -1979,7 +1997,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4674),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7636),
                             Name = "Bay A1 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -1988,7 +2006,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4681),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7646),
                             Name = "Bay A2 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -1997,7 +2015,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4684),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7650),
                             Name = "Bay B1 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -2006,7 +2024,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0001-0001-0001-000000000004"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4685),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7653),
                             Name = "Bay B2 (Q9)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -2015,7 +2033,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4733),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7656),
                             Name = "Bay A1 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -2024,7 +2042,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4736),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7659),
                             Name = "Bay A2 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -2033,7 +2051,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4738),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7662),
                             Name = "Bay B1 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -2042,7 +2060,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0003-0001-0001-000000000004"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb03"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4740),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7665),
                             Name = "Bay B2 (Q3)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -2051,7 +2069,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000001"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4741),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7668),
                             Name = "Bay A1 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -2060,7 +2078,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000002"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4747),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7671),
                             Name = "Bay A2 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium"
@@ -2069,7 +2087,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000003"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4749),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7674),
                             Name = "Bay B1 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
@@ -2078,7 +2096,7 @@ namespace Infrastructure.Migrations
                         {
                             Id = new Guid("b1b2c3d4-0002-0001-0001-000000000004"),
                             BranchId = new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbb02"),
-                            CreatedAt = new DateTime(2026, 8, 4, 9, 45, 26, 481, DateTimeKind.Utc).AddTicks(4750),
+                            CreatedAt = new DateTime(2026, 8, 5, 3, 15, 30, 173, DateTimeKind.Utc).AddTicks(7676),
                             Name = "Bay B2 (TB)",
                             Status = "Available",
                             SupportedTypes = "Small,Medium,Large"
