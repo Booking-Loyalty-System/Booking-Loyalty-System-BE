@@ -134,7 +134,8 @@ public class PromotionService : IPromotionService
             MinSpend = request.MinSpend,
             IsActive = true,
             RequiresBirthday = request.RequiresBirthday,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            MaxDiscount = request.MaxDiscount
         };
 
         // Gắn điều kiện hạng (TierPromotion) và chi nhánh/địa chỉ (PromotionBranch) nếu có.

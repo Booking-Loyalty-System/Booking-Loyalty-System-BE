@@ -14,6 +14,7 @@ public class CreatePromotionRequest
     public DateTime EndDate { get; set; }
     public int? MaxUses { get; set; }
     public decimal? MinSpend { get; set; }
+    public decimal? MaxDiscount { get; set; }
 
     /// <summary>True = chỉ dùng được trong tuần sinh nhật của khách (sinh nhật ± 3 ngày).</summary>
     public bool RequiresBirthday { get; set; }
